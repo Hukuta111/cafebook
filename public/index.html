@@ -137,6 +137,11 @@
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
 
+  /* DATE RANGE */
+  .date-range { display:inline-flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
+  .date-range input[type="date"] { border:none; background:transparent; padding:7px 10px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; width:130px; }
+  .date-range .date-range-sep { color:var(--text3); font-size:11px; padding:0 2px; }
+
   /* MONTH PICKER */
   .mp-trigger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; user-select:none; transition:border-color .15s; }
   .mp-trigger:hover { border-color:var(--accent); }
@@ -348,8 +353,7 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
-      <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="txDateFrom" onchange="renderTransactions()">
-      <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="txDateTo" onchange="renderTransactions()">
+      <div class="date-range"><input type="date" id="txDateFrom" onchange="renderTransactions()"><span class="date-range-sep">—</span><input type="date" id="txDateTo" onchange="renderTransactions()"></div>
       <select id="txFilterType" onchange="renderTransactions()">
         <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
         <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
@@ -373,8 +377,7 @@
       <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="dailyMonthPicker"></div>
-        <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="dailyDateFrom" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
-        <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="dailyDateTo" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
+        <div class="date-range"><input type="date" id="dailyDateFrom" onchange="renderDaily()"><span class="date-range-sep">—</span><input type="date" id="dailyDateTo" onchange="renderDaily()"></div>
         <select id="dailySortOrder" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
           <option value="desc">Сначала новые</option>
           <option value="asc">Сначала старые</option>
@@ -428,8 +431,7 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
-      <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="salDateFrom" onchange="renderSalary()">
-      <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="salDateTo" onchange="renderSalary()">
+      <div class="date-range"><input type="date" id="salDateFrom" onchange="renderSalary()"><span class="date-range-sep">—</span><input type="date" id="salDateTo" onchange="renderSalary()"></div>
       <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
       <select id="salSortOrder" onchange="renderSalary()">
         <option value="desc">Сначала новые</option>
