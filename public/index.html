@@ -348,6 +348,8 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
+      <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="txDateFrom" onchange="renderTransactions()">
+      <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="txDateTo" onchange="renderTransactions()">
       <select id="txFilterType" onchange="renderTransactions()">
         <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
         <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
@@ -371,6 +373,8 @@
       <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="dailyMonthPicker"></div>
+        <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="dailyDateFrom" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
+        <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="dailyDateTo" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
         <select id="dailySortOrder" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
           <option value="desc">Сначала новые</option>
           <option value="asc">Сначала старые</option>
@@ -424,6 +428,8 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
+      <span style="color:var(--text3);font-size:12px;">с</span><input type="date" id="salDateFrom" onchange="renderSalary()">
+      <span style="color:var(--text3);font-size:12px;">по</span><input type="date" id="salDateTo" onchange="renderSalary()">
       <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
       <select id="salSortOrder" onchange="renderSalary()">
         <option value="desc">Сначала новые</option>
@@ -1170,6 +1176,10 @@ async function renderTransactions() {
   if (type) url += 'type=' + type + '&';
   if (empId) url += 'empId=' + empId;
   let txs = await API.get(url) || [];
+  const txFrom = document.getElementById('txDateFrom').value;
+  const txTo = document.getElementById('txDateTo').value;
+  if (txFrom) txs = txs.filter(t => t.date >= txFrom);
+  if (txTo) txs = txs.filter(t => t.date <= txTo);
   const txSort = document.getElementById('txSortOrder').value;
   txs.sort((a,b) => txSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   document.getElementById('txCount').textContent = `Транзакции (${txs.length})`;
@@ -1196,7 +1206,11 @@ async function renderTransactions() {
 async function renderDaily() {
   if (!_monthPickers['dailyMonthPicker']) createMonthPicker('dailyMonthPicker', () => renderDaily());
   const month = _monthPickers['dailyMonthPicker']?.value || '';
-  const rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
+  let rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
+  const dailyFrom = document.getElementById('dailyDateFrom').value;
+  const dailyTo = document.getElementById('dailyDateTo').value;
+  if (dailyFrom) rows = rows.filter(r => r.date >= dailyFrom);
+  if (dailyTo) rows = rows.filter(r => r.date <= dailyTo);
   const dailySort = document.getElementById('dailySortOrder').value;
   rows.sort((a,b) => dailySort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   const tbody = document.getElementById('dailyTable');
@@ -1632,6 +1646,10 @@ async function renderSalary() {
   if (month) url += 'month=' + month + '&';
   if (empId) url += 'empId=' + empId;
   let txs = (await API.get(url) || []).filter(t => types.includes(t.type));
+  const salFrom = document.getElementById('salDateFrom').value;
+  const salTo = document.getElementById('salDateTo').value;
+  if (salFrom) txs = txs.filter(t => t.date >= salFrom);
+  if (salTo) txs = txs.filter(t => t.date <= salTo);
   const salSort = document.getElementById('salSortOrder').value;
   txs.sort((a,b) => salSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   const tbody = document.getElementById('salTable');
