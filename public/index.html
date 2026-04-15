@@ -1464,8 +1464,8 @@ async function renderSalaryReport() {
     html += `<div class="salary-card">
       <div class="salary-card-header">
         <div>
-          <div class="salary-card-name">${emp?emp.name:'ID: '+r.emp_id}</div>
-          <div class="salary-card-role">${emp?emp.role:''} · <span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span></div>
+          <div class="salary-card-name">${emp?emp.name:'Удалённый сотрудник'}</div>
+          <div class="salary-card-role">${emp?(emp.role||''):''}${emp?' · ':''}<span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span></div>
         </div>
         <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
       </div>
