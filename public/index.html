@@ -137,6 +137,22 @@
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
 
+  /* MONTH PICKER */
+  .mp-trigger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; user-select:none; transition:border-color .15s; }
+  .mp-trigger:hover { border-color:var(--accent); }
+  .mp-wrap { position:relative; display:inline-block; }
+  .mp-popup { display:none; position:absolute; top:calc(100% + 6px); left:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; z-index:500; box-shadow:0 8px 24px rgba(0,0,0,.4); min-width:240px; animation:fadeIn .15s ease; }
+  .mp-popup.open { display:block; }
+  .mp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .mp-header .mp-year { font-family:'DM Serif Display',serif; font-size:18px; color:var(--accent); }
+  .mp-header button { background:none; border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); width:28px; height:28px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .mp-header button:hover { border-color:var(--accent); color:var(--accent); }
+  .mp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .mp-grid button { padding:8px 4px; border:1px solid transparent; border-radius:var(--radius-sm); background:transparent; color:var(--text2); font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:all .15s; }
+  .mp-grid button:hover { background:var(--surface2); color:var(--text); border-color:var(--border); }
+  .mp-grid button.active { background:var(--accent); color:#1a1714; font-weight:600; border-color:var(--accent); }
+  .mp-grid button.today { border-color:var(--accent); color:var(--accent); }
+
   /* CHARTS */
   .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
   .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
@@ -310,7 +326,7 @@
   <div class="page active" id="page-dashboard">
     <div class="page-header">
       <div><div class="page-title">Дашборд</div><div class="page-subtitle" id="dashDate"></div></div>
-      <select id="dashMonth" onchange="renderDashboard()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+      <div class="mp-wrap" id="dashMonthPicker"></div>
     </div>
     <div class="cards-row" id="dashCards"></div>
     <div class="chart-row">
@@ -331,7 +347,7 @@
       <button class="btn btn-primary" onclick="openTxModal()">+ Добавить</button>
     </div>
     <div class="filters">
-      <input type="month" id="txFilterMonth" onchange="renderTransactions()">
+      <div class="mp-wrap" id="txMonthPicker"></div>
       <select id="txFilterType" onchange="renderTransactions()">
         <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
         <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
@@ -349,7 +365,7 @@
   <div class="page" id="page-daily">
     <div class="page-header">
       <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
-      <input type="month" id="dailyFilterMonth" class="btn" onchange="renderDaily()">
+      <div class="mp-wrap" id="dailyMonthPicker"></div>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Дата</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Штрафы</th><th>Бонусы</th><th>Авансы</th><th>Итог</th></tr></thead>
@@ -397,7 +413,7 @@
       <button class="btn btn-primary" onclick="openSalModal()">+ Начислить</button>
     </div>
     <div class="filters">
-      <input type="month" id="salFilterMonth" onchange="renderSalary()">
+      <div class="mp-wrap" id="salMonthPicker"></div>
       <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
     </div>
     <div class="table-wrap">
@@ -411,7 +427,7 @@
     <div class="page-header">
       <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
-        <select id="salReportMonth" onchange="renderSalaryReport()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+        <div class="mp-wrap" id="salReportMonthPicker"></div>
         <button class="btn" onclick="window.print()">🖨 Печать</button>
       </div>
     </div>
@@ -423,7 +439,7 @@
     <div class="page-header">
       <div><div class="page-title">График работы</div><div class="page-subtitle">Учёт смен по дням</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
-        <select id="schedMonth" onchange="renderSchedule()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+        <div class="mp-wrap" id="schedMonthPicker"></div>
         <button class="btn btn-primary" onclick="openSchedModal()">+ Смена</button>
         <button class="btn" onclick="printSchedule()">🖨 Печать</button>
       </div>
@@ -810,6 +826,88 @@ async function loadInitialData() {
 }
 
 // ═══════════════════════════════════════════
+// MONTH PICKER
+// ═══════════════════════════════════════════
+const MONTH_NAMES_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const _monthPickers = {};
+
+function createMonthPicker(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return null;
+  const cur = today().slice(0,7);
+  const picker = { value: cur, year: +cur.split('-')[0], onChange, containerId };
+
+  container.innerHTML = `
+    <div class="mp-trigger" id="${containerId}_trigger">📅 <span id="${containerId}_label">${monthLabel(cur)}</span></div>
+    <div class="mp-popup" id="${containerId}_popup">
+      <div class="mp-header">
+        <button onclick="mpChangeYear('${containerId}',-1)">◀</button>
+        <span class="mp-year" id="${containerId}_year">${picker.year}</span>
+        <button onclick="mpChangeYear('${containerId}',1)">▶</button>
+      </div>
+      <div class="mp-grid" id="${containerId}_grid"></div>
+    </div>`;
+
+  container.querySelector('.mp-trigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // close all other pickers
+    Object.keys(_monthPickers).forEach(k => {
+      if (k !== containerId) document.getElementById(k + '_popup')?.classList.remove('open');
+    });
+    document.getElementById(containerId + '_popup').classList.toggle('open');
+  });
+
+  _monthPickers[containerId] = picker;
+  mpRenderGrid(containerId);
+  return picker;
+}
+
+function mpChangeYear(id, delta) {
+  const p = _monthPickers[id];
+  p.year += delta;
+  document.getElementById(id + '_year').textContent = p.year;
+  mpRenderGrid(id);
+}
+
+function mpRenderGrid(id) {
+  const p = _monthPickers[id];
+  const curMonth = today().slice(0,7);
+  const grid = document.getElementById(id + '_grid');
+  grid.innerHTML = MONTH_NAMES_SHORT.map((name, i) => {
+    const val = p.year + '-' + String(i+1).padStart(2,'0');
+    const isActive = val === p.value ? ' active' : '';
+    const isToday = val === curMonth ? ' today' : '';
+    return `<button class="${isActive}${isToday}" onclick="mpSelect('${id}','${val}')">${name}</button>`;
+  }).join('');
+}
+
+function mpSelect(id, val) {
+  const p = _monthPickers[id];
+  p.value = val;
+  document.getElementById(id + '_label').textContent = monthLabel(val);
+  document.getElementById(id + '_popup').classList.remove('open');
+  mpRenderGrid(id);
+  if (p.onChange) p.onChange(val);
+}
+
+function mpSetValue(id, val) {
+  const p = _monthPickers[id];
+  if (!p) return;
+  p.value = val;
+  p.year = +val.split('-')[0];
+  document.getElementById(id + '_label').textContent = monthLabel(val);
+  document.getElementById(id + '_year').textContent = p.year;
+  mpRenderGrid(id);
+}
+
+// close popups on outside click
+document.addEventListener('click', () => {
+  Object.keys(_monthPickers).forEach(k => {
+    document.getElementById(k + '_popup')?.classList.remove('open');
+  });
+});
+
+// ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
 function applyRoleUI(role) {
@@ -828,12 +926,12 @@ function nav(el) {
   closeSidebar();
   const today_month = today().slice(0,7);
   if (page === 'dashboard') renderDashboard();
-  if (page === 'transactions') { document.getElementById('txFilterMonth').value = today_month; renderTransactions(); }
-  if (page === 'daily') { document.getElementById('dailyFilterMonth').value = today_month; renderDaily(); }
+  if (page === 'transactions') { mpSetValue('txMonthPicker', today_month); renderTransactions(); }
+  if (page === 'daily') { mpSetValue('dailyMonthPicker', today_month); renderDaily(); }
   if (page === 'monthly') renderMonthly();
   if (page === 'positions') renderPositions();
   if (page === 'employees') renderEmployees();
-  if (page === 'salary') { document.getElementById('salFilterMonth').value = today_month; renderSalary(); }
+  if (page === 'salary') { mpSetValue('salMonthPicker', today_month); renderSalary(); }
   if (page === 'salary-report') renderSalaryReport();
   if (page === 'schedule') renderSchedule();
   if (page === 'users') renderUsers();
@@ -865,16 +963,11 @@ function empName(id) {
 // DASHBOARD
 // ═══════════════════════════════════════════
 async function renderDashboard() {
-  // populate month selector
-  const allTx = await API.get('/transactions') || [];
-  const months = [...new Set(allTx.map(t => monthOf(t.date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  if (!_monthPickers['dashMonthPicker']) createMonthPicker('dashMonthPicker', () => renderDashboard());
   const cur = today().slice(0,7);
-  const opts = (months.includes(cur) ? months : [cur,...months]).slice(0,18);
-  const sel = document.getElementById('dashMonth');
-  const prev = sel.value || cur;
-  sel.innerHTML = opts.map(m => `<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
-  const month = sel.value || cur;
+  const month = _monthPickers['dashMonthPicker']?.value || cur;
   document.getElementById('dashDate').textContent = monthLabel(month);
+  const allTx = await API.get('/transactions') || [];
 
   const txs = allTx.filter(t => t.date && t.date.startsWith(month));
   let income=0, expense=0, salary=0, advance=0, bonus=0, fine=0;
@@ -987,9 +1080,10 @@ async function deleteTx(id) {
 }
 
 async function renderTransactions() {
+  if (!_monthPickers['txMonthPicker']) createMonthPicker('txMonthPicker', () => renderTransactions());
   _employees = await API.get('/employees') || [];
   populateEmpSelects();
-  const month = document.getElementById('txFilterMonth').value;
+  const month = _monthPickers['txMonthPicker']?.value || '';
   const type = document.getElementById('txFilterType').value;
   const empId = document.getElementById('txFilterEmployee').value;
   let url = '/transactions?';
@@ -1019,7 +1113,8 @@ async function renderTransactions() {
 // DAILY / MONTHLY
 // ═══════════════════════════════════════════
 async function renderDaily() {
-  const month = document.getElementById('dailyFilterMonth').value;
+  if (!_monthPickers['dailyMonthPicker']) createMonthPicker('dailyMonthPicker', () => renderDaily());
+  const month = _monthPickers['dailyMonthPicker']?.value || '';
   const rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
   const tbody = document.getElementById('dailyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📅</div><p>Нет данных</p></div></td></tr>`; return; }
@@ -1080,17 +1175,9 @@ async function renderSchedule() {
   _employees = await API.get('/employees') || [];
   const active = _employees.filter(e => e.status === 'active');
 
-  // month selector
+  if (!_monthPickers['schedMonthPicker']) createMonthPicker('schedMonthPicker', () => renderSchedule());
   const cur = today().slice(0,7);
-  const sel = document.getElementById('schedMonth');
-  if (!sel.options.length || !sel.value) {
-    const allSched = await API.get('/schedule') || [];
-    const months = [...new Set(allSched.map(s => monthOf(s.work_date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
-    const opts = (months.includes(cur) ? months : [cur,...months]).slice(0,18);
-    const prev = sel.value || cur;
-    sel.innerHTML = opts.map(m => `<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
-  }
-  const month = sel.value || cur;
+  const month = _monthPickers['schedMonthPicker']?.value || cur;
   const numDays = daysInMonth(month);
 
   _scheduleData = await API.get('/schedule?month=' + month) || [];
@@ -1397,9 +1484,10 @@ async function saveSalaryEntry() {
 }
 
 async function renderSalary() {
+  if (!_monthPickers['salMonthPicker']) createMonthPicker('salMonthPicker', () => renderSalary());
   _employees = await API.get('/employees') || [];
   populateEmpSelects();
-  const month = document.getElementById('salFilterMonth').value;
+  const month = _monthPickers['salMonthPicker']?.value || '';
   const empId = document.getElementById('salFilterEmployee').value;
   let url = '/transactions?';
   const types = ['salary','advance','bonus','fine'];
@@ -1431,16 +1519,10 @@ async function deleteSalTx(id) {
 // SALARY REPORT
 // ═══════════════════════════════════════════
 async function renderSalaryReport() {
+  if (!_monthPickers['salReportMonthPicker']) createMonthPicker('salReportMonthPicker', () => renderSalaryReport());
   _employees = await API.get('/employees') || [];
-  // populate month selector
-  const allTx = await API.get('/transactions') || [];
-  const months = [...new Set(allTx.filter(t=>['salary','advance','bonus','fine'].includes(t.type)).map(t=>monthOf(t.date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
   const cur = today().slice(0,7);
-  const opts = (months.includes(cur)?months:[cur,...months]).slice(0,18);
-  const sel = document.getElementById('salReportMonth');
-  const prev = sel.value||cur;
-  sel.innerHTML = opts.map(m=>`<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
-  const month = sel.value||cur;
+  const month = _monthPickers['salReportMonthPicker']?.value || cur;
 
   const rows = await API.get('/reports/salary?month=' + month) || [];
   const container = document.getElementById('salaryReportCards');
