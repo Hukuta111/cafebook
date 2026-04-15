@@ -200,12 +200,32 @@
   #sessionBanner h2 { font-family:"DM Serif Display",serif; font-size:24px; color:var(--red); }
   #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
 
+  /* SCHEDULE TABLE */
+  #scheduleTable th, #scheduleTable td { padding:5px 4px; text-align:center; border:1px solid var(--border); white-space:nowrap; }
+  #scheduleTable th { background:var(--surface2); font-size:10px; letter-spacing:.5px; text-transform:uppercase; color:var(--text3); font-weight:500; }
+  #scheduleTable td { cursor:pointer; transition:background .1s; }
+  #scheduleTable td:hover { background:var(--surface2); }
+  #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
+  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:10px; white-space:nowrap; }
+  #scheduleTable .total-cell { font-weight:700; cursor:default; }
+  #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
+  .sched-print-title { display:none; }
+
   @media print {
-    .sidebar,.hamburger,.btn,.filters,.page-header .btn{display:none!important}
+    @page { size:landscape; margin:10mm; }
+    .sidebar,.hamburger,.btn,.filters,.page-header .btn,.modal-overlay,.toast,.loader,.nav-group-label{display:none!important}
     .main{margin-left:0;padding:0}
     body{background:#fff;color:#000}
     .salary-card{border:1px solid #ccc;margin-bottom:12px}
     .stat-value.green{color:#2a7d4f} .stat-value.red{color:#c0392b}
+    .page:not(.print-target){display:none!important}
+    .page.print-target{display:block!important}
+    .sched-print-title{display:block;font-size:16px;font-weight:700;margin-bottom:8px;text-align:center}
+    #scheduleTable{font-size:9px;width:100%}
+    #scheduleTable th,#scheduleTable td{border:1px solid #ccc;padding:3px 2px}
+    #scheduleTable td.has-hours{background:#e8f5e9;color:#2a7d4f}
+    #scheduleTable .totals-row td{background:#f0f0f0}
+    .table-wrap{border:none;overflow:visible}
   }
 </style>
 </head>
@@ -260,6 +280,7 @@
     <div class="nav-item" data-page="employees" onclick="nav(this)"><span class="icon">👥</span> Сотрудники</div>
     <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
     <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
+    <div class="nav-item" data-page="schedule" onclick="nav(this)"><span class="icon">🗓</span> График</div>
     <div class="nav-group-label">Система</div>
     <div class="nav-item admin-only" data-page="users" onclick="nav(this)"><span class="icon">🔐</span> Пользователи</div>
     <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
@@ -350,7 +371,7 @@
       <button class="btn btn-primary" onclick="openEmpModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
+      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
       <tbody id="empTable"></tbody></table>
     </div>
   </div>
@@ -381,6 +402,21 @@
       </div>
     </div>
     <div id="salaryReportCards"></div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="page" id="page-schedule">
+    <div class="page-header">
+      <div><div class="page-title">График работы</div><div class="page-subtitle">Учёт смен по дням</div></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <select id="schedMonth" onchange="renderSchedule()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+        <button class="btn btn-primary" onclick="openSchedModal()">+ Смена</button>
+        <button class="btn" onclick="printSchedule()">🖨 Печать</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="scheduleWrap" style="overflow-x:auto;">
+      <table id="scheduleTable" style="min-width:100%;font-size:12px;"></table>
+    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -472,6 +508,7 @@
       <div class="form-row"><label>Оклад</label><input type="number" id="empSalary" placeholder="0" min="0"></div>
     </div>
     <div class="form-2col">
+      <div class="form-row"><label>Ставка/час</label><input type="number" id="empHourlyRate" placeholder="0" min="0" step="0.01"></div>
       <div class="form-row"><label>Телефон</label><input type="text" id="empPhone"></div>
       <div class="form-row"><label>Дата начала</label><input type="date" id="empStart"></div>
     </div>
@@ -507,6 +544,27 @@
   </div>
 </div>
 
+
+<!-- SCHEDULE MODAL -->
+<div class="modal-overlay" id="schedModal">
+  <div class="modal">
+    <div class="modal-title" id="schedModalTitle">Добавить смену</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Дата</label><input type="date" id="schedDate"></div>
+      <div class="form-row"><label>Сотрудник</label><select id="schedEmployee"></select></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Часы</label><input type="number" id="schedHours" placeholder="8" min="0.5" max="24" step="0.5"></div>
+      <div class="form-row"><label>Ставка/час (пусто = из профиля)</label><input type="number" id="schedRate" placeholder="из профиля" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row"><label>Комментарий</label><input type="text" id="schedNote" placeholder="Примечание"></div>
+    <input type="hidden" id="schedEditId">
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('schedModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveScheduleEntry()">Сохранить</button>
+    </div>
+  </div>
+</div>
 
 <!-- POSITION MODAL -->
 <div class="modal-overlay" id="posModal">
@@ -762,6 +820,7 @@ function nav(el) {
   if (page === 'employees') renderEmployees();
   if (page === 'salary') { document.getElementById('salFilterMonth').value = today_month; renderSalary(); }
   if (page === 'salary-report') renderSalaryReport();
+  if (page === 'schedule') renderSchedule();
   if (page === 'users') renderUsers();
   if (page === 'settings') renderSettings();
 }
@@ -986,6 +1045,166 @@ async function renderMonthly() {
 }
 
 // ═══════════════════════════════════════════
+// SCHEDULE
+// ═══════════════════════════════════════════
+let _scheduleData = [];
+
+function daysInMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function dayOfWeek(ym, day) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, day).getDay(); // 0=Sun
+}
+
+const SHORT_DAYS = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+
+async function renderSchedule() {
+  _employees = await API.get('/employees') || [];
+  const active = _employees.filter(e => e.status === 'active');
+
+  // month selector
+  const cur = today().slice(0,7);
+  const sel = document.getElementById('schedMonth');
+  if (!sel.options.length || !sel.value) {
+    const allSched = await API.get('/schedule') || [];
+    const months = [...new Set(allSched.map(s => monthOf(s.work_date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+    const opts = (months.includes(cur) ? months : [cur,...months]).slice(0,18);
+    const prev = sel.value || cur;
+    sel.innerHTML = opts.map(m => `<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
+  }
+  const month = sel.value || cur;
+  const numDays = daysInMonth(month);
+
+  _scheduleData = await API.get('/schedule?month=' + month) || [];
+
+  // build lookup: key = empId_day -> entry
+  const lookup = {};
+  _scheduleData.forEach(s => {
+    const day = parseInt(s.work_date.slice(8, 10));
+    lookup[s.emp_id + '_' + day] = s;
+  });
+
+  const table = document.getElementById('scheduleTable');
+
+  if (!active.length) {
+    table.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="icon">🗓</div><p>Нет активных сотрудников</p></div></td></tr>';
+    return;
+  }
+
+  // header: Сотрудник | 1 Пн | 2 Вт | ... | Часы | Сумма
+  let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left;min-width:120px">Сотрудник</th>';
+  for (let d = 1; d <= numDays; d++) {
+    const dow = dayOfWeek(month, d);
+    const isWeekend = dow === 0 || dow === 6;
+    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}min-width:32px">${d}<br>${SHORT_DAYS[dow]}</th>`;
+  }
+  hdr += '<th style="min-width:50px">Часы</th><th style="min-width:70px">Сумма</th></tr></thead>';
+
+  // body
+  let body = '<tbody>';
+  const dayTotals = new Array(numDays).fill(0);
+  let grandHours = 0, grandSum = 0;
+
+  active.forEach(emp => {
+    const empRate = emp.hourly_rate || 0;
+    let totalHours = 0, totalSum = 0;
+
+    body += `<tr><td class="emp-name-cell">${emp.name}</td>`;
+    for (let d = 1; d <= numDays; d++) {
+      const entry = lookup[emp.id + '_' + d];
+      const dow = dayOfWeek(month, d);
+      const isWeekend = dow === 0 || dow === 6;
+      const dateStr = month + '-' + String(d).padStart(2, '0');
+
+      if (entry) {
+        const rate = entry.hourly_rate != null ? entry.hourly_rate : empRate;
+        const sum = entry.hours * rate;
+        totalHours += entry.hours;
+        totalSum += sum;
+        dayTotals[d - 1] += entry.hours;
+        body += `<td class="has-hours" onclick="openSchedModal(${JSON.stringify(entry).replace(/"/g,'&quot;')})" title="${entry.hours}ч × ${fmt(rate)} = ${fmt(sum)} ${_currency}${entry.note ? '\n' + entry.note : ''}">${entry.hours}</td>`;
+      } else {
+        body += `<td style="${isWeekend ? 'background:rgba(224,85,85,.05);' : ''}" onclick="openSchedModal(null,'${dateStr}','${emp.id}')"></td>`;
+      }
+    }
+    grandHours += totalHours;
+    grandSum += totalSum;
+    body += `<td class="total-cell">${totalHours || ''}</td>`;
+    body += `<td class="total-cell" style="color:var(--green)">${totalSum ? fmt(totalSum) : ''}</td>`;
+    body += '</tr>';
+  });
+
+  // totals row
+  body += '<tr class="totals-row"><td class="emp-name-cell">Итого</td>';
+  for (let d = 0; d < numDays; d++) {
+    body += `<td>${dayTotals[d] || ''}</td>`;
+  }
+  body += `<td>${grandHours || ''}</td><td style="color:var(--green)">${grandSum ? fmt(grandSum) : ''}</td></tr>`;
+  body += '</tbody>';
+
+  table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + hdr + body;
+}
+
+function openSchedModal(entry, dateStr, empId) {
+  populateEmpSelects();
+  const empSel = document.getElementById('schedEmployee');
+  empSel.innerHTML = _employees.filter(e => e.status === 'active').map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+
+  document.getElementById('schedModalTitle').textContent = entry ? 'Редактировать смену' : 'Добавить смену';
+  document.getElementById('schedEditId').value = entry ? entry.id : '';
+  document.getElementById('schedDate').value = entry ? entry.work_date : (dateStr || today());
+  empSel.value = entry ? entry.emp_id : (empId || '');
+  document.getElementById('schedHours').value = entry ? entry.hours : '';
+  document.getElementById('schedRate').value = (entry && entry.hourly_rate != null) ? entry.hourly_rate : '';
+  document.getElementById('schedNote').value = entry ? entry.note || '' : '';
+
+  openModal('schedModal');
+}
+
+async function saveScheduleEntry() {
+  const id = document.getElementById('schedEditId').value || uid();
+  const emp_id = document.getElementById('schedEmployee').value;
+  const work_date = document.getElementById('schedDate').value;
+  const hours = parseFloat(document.getElementById('schedHours').value);
+  const rateVal = document.getElementById('schedRate').value;
+  const hourly_rate = rateVal !== '' ? parseFloat(rateVal) : null;
+  const note = document.getElementById('schedNote').value;
+
+  if (!emp_id || !work_date || !hours || hours <= 0) { showToast('Заполните сотрудника, дату и часы', true); return; }
+
+  const isEdit = !!document.getElementById('schedEditId').value;
+  const data = { emp_id, work_date, hours, hourly_rate, note };
+  const res = isEdit
+    ? await API.put('/schedule/' + id, data)
+    : await API.post('/schedule', { id, ...data });
+
+  if (res && res.ok) {
+    closeModal('schedModal');
+    renderSchedule();
+    showToast('Смена сохранена ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function deleteScheduleEntry(id) {
+  if (!confirm('Удалить запись смены?')) return;
+  const res = await API.del('/schedule/' + id);
+  if (res && res.ok) { renderSchedule(); showToast('Удалено'); }
+}
+
+function printSchedule() {
+  // mark schedule page as print target
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
+  document.getElementById('page-schedule').classList.add('print-target');
+  window.print();
+  setTimeout(() => document.getElementById('page-schedule').classList.remove('print-target'), 500);
+}
+
+// ═══════════════════════════════════════════
 // POSITIONS
 // ═══════════════════════════════════════════
 let _positions = [];
@@ -1061,6 +1280,7 @@ function openEmpModal(emp) {
   document.getElementById('empRole').value = emp ? emp.role||'' : '';
   document.getElementById('empType').value = emp ? emp.type||'staff' : 'staff';
   document.getElementById('empSalary').value = emp ? emp.salary||'' : '';
+  document.getElementById('empHourlyRate').value = emp ? emp.hourly_rate||'' : '';
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
   document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
@@ -1074,6 +1294,7 @@ async function saveEmployee() {
     role: document.getElementById('empRole').value,
     type: document.getElementById('empType').value,
     salary: parseFloat(document.getElementById('empSalary').value)||0,
+    hourly_rate: parseFloat(document.getElementById('empHourlyRate').value)||0,
     phone: document.getElementById('empPhone').value,
     start_date: document.getElementById('empStart').value,
     status: document.getElementById('empStatus').value,
@@ -1097,12 +1318,13 @@ async function deleteEmployee(id) {
 
 function renderEmployees() {
   const tbody = document.getElementById('empTable');
-  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
+  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
   tbody.innerHTML = _employees.map(e => `<tr>
     <td><b>${e.name}</b></td>
     <td>${e.role||'—'}</td>
     <td><span class="badge badge-blue">${EMP_TYPE_LABELS[e.type]||e.type}</span></td>
     <td>${fmt(e.salary||0)} ${_currency}</td>
+    <td>${e.hourly_rate ? fmt(e.hourly_rate)+' '+_currency : '—'}</td>
     <td>${e.phone||'—'}</td>
     <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?'Активный':'Уволен'}</span></td>
     <td style="display:flex;gap:6px;">

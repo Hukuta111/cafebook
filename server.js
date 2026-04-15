@@ -47,8 +47,17 @@ async function initDb() {
       id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS schedule (
+      id TEXT PRIMARY KEY, emp_id TEXT NOT NULL, work_date TEXT NOT NULL,
+      hours REAL NOT NULL, hourly_rate REAL, note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
   `);
+
+  // Миграция: добавить hourly_rate в employees если нет
+  try { db.run('ALTER TABLE employees ADD COLUMN hourly_rate REAL DEFAULT 0'); } catch(e) {}
+
   saveDb();
 }
 
@@ -301,26 +310,62 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.post('/api/employees', authMiddleware, (req, res) => {
-  const { id, name, role, type, salary, phone, start_date, status } = req.body;
+  const { id, name, role, type, salary, hourly_rate, phone, start_date, status } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя обязательно' });
   db.run(
-    `INSERT INTO employees (id,name,role,type,salary,phone,start_date,status) VALUES (?,?,?,?,?,?,?,?)`,
-    [id, name, role||'', type||'staff', salary||0, phone||'', start_date||'', status||'active']
+    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,phone,start_date,status) VALUES (?,?,?,?,?,?,?,?,?)`,
+    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, phone||'', start_date||'', status||'active']
   );
   saveDb();
   res.json({ ok: true });
 });
 app.put('/api/employees/:id', authMiddleware, (req, res) => {
-  const { name, role, type, salary, phone, start_date, status } = req.body;
+  const { name, role, type, salary, hourly_rate, phone, start_date, status } = req.body;
   db.run(
-    `UPDATE employees SET name=?,role=?,type=?,salary=?,phone=?,start_date=?,status=? WHERE id=?`,
-    [name, role||'', type||'staff', salary||0, phone||'', start_date||'', status||'active', req.params.id]
+    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,phone=?,start_date=?,status=? WHERE id=?`,
+    [name, role||'', type||'staff', salary||0, hourly_rate||0, phone||'', start_date||'', status||'active', req.params.id]
   );
   saveDb();
   res.json({ ok: true });
 });
 app.delete('/api/employees/:id', authMiddleware, (req, res) => {
   db.run('DELETE FROM employees WHERE id=?', [req.params.id]);
+  saveDb();
+  res.json({ ok: true });
+});
+
+// ─── SCHEDULE ─────────────────────────────────────────────
+app.get('/api/schedule', authMiddleware, (req, res) => {
+  const { month, empId } = req.query;
+  let sql = 'SELECT * FROM schedule WHERE 1=1';
+  const params = [];
+  if (month) { sql += ' AND strftime("%Y-%m", work_date) = ?'; params.push(month); }
+  if (empId) { sql += ' AND emp_id = ?'; params.push(empId); }
+  sql += ' ORDER BY work_date, emp_id';
+  const rows = db.exec(sql, params);
+  res.json(rows[0] ? rowsToObjects(rows[0]) : []);
+});
+app.post('/api/schedule', authMiddleware, (req, res) => {
+  const { id, emp_id, work_date, hours, hourly_rate, note } = req.body;
+  if (!emp_id || !work_date || !hours) return res.status(400).json({ error: 'Заполните все поля' });
+  db.run(
+    'INSERT INTO schedule (id,emp_id,work_date,hours,hourly_rate,note) VALUES (?,?,?,?,?,?)',
+    [id, emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note||'']
+  );
+  saveDb();
+  res.json({ ok: true });
+});
+app.put('/api/schedule/:id', authMiddleware, (req, res) => {
+  const { emp_id, work_date, hours, hourly_rate, note } = req.body;
+  db.run(
+    'UPDATE schedule SET emp_id=?,work_date=?,hours=?,hourly_rate=?,note=? WHERE id=?',
+    [emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note||'', req.params.id]
+  );
+  saveDb();
+  res.json({ ok: true });
+});
+app.delete('/api/schedule/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM schedule WHERE id=?', [req.params.id]);
   saveDb();
   res.json({ ok: true });
 });
