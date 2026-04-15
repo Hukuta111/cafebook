@@ -428,6 +428,7 @@
       <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="salReportMonthPicker"></div>
+        <button class="btn btn-primary" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
         <button class="btn" onclick="window.print()">🖨 Печать</button>
       </div>
     </div>
@@ -1584,64 +1585,50 @@ async function deleteSalTx(id) {
 // ═══════════════════════════════════════════
 // SALARY REPORT
 // ═══════════════════════════════════════════
+async function calcPercentBonus() {
+  const cur = today().slice(0,7);
+  const month = _monthPickers['salReportMonthPicker']?.value || cur;
+  const res = await API.post('/calc-percent-bonus', { month });
+  if (res && res.ok) {
+    if (res.created > 0) {
+      showToast(`Создано ${res.created} бонус(ов) от выручки ${fmt(res.qualifyingRevenue)} ${_currency} ✓`);
+    } else {
+      showToast(res.message || 'Нет дней с выручкой выше порога');
+    }
+    renderSalaryReport();
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
 async function renderSalaryReport() {
   if (!_monthPickers['salReportMonthPicker']) createMonthPicker('salReportMonthPicker', () => renderSalaryReport());
   _employees = await API.get('/employees') || [];
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
 
-  const [rows, allTx, settings] = await Promise.all([
-    API.get('/reports/salary?month=' + month),
-    API.get('/transactions?month=' + month),
-    API.get('/settings'),
-  ]);
+  const rows = await API.get('/reports/salary?month=' + month) || [];
   const container = document.getElementById('salaryReportCards');
 
-  // расчёт процентных бонусов
-  const threshold = parseFloat((settings && settings.revenueThreshold) || 0);
-  const incomeByDay = {};
-  (allTx||[]).filter(t => t.type === 'income').forEach(t => {
-    incomeByDay[t.date] = (incomeByDay[t.date]||0) + +t.amount;
-  });
-  // дни где выручка > порога
-  const qualifyingDays = Object.entries(incomeByDay).filter(([,v]) => threshold > 0 && v > threshold);
-  const totalQualifyingRevenue = qualifyingDays.reduce((s,[,v]) => s + v, 0);
-
-  // процентные бонусы по сотрудникам
-  const percentBonuses = {};
-  _employees.filter(e => e.percent > 0).forEach(emp => {
-    percentBonuses[emp.id] = totalQualifyingRevenue * (emp.percent / 100);
-  });
-
-  if ((!rows || !rows.length) && !Object.values(percentBonuses).some(v => v > 0)) {
+  if (!rows.length) {
     container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Нет данных за выбранный период</p></div>`;
     return;
   }
 
-  // объединяем данные: добавляем сотрудников с процентом даже если у них нет транзакций
-  const reportMap = {};
-  (rows||[]).forEach(r => { reportMap[r.emp_id] = { ...r }; });
-  _employees.filter(e => e.percent > 0 && !reportMap[e.id]).forEach(e => {
-    reportMap[e.id] = { emp_id: e.id, salary:0, advance:0, bonus:0, fine:0 };
-  });
-  const reportRows = Object.values(reportMap);
-
-  const totals = reportRows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
-  const totalPctBonus = Object.values(percentBonuses).reduce((s,v)=>s+v, 0);
-  const totalNet = totals.salary+totals.bonus+totalPctBonus-totals.advance-totals.fine;
+  const totals = rows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
+  const totalNet = totals.salary+totals.bonus-totals.advance-totals.fine;
 
   let html = `<div class="cards-row" style="margin-bottom:28px;">
     <div class="stat-card yellow"><div class="stat-label">З/П начислено</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
     <div class="stat-card blue"><div class="stat-label">Авансы</div><div class="stat-value blue">${fmt(totals.advance)} ${_currency}</div></div>
-    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus + totalPctBonus)} ${_currency}</div></div>
+    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus)} ${_currency}</div></div>
     <div class="stat-card red"><div class="stat-label">Штрафы</div><div class="stat-value red">${fmt(totals.fine)} ${_currency}</div></div>
     <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">К выплате итого</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
   </div>`;
 
-  reportRows.forEach(r => {
+  rows.forEach(r => {
     const emp = _employees.find(e => e.id === r.emp_id);
-    const pctBonus = percentBonuses[r.emp_id] || 0;
-    const net = +r.salary + +r.bonus + pctBonus - +r.advance - +r.fine;
+    const net = +r.salary + +r.bonus - +r.advance - +r.fine;
     const netCol = net>=0?'var(--green)':'var(--red)';
     html += `<div class="salary-card">
       <div class="salary-card-header">
@@ -1656,7 +1643,6 @@ async function renderSalaryReport() {
         <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(r.advance)}</div></div>
         <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(r.bonus)}</div></div>
         <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(r.fine)}</div></div>
-        ${pctBonus > 0 ? '<div class="salary-item"><div class="salary-item-label">% от выручки</div><div class="salary-item-value" style="color:var(--green)">+'+fmt(pctBonus)+'</div></div>' : ''}
       </div>
     </div>`;
   });
