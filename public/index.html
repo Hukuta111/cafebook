@@ -1109,7 +1109,12 @@ async function renderSchedule() {
     return;
   }
 
-  // header: Сотрудник | 1 Пн | 2 Вт | ... | Часы | Сумма
+  // colgroup: Сотрудник(auto) | days(equal) | Часы | Сумма(wider)
+  let cols = '<colgroup><col style="width:100px">';
+  for (let d = 1; d <= numDays; d++) cols += '<col>';
+  cols += '<col style="width:40px"><col style="width:75px"></colgroup>';
+
+  // header
   let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left">Сотрудник</th>';
   for (let d = 1; d <= numDays; d++) {
     const dow = dayOfWeek(month, d);
@@ -1160,7 +1165,7 @@ async function renderSchedule() {
   body += `<td>${grandHours || ''}</td><td></td></tr>`;
   body += '</tbody>';
 
-  table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + hdr + body;
+  table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + cols + hdr + body;
 
   // итог под таблицей
   let grandEl = document.getElementById('schedGrandTotal');
