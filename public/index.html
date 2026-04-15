@@ -210,6 +210,7 @@
   #scheduleTable .total-cell { font-weight:700; cursor:default; }
   #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
   .sched-print-title { display:none; }
+  .sched-grand-total { text-align:right; padding:12px 20px; font-size:14px; color:var(--text); }
 
   @page { margin:10mm; }
   @page schedule-landscape { size:A4 landscape; margin:5mm; }
@@ -226,13 +227,14 @@
     /* Schedule print */
     #page-schedule.print-target{page:schedule-landscape}
     .sched-print-title{display:none!important}
-    #scheduleTable{font-size:7px;width:100%;border-collapse:collapse;table-layout:fixed}
-    #scheduleTable th,#scheduleTable td{border:1px solid #999;padding:1px 1px;overflow:hidden;text-overflow:clip}
-    #scheduleTable th{font-size:6.5px;letter-spacing:0;background:#eee;color:#333}
-    #scheduleTable .emp-name-cell{font-size:7.5px;min-width:auto!important;width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #scheduleTable{font-size:9px;width:100%;border-collapse:collapse;table-layout:fixed}
+    #scheduleTable th,#scheduleTable td{border:1px solid #999;padding:2px 2px;overflow:hidden;text-overflow:clip}
+    #scheduleTable th{font-size:8px;letter-spacing:0;background:#eee;color:#333}
+    #scheduleTable .emp-name-cell{font-size:9px;min-width:auto!important;width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #scheduleTable td.has-hours{background:#e8f5e9;color:#1b5e20;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     #scheduleTable .totals-row td{background:#f0f0f0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    #scheduleTable .total-cell{font-size:7.5px}
+    #scheduleTable .total-cell{font-size:9px}
+    .sched-grand-total{display:block!important;text-align:right;margin-top:8px;font-size:12px;font-weight:700;color:#000}
     .table-wrap{border:none;overflow:visible;border-radius:0!important}
     *{border-radius:0!important}
     .page-header{margin-bottom:8px!important}
@@ -1153,10 +1155,21 @@ async function renderSchedule() {
   for (let d = 0; d < numDays; d++) {
     body += `<td>${dayTotals[d] || ''}</td>`;
   }
-  body += `<td>${grandHours || ''}</td><td style="color:var(--green)">${grandSum ? fmt(grandSum) : ''}</td></tr>`;
+  body += `<td>${grandHours || ''}</td><td></td></tr>`;
   body += '</tbody>';
 
   table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + hdr + body;
+
+  // итог под таблицей
+  let grandEl = document.getElementById('schedGrandTotal');
+  if (!grandEl) {
+    grandEl = document.createElement('div');
+    grandEl.id = 'schedGrandTotal';
+    grandEl.className = 'sched-grand-total';
+    document.getElementById('scheduleWrap').after(grandEl);
+  }
+  grandEl.innerHTML = grandSum ? `Итого часов: <b>${grandHours}</b> &nbsp;|&nbsp; Итого сумма: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
+  grandEl.style.display = grandSum ? 'block' : 'none';
 }
 
 function openSchedModal(entry, dateStr, empId) {
