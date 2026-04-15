@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaféBook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0d0a;
+    --surface: #1a1714;
+    --surface2: #232019;
+    --border: #2e2b24;
+    --accent: #c9a84c;
+    --accent2: #e8c97a;
+    --red: #e05555;
+    --green: #5db97c;
+    --blue: #5b8fd4;
+    --purple: #9b7fd4;
+    --text: #f0ead8;
+    --text2: #a09880;
+    --text3: #6b6455;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; }
+
+  /* LOGIN */
+  #loginScreen {
+    display:none;
+    position:fixed; inset:0;
+    background:var(--bg);
+    z-index:9999;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+  }
+  #loginScreen.show { display:flex; }
+  .login-box {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:40px;
+    width:360px;
+    max-width:95vw;
+    animation:fadeIn .3s ease;
+  }
+  .login-logo { font-family:'DM Serif Display',serif; font-size:28px; color:var(--accent); margin-bottom:4px; }
+  .login-sub { font-size:12px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:28px; }
+  .login-error { color:var(--red); font-size:13px; margin-top:12px; min-height:18px; }
+
+  /* SIDEBAR */
+  .sidebar { width:240px; min-height:100vh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform .3s; }
+  .sidebar-logo { padding:28px 24px 20px; border-bottom:1px solid var(--border); }
+  .sidebar-logo h1 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--accent); }
+  .sidebar-logo span { font-size:11px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; }
+  .sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+  .nav-group-label { font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--text3); padding:12px 12px 6px; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; color:var(--text2); transition:all .15s; border:1px solid transparent; }
+  .nav-item:hover { background:var(--surface2); color:var(--text); }
+  .nav-item.active { background:var(--surface2); color:var(--accent); border-color:var(--border); }
+  .nav-item .icon { font-size:16px; width:20px; text-align:center; }
+  .sidebar-bottom { padding:16px 12px; border-top:1px solid var(--border); }
+  .user-info { font-size:12px; color:var(--text3); padding:8px 12px; cursor:pointer; border-radius:var(--radius-sm); transition:all .15s; }
+  .user-info:hover { background:var(--surface2); color:var(--red); }
+
+  /* MAIN */
+  .main { margin-left:240px; flex:1; min-height:100vh; padding:32px; max-width:calc(100vw - 240px); }
+  .page { display:none; }
+  .page.active { display:block; animation:fadeIn .2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* LOADER */
+  .loader { display:none; position:fixed; inset:0; background:rgba(15,13,10,.7); z-index:8000; align-items:center; justify-content:center; }
+  .loader.show { display:flex; }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* PAGE HEADER */
+  .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }
+  .page-title { font-family:'DM Serif Display',serif; font-size:28px; }
+  .page-subtitle { font-size:13px; color:var(--text3); margin-top:2px; }
+
+  /* CARDS */
+  .cards-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:28px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .stat-card.green::before { background:var(--green); }
+  .stat-card.red::before { background:var(--red); }
+  .stat-card.blue::before { background:var(--blue); }
+  .stat-card.yellow::before { background:var(--accent); }
+  .stat-card.purple::before { background:var(--purple); }
+  .stat-label { font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text3); margin-bottom:10px; }
+  .stat-value { font-size:24px; font-weight:600; }
+  .stat-value.green{color:var(--green)} .stat-value.red{color:var(--red)} .stat-value.blue{color:var(--blue)} .stat-value.yellow{color:var(--accent)} .stat-value.purple{color:var(--purple)}
+  .stat-sub { font-size:12px; color:var(--text3); margin-top:4px; }
+
+  /* BUTTONS */
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 18px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all .15s; font-weight:500; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#1a1714; font-weight:600; }
+  .btn-primary:hover { background:var(--accent2); border-color:var(--accent2); color:#1a1714; }
+  .btn-danger { border-color:var(--red); color:var(--red); background:transparent; }
+  .btn-danger:hover { background:rgba(224,85,85,.1); }
+  .btn-sm { padding:5px 12px; font-size:12px; }
+
+  /* TABLE */
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:24px; }
+  .table-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+  .table-title { font-size:14px; font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  thead th { background:var(--surface2); padding:10px 16px; text-align:left; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text3); font-weight:500; }
+  tbody tr { border-top:1px solid var(--border); transition:background .1s; }
+  tbody tr:hover { background:var(--surface2); }
+  tbody td { padding:11px 16px; }
+  .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge-green{background:rgba(93,185,124,.15);color:var(--green)} .badge-red{background:rgba(224,85,85,.15);color:var(--red)} .badge-yellow{background:rgba(201,168,76,.15);color:var(--accent)} .badge-blue{background:rgba(91,143,212,.15);color:var(--blue)} .badge-purple{background:rgba(155,127,212,.15);color:var(--purple)}
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:480px; max-width:95vw; max-height:90vh; overflow-y:auto; animation:fadeIn .2s ease; }
+  .modal-title { font-family:'DM Serif Display',serif; font-size:20px; margin-bottom:20px; color:var(--accent); }
+  .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+
+  /* FORM */
+  .form-row { margin-bottom:16px; }
+  .form-row label { display:block; font-size:12px; color:var(--text3); margin-bottom:6px; letter-spacing:.5px; }
+  .form-row input,.form-row select,.form-row textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none; transition:border-color .15s; }
+  .form-row input:focus,.form-row select:focus { border-color:var(--accent); }
+  .form-row select option { background:var(--surface2); }
+  .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  /* FILTERS */
+  .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
+  .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
+
+  /* CHARTS */
+  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+  .chart-card h3 { font-size:13px; font-weight:600; margin-bottom:16px; color:var(--text2); }
+  .bar-chart { display:flex; align-items:flex-end; gap:6px; height:120px; }
+  .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .bar { width:100%; border-radius:4px 4px 0 0; transition:height .4s ease; min-height:4px; }
+  .bar-label { font-size:10px; color:var(--text3); }
+
+  /* SALARY REPORT */
+  .salary-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+  .salary-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .salary-card-name { font-weight:600; font-size:16px; }
+  .salary-card-role { font-size:12px; color:var(--text3); margin-top:2px; }
+  .salary-breakdown { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .salary-item { text-align:center; padding:10px; background:var(--surface2); border-radius:var(--radius-sm); }
+  .salary-item-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:4px; }
+  .salary-item-value { font-size:18px; font-weight:600; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text3); }
+  .empty-state .icon { font-size:40px; margin-bottom:12px; }
+  .empty-state p { font-size:14px; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; right:24px; background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--green); border-radius:var(--radius-sm); padding:12px 18px; font-size:13px; z-index:9999; animation:slideIn .2s ease; display:none; }
+  .toast.show { display:block; }
+  .toast.error { border-left-color:var(--red); }
+  @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  /* HAMBURGER */
+  .hamburger { display:none; position:fixed; top:16px; left:16px; z-index:200; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; cursor:pointer; font-size:18px; }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:99; }
+
+  @media(max-width:768px) {
+    .sidebar{transform:translateX(-100%)} .sidebar.open{transform:translateX(0)} .sidebar-overlay.open{display:block} .hamburger{display:block}
+    .main{margin-left:0;padding:24px 16px;padding-top:64px;max-width:100vw}
+    .chart-row{grid-template-columns:1fr} .salary-breakdown{grid-template-columns:1fr 1fr} .form-2col{grid-template-columns:1fr} .cards-row{grid-template-columns:1fr 1fr}
+  }
+
+  @media print {
+    .sidebar,.hamburger,.btn,.filters,.page-header .btn{display:none!important}
+    .main{margin-left:0;padding:0}
+    body{background:#fff;color:#000}
+    .salary-card{border:1px solid #ccc;margin-bottom:12px}
+    .stat-value.green{color:#2a7d4f} .stat-value.red{color:#c0392b}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="show">
+  <div class="login-box">
+    <div class="login-logo">CaféBook</div>
+    <div class="login-sub">Управление кафе</div>
+    <div class="form-row">
+      <label>Логин</label>
+      <input type="text" id="loginUser" value="admin" autocomplete="username">
+    </div>
+    <div class="form-row">
+      <label>Пароль</label>
+      <input type="password" id="loginPass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()">Войти →</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- LOADER -->
+<div class="loader" id="loader"><div class="spinner"></div></div>
+
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>CaféBook</h1>
+    <span id="cafeNameSub">Управление кафе</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group-label">Обзор</div>
+    <div class="nav-item active" data-page="dashboard" onclick="nav(this)"><span class="icon">📊</span> Дашборд</div>
+    <div class="nav-group-label">Финансы</div>
+    <div class="nav-item" data-page="transactions" onclick="nav(this)"><span class="icon">💳</span> Транзакции</div>
+    <div class="nav-item" data-page="daily" onclick="nav(this)"><span class="icon">📅</span> Дневные отчёты</div>
+    <div class="nav-item" data-page="monthly" onclick="nav(this)"><span class="icon">📆</span> Месячные отчёты</div>
+    <div class="nav-group-label">Персонал</div>
+    <div class="nav-item" data-page="employees" onclick="nav(this)"><span class="icon">👥</span> Сотрудники</div>
+    <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
+    <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
+    <div class="nav-group-label">Настройки</div>
+    <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-info" id="userInfo" onclick="doLogout()">👤 <span id="userNameDisplay">—</span> · Выйти</div>
+  </div>
+</aside>
+
+<main class="main" id="mainContent" style="display:none">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div><div class="page-title">Дашборд</div><div class="page-subtitle" id="dashDate"></div></div>
+      <select id="dashMonth" onchange="renderDashboard()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+    </div>
+    <div class="cards-row" id="dashCards"></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Доходы / Расходы по дням</h3><div class="bar-chart" id="barChart"></div></div>
+      <div class="chart-card"><h3>Структура расходов</h3><div id="expenseBreakdown"></div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">Последние транзакции</span><button class="btn btn-sm" onclick="nav(document.querySelector('[data-page=transactions]'))">Все →</button></div>
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сотрудник</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+      <tbody id="recentTx"></tbody></table>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div class="page" id="page-transactions">
+    <div class="page-header">
+      <div><div class="page-title">Транзакции</div><div class="page-subtitle">Все финансовые операции</div></div>
+      <button class="btn btn-primary" onclick="openTxModal()">+ Добавить</button>
+    </div>
+    <div class="filters">
+      <input type="month" id="txFilterMonth" onchange="renderTransactions()">
+      <select id="txFilterType" onchange="renderTransactions()">
+        <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
+        <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
+      </select>
+      <select id="txFilterEmployee" onchange="renderTransactions()"><option value="">Все сотрудники</option></select>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title" id="txCount">Транзакции</span></div>
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+      <tbody id="txTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- DAILY -->
+  <div class="page" id="page-daily">
+    <div class="page-header">
+      <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
+      <input type="month" id="dailyFilterMonth" class="btn" onchange="renderDaily()">
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Дата</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Штрафы</th><th>Бонусы</th><th>Авансы</th><th>Итог</th></tr></thead>
+      <tbody id="dailyTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div class="page" id="page-monthly">
+    <div class="page-header"><div><div class="page-title">Месячные отчёты</div><div class="page-subtitle">Сводка по месяцам</div></div></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
+      <tbody id="monthlyTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- EMPLOYEES -->
+  <div class="page" id="page-employees">
+    <div class="page-header">
+      <div><div class="page-title">Сотрудники</div><div class="page-subtitle">Управление персоналом</div></div>
+      <button class="btn btn-primary" onclick="openEmpModal()">+ Добавить</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="empTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- SALARY -->
+  <div class="page" id="page-salary">
+    <div class="page-header">
+      <div><div class="page-title">Зарплата и выплаты</div><div class="page-subtitle">Начисления, авансы, штрафы, бонусы</div></div>
+      <button class="btn btn-primary" onclick="openSalModal()">+ Начислить</button>
+    </div>
+    <div class="filters">
+      <input type="month" id="salFilterMonth" onchange="renderSalary()">
+      <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Дата</th><th>Сотрудник</th><th>Тип</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+      <tbody id="salTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- SALARY REPORT -->
+  <div class="page" id="page-salary-report">
+    <div class="page-header">
+      <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <select id="salReportMonth" onchange="renderSalaryReport()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;"></select>
+        <button class="btn" onclick="window.print()">🖨 Печать</button>
+      </div>
+    </div>
+    <div id="salaryReportCards"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="page-header"><div class="page-title">Настройки</div></div>
+    <div style="max-width:500px;">
+      <div class="table-wrap" style="padding:24px;">
+        <div class="table-title" style="margin-bottom:16px;">Кафе</div>
+        <div class="form-row"><label>Название кафе</label><input type="text" id="settingCafeName" placeholder="Например: Кафе Уют"></div>
+        <div class="form-row"><label>Валюта</label>
+          <select id="settingCurrency"><option value="₴">₴ — Гривна</option><option value="₽">₽ — Рубль</option><option value="$">$ — Доллар</option><option value="€">€ — Евро</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Безопасность</div>
+        <div class="form-row"><label>Текущий пароль</label><input type="password" id="oldPass"></div>
+        <div class="form-2col">
+          <div class="form-row"><label>Новый пароль</label><input type="password" id="newPass"></div>
+          <div class="form-row"><label>Повтор пароля</label><input type="password" id="newPass2"></div>
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">Сменить пароль</button>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Данные</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn" onclick="exportData()">📤 Экспорт JSON</button>
+          <button class="btn" onclick="document.getElementById('importFile').click()">📥 Импорт JSON</button>
+          <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="txModal">
+  <div class="modal">
+    <div class="modal-title">Транзакция</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Дата</label><input type="date" id="txDate"></div>
+      <div class="form-row"><label>Тип</label>
+        <select id="txType" onchange="updateTxCats()">
+          <option value="income">Доход</option><option value="expense">Расход</option>
+          <option value="salary">Зарплата</option><option value="advance">Аванс</option>
+          <option value="bonus">Бонус</option><option value="fine">Штраф</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Категория</label><select id="txCat"></select></div>
+    <div class="form-row"><label>Сотрудник (если применимо)</label><select id="txEmployee"><option value="">— не указан —</option></select></div>
+    <div class="form-2col">
+      <div class="form-row"><label>Сумма</label><input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="form-row"><label>Комментарий</label><input type="text" id="txNote" placeholder="Примечание"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('txModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTx()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="empModal">
+  <div class="modal">
+    <div class="modal-title" id="empModalTitle">Сотрудник</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Имя</label><input type="text" id="empName" placeholder="Полное имя"></div>
+      <div class="form-row"><label>Должность</label><input type="text" id="empRole" placeholder="Бариста, Администратор..."></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Тип персонала</label>
+        <select id="empType"><option value="staff">Сотрудник</option><option value="admin">Администратор</option><option value="manager">Менеджер</option></select>
+      </div>
+      <div class="form-row"><label>Оклад</label><input type="number" id="empSalary" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Телефон</label><input type="text" id="empPhone"></div>
+      <div class="form-row"><label>Дата начала</label><input type="date" id="empStart"></div>
+    </div>
+    <div class="form-row"><label>Статус</label>
+      <select id="empStatus"><option value="active">Активный</option><option value="inactive">Уволен</option></select>
+    </div>
+    <input type="hidden" id="empEditId">
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('empModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="salModal">
+  <div class="modal">
+    <div class="modal-title">Начисление выплаты</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Дата</label><input type="date" id="salDate"></div>
+      <div class="form-row"><label>Сотрудник</label><select id="salEmployee"></select></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Тип</label>
+        <select id="salType"><option value="salary">Зарплата</option><option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option></select>
+      </div>
+      <div class="form-row"><label>Сумма</label><input type="number" id="salAmount" placeholder="0.00" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row"><label>Комментарий</label><input type="text" id="salNote" placeholder="Примечание"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('salModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSalaryEntry()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// API CLIENT
+// ═══════════════════════════════════════════
+const API = {
+  token: null,
+
+  headers() {
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token };
+  },
+
+  async req(method, path, body) {
+    showLoader(true);
+    try {
+      const res = await fetch('/api' + path, {
+        method,
+        headers: this.headers(),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 401) { doLogout(); return null; }
+      return await res.json();
+    } catch (e) {
+      showToast('Ошибка сети: ' + e.message, true);
+      return null;
+    } finally {
+      showLoader(false);
+    }
+  },
+
+  get: (path) => API.req('GET', path),
+  post: (path, body) => API.req('POST', path, body),
+  put: (path, body) => API.req('PUT', path, body),
+  del: (path) => API.req('DELETE', path),
+};
+
+// ═══════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════
+const TX_CATS = {
+  income: ['Выручка кассы','Доставка','Кейтеринг','Прочий доход'],
+  expense: ['Продукты','Напитки','Аренда','Коммунальные','Упаковка','Реклама','Оборудование','Прочий расход'],
+  salary: ['Основная з/п'], advance: ['Аванс'],
+  bonus: ['Бонус за план','Праздничный бонус','Прочой бонус'],
+  fine: ['Нарушение','Недостача','Опоздание','Прочее'],
+};
+const TYPE_LABELS = { income:'Доход', expense:'Расход', salary:'Зарплата', advance:'Аванс', bonus:'Бонус', fine:'Штраф' };
+const TYPE_BADGES = { income:'badge-green', expense:'badge-red', salary:'badge-yellow', advance:'badge-blue', bonus:'badge-purple', fine:'badge-red' };
+const EMP_TYPE_LABELS = { staff:'Сотрудник', admin:'Администратор', manager:'Менеджер' };
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+let _currency = '₴';
+let _employees = [];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function fmt(n) { return (n||0).toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function today() { return new Date().toISOString().slice(0,10); }
+function monthOf(d) { return d ? d.slice(0,7) : ''; }
+function dateLabel(d) {
+  const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const dt = new Date(d + 'T00:00:00');
+  return dt.getDate() + ' ' + months[dt.getMonth()];
+}
+function monthLabel(m) {
+  if (!m) return '';
+  const [y,mo] = m.split('-');
+  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  return months[+mo-1] + ' ' + y;
+}
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function showLoader(v) { document.getElementById('loader').classList.toggle('show', v); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  document.getElementById('loginError').textContent = '';
+  showLoader(true);
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    showLoader(false);
+    if (!res.ok) { document.getElementById('loginError').textContent = data.error || 'Ошибка'; return; }
+    API.token = data.token;
+    sessionStorage.setItem('cb_token', data.token);
+    sessionStorage.setItem('cb_user', data.username);
+    document.getElementById('userNameDisplay').textContent = data.username;
+    document.getElementById('loginScreen').classList.remove('show');
+    document.getElementById('mainContent').style.display = '';
+    await loadInitialData();
+  } catch(e) {
+    showLoader(false);
+    document.getElementById('loginError').textContent = 'Ошибка подключения к серверу';
+  }
+}
+
+function doLogout() {
+  API.token = null;
+  sessionStorage.removeItem('cb_token');
+  sessionStorage.removeItem('cb_user');
+  document.getElementById('loginScreen').classList.add('show');
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('loginPass').value = '';
+}
+
+async function tryAutoLogin() {
+  const token = sessionStorage.getItem('cb_token');
+  const user = sessionStorage.getItem('cb_user');
+  if (!token) return;
+  API.token = token;
+  // verify token is valid
+  showLoader(true);
+  try {
+    const res = await fetch('/api/settings', { headers: API.headers() });
+    if (res.status === 401) { doLogout(); return; }
+    API.token = token;
+    document.getElementById('userNameDisplay').textContent = user || 'admin';
+    document.getElementById('loginScreen').classList.remove('show');
+    document.getElementById('mainContent').style.display = '';
+    await loadInitialData();
+  } catch { doLogout(); } finally { showLoader(false); }
+}
+
+async function changePassword() {
+  const oldPass = document.getElementById('oldPass').value;
+  const newPass = document.getElementById('newPass').value;
+  const newPass2 = document.getElementById('newPass2').value;
+  if (!oldPass || !newPass) { showToast('Заполните все поля', true); return; }
+  if (newPass !== newPass2) { showToast('Пароли не совпадают', true); return; }
+  const res = await API.post('/change-password', { oldPassword: oldPass, newPassword: newPass });
+  if (res && res.ok) {
+    showToast('Пароль успешно изменён ✓');
+    document.getElementById('oldPass').value = '';
+    document.getElementById('newPass').value = '';
+    document.getElementById('newPass2').value = '';
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+// ═══════════════════════════════════════════
+// INITIAL DATA LOAD
+// ═══════════════════════════════════════════
+async function loadInitialData() {
+  const [settings, emps] = await Promise.all([
+    fetch('/api/settings', { headers: API.headers() }).then(r => r.json()),
+    fetch('/api/employees', { headers: API.headers() }).then(r => r.json()),
+  ]);
+  showLoader(false);
+  _currency = settings.currency || '₴';
+  _employees = emps || [];
+  if (settings.cafeName) {
+    document.getElementById('cafeNameSub').textContent = settings.cafeName;
+    document.title = settings.cafeName + ' — CaféBook';
+  }
+  await renderDashboard();
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function nav(el) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  const page = el.dataset.page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  closeSidebar();
+  const today_month = today().slice(0,7);
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'transactions') { document.getElementById('txFilterMonth').value = today_month; renderTransactions(); }
+  if (page === 'daily') { document.getElementById('dailyFilterMonth').value = today_month; renderDaily(); }
+  if (page === 'monthly') renderMonthly();
+  if (page === 'employees') renderEmployees();
+  if (page === 'salary') { document.getElementById('salFilterMonth').value = today_month; renderSalary(); }
+  if (page === 'salary-report') renderSalaryReport();
+  if (page === 'settings') renderSettings();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+
+// ═══════════════════════════════════════════
+// POPULATE EMPLOYEE SELECTS
+// ═══════════════════════════════════════════
+function populateEmpSelects() {
+  const active = _employees.filter(e => e.status === 'active');
+  const opts = active.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  const all = `<option value="">Все сотрудники</option>` + opts;
+  document.getElementById('txEmployee').innerHTML = `<option value="">— не указан —</option>` + opts;
+  document.getElementById('txFilterEmployee').innerHTML = all;
+  document.getElementById('salEmployee').innerHTML = opts || '<option value="">— нет сотрудников —</option>';
+  document.getElementById('salFilterEmployee').innerHTML = all;
+}
+
+function empName(id) {
+  const e = _employees.find(e => e.id === id);
+  return e ? e.name : '—';
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+async function renderDashboard() {
+  // populate month selector
+  const allTx = await API.get('/transactions') || [];
+  const months = [...new Set(allTx.map(t => monthOf(t.date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const cur = today().slice(0,7);
+  const opts = (months.includes(cur) ? months : [cur,...months]).slice(0,18);
+  const sel = document.getElementById('dashMonth');
+  const prev = sel.value || cur;
+  sel.innerHTML = opts.map(m => `<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
+  const month = sel.value || cur;
+  document.getElementById('dashDate').textContent = monthLabel(month);
+
+  const txs = allTx.filter(t => t.date && t.date.startsWith(month));
+  let income=0, expense=0, salary=0, advance=0, bonus=0, fine=0;
+  txs.forEach(t => {
+    if (t.type==='income') income+=t.amount;
+    else if (t.type==='expense') expense+=t.amount;
+    else if (t.type==='salary') salary+=t.amount;
+    else if (t.type==='advance') advance+=t.amount;
+    else if (t.type==='bonus') bonus+=t.amount;
+    else if (t.type==='fine') fine+=t.amount;
+  });
+  const profit = income + bonus - expense - salary - advance - fine;
+
+  document.getElementById('dashCards').innerHTML = `
+    <div class="stat-card green"><div class="stat-label">Доходы</div><div class="stat-value green">${fmt(income)} ${_currency}</div><div class="stat-sub">за месяц</div></div>
+    <div class="stat-card red"><div class="stat-label">Расходы</div><div class="stat-value red">${fmt(expense)} ${_currency}</div><div class="stat-sub">операционные</div></div>
+    <div class="stat-card yellow"><div class="stat-label">З/П выплачено</div><div class="stat-value yellow">${fmt(salary+advance)} ${_currency}</div><div class="stat-sub">зп + авансы</div></div>
+    <div class="stat-card purple"><div class="stat-label">Бонусы / Штрафы</div><div class="stat-value purple">${fmt(bonus)} / <span style="color:var(--red)">${fmt(fine)}</span></div></div>
+    <div class="stat-card ${profit>=0?'green':'red'}"><div class="stat-label">Чистая прибыль</div><div class="stat-value ${profit>=0?'green':'red'}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</div></div>
+  `;
+
+  // bar chart
+  const byDay = {};
+  txs.forEach(t => {
+    if (!byDay[t.date]) byDay[t.date] = { income:0, expense:0 };
+    if (t.type==='income'||t.type==='bonus') byDay[t.date].income += +t.amount;
+    else byDay[t.date].expense += +t.amount;
+  });
+  const days = Object.keys(byDay).sort().slice(-14);
+  const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
+  document.getElementById('barChart').innerHTML = days.length
+    ? days.map(d=>`<div class="bar-wrap">
+        <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
+          <div class="bar" style="background:var(--green);height:${Math.max(4,byDay[d].income/maxV*110)}px;width:12px;opacity:.85"></div>
+          <div class="bar" style="background:var(--red);height:${Math.max(4,byDay[d].expense/maxV*110)}px;width:12px;opacity:.85"></div>
+        </div>
+        <div class="bar-label">${dateLabel(d).split(' ')[0]}</div>
+      </div>`).join('')
+    : `<div style="color:var(--text3);font-size:13px;padding:40px">Нет данных</div>`;
+
+  // expense breakdown
+  const catTotals = {};
+  txs.filter(t=>t.type==='expense').forEach(t=>{ catTotals[t.cat]=(catTotals[t.cat]||0)+ +t.amount; });
+  const cats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const totE = cats.reduce((s,[,v])=>s+v,0)||1;
+  const colors = ['var(--red)','var(--accent)','var(--blue)','var(--purple)','var(--green)'];
+  document.getElementById('expenseBreakdown').innerHTML = cats.length
+    ? cats.map(([cat,val],i)=>`<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+          <span style="color:var(--text2)">${cat}</span>
+          <span style="color:${colors[i]}">${fmt(val)} (${Math.round(val/totE*100)}%)</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;">
+          <div style="height:100%;width:${Math.round(val/totE*100)}%;background:${colors[i]};border-radius:3px;transition:width .5s"></div>
+        </div></div>`).join('')
+    : `<div style="color:var(--text3);font-size:13px;padding:20px 0">Нет расходов за период</div>`;
+
+  // recent txs
+  const recent = allTx.slice(0,8);
+  document.getElementById('recentTx').innerHTML = recent.length
+    ? recent.map(t=>{
+        const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
+        const sign = ['income','bonus'].includes(t.type)?'+':'-';
+        return `<tr>
+          <td>${dateLabel(t.date)}</td>
+          <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
+          <td>${t.cat||'—'}</td>
+          <td>${empName(t.emp_id)}</td>
+          <td style="font-weight:600;color:${col}">${sign}${fmt(t.amount)} ${_currency}</td>
+          <td style="color:var(--text3)">${t.note||'—'}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`;
+}
+
+// ═══════════════════════════════════════════
+// TRANSACTIONS
+// ═══════════════════════════════════════════
+function updateTxCats() {
+  const type = document.getElementById('txType').value;
+  document.getElementById('txCat').innerHTML = (TX_CATS[type]||[]).map(c=>`<option>${c}</option>`).join('');
+}
+
+function openTxModal() {
+  populateEmpSelects();
+  document.getElementById('txDate').value = today();
+  document.getElementById('txType').value = 'income';
+  document.getElementById('txAmount').value = '';
+  document.getElementById('txNote').value = '';
+  updateTxCats();
+  openModal('txModal');
+}
+
+async function saveTx() {
+  const date = document.getElementById('txDate').value;
+  const type = document.getElementById('txType').value;
+  const cat = document.getElementById('txCat').value;
+  const empId = document.getElementById('txEmployee').value;
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const note = document.getElementById('txNote').value;
+  if (!date || !amount || amount <= 0) { showToast('Заполните дату и сумму', true); return; }
+  const res = await API.post('/transactions', { id: uid(), date, type, cat, empId: empId||null, amount, note });
+  if (res && res.ok) { closeModal('txModal'); renderTransactions(); showToast('Транзакция сохранена ✓'); }
+}
+
+async function deleteTx(id) {
+  if (!confirm('Удалить транзакцию?')) return;
+  const res = await API.del('/transactions/' + id);
+  if (res && res.ok) { renderTransactions(); showToast('Удалено'); }
+}
+
+async function renderTransactions() {
+  _employees = await API.get('/employees') || [];
+  populateEmpSelects();
+  const month = document.getElementById('txFilterMonth').value;
+  const type = document.getElementById('txFilterType').value;
+  const empId = document.getElementById('txFilterEmployee').value;
+  let url = '/transactions?';
+  if (month) url += 'month=' + month + '&';
+  if (type) url += 'type=' + type + '&';
+  if (empId) url += 'empId=' + empId;
+  const txs = await API.get(url) || [];
+  document.getElementById('txCount').textContent = `Транзакции (${txs.length})`;
+  const tbody = document.getElementById('txTable');
+  if (!txs.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`; return; }
+  tbody.innerHTML = txs.map(t => {
+    const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
+    const sign = ['income','bonus'].includes(t.type)?'+':'-';
+    return `<tr>
+      <td>${dateLabel(t.date)}</td>
+      <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
+      <td>${t.cat||'—'}</td>
+      <td>${empName(t.emp_id)}</td>
+      <td style="font-weight:600;color:${col}">${sign}${fmt(t.amount)} ${_currency}</td>
+      <td style="color:var(--text3)">${t.note||'—'}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteTx('${t.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// DAILY / MONTHLY
+// ═══════════════════════════════════════════
+async function renderDaily() {
+  const month = document.getElementById('dailyFilterMonth').value;
+  const rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
+  const tbody = document.getElementById('dailyTable');
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📅</div><p>Нет данных</p></div></td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => {
+    const total = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const col = total>=0?'var(--green)':'var(--red)';
+    return `<tr>
+      <td><b>${dateLabel(r.date)}</b></td>
+      <td style="color:var(--green)">+${fmt(r.income)}</td>
+      <td style="color:var(--red)">-${fmt(r.expense)}</td>
+      <td style="color:var(--accent)">-${fmt(r.salary)}</td>
+      <td style="color:var(--red)">-${fmt(r.fine)}</td>
+      <td style="color:var(--purple)">+${fmt(r.bonus)}</td>
+      <td style="color:var(--blue)">-${fmt(r.advance)}</td>
+      <td style="font-weight:700;color:${col}">${total>=0?'+':''}${fmt(total)} ${_currency}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function renderMonthly() {
+  const rows = await API.get('/reports/monthly') || [];
+  const tbody = document.getElementById('monthlyTable');
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📆</div><p>Нет данных</p></div></td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => {
+    const profit = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const col = profit>=0?'var(--green)':'var(--red)';
+    return `<tr>
+      <td><b>${monthLabel(r.month)}</b></td>
+      <td style="color:var(--green)">${fmt(r.income)}</td>
+      <td style="color:var(--red)">${fmt(r.expense)}</td>
+      <td style="color:var(--accent)">${fmt(r.salary)}</td>
+      <td style="color:var(--blue)">${fmt(r.advance)}</td>
+      <td style="color:var(--purple)">${fmt(r.bonus)}</td>
+      <td style="color:var(--red)">${fmt(r.fine)}</td>
+      <td style="font-weight:700;font-size:15px;color:${col}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// EMPLOYEES
+// ═══════════════════════════════════════════
+function openEmpModal(emp) {
+  document.getElementById('empModalTitle').textContent = emp ? 'Редактировать сотрудника' : 'Новый сотрудник';
+  document.getElementById('empEditId').value = emp ? emp.id : '';
+  document.getElementById('empName').value = emp ? emp.name : '';
+  document.getElementById('empRole').value = emp ? emp.role||'' : '';
+  document.getElementById('empType').value = emp ? emp.type||'staff' : 'staff';
+  document.getElementById('empSalary').value = emp ? emp.salary||'' : '';
+  document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
+  document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
+  document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
+  openModal('empModal');
+}
+
+async function saveEmployee() {
+  const id = document.getElementById('empEditId').value || uid();
+  const data = {
+    name: document.getElementById('empName').value,
+    role: document.getElementById('empRole').value,
+    type: document.getElementById('empType').value,
+    salary: parseFloat(document.getElementById('empSalary').value)||0,
+    phone: document.getElementById('empPhone').value,
+    start_date: document.getElementById('empStart').value,
+    status: document.getElementById('empStatus').value,
+  };
+  if (!data.name) { showToast('Введите имя', true); return; }
+  const isEdit = !!document.getElementById('empEditId').value;
+  const res = isEdit ? await API.put('/employees/' + id, data) : await API.post('/employees', { id, ...data });
+  if (res && res.ok) {
+    closeModal('empModal');
+    _employees = await API.get('/employees') || [];
+    renderEmployees();
+    showToast('Сотрудник сохранён ✓');
+  }
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('Удалить сотрудника?')) return;
+  const res = await API.del('/employees/' + id);
+  if (res && res.ok) { _employees = await API.get('/employees') || []; renderEmployees(); showToast('Удалено'); }
+}
+
+function renderEmployees() {
+  const tbody = document.getElementById('empTable');
+  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
+  tbody.innerHTML = _employees.map(e => `<tr>
+    <td><b>${e.name}</b></td>
+    <td>${e.role||'—'}</td>
+    <td><span class="badge badge-blue">${EMP_TYPE_LABELS[e.type]||e.type}</span></td>
+    <td>${fmt(e.salary||0)} ${_currency}</td>
+    <td>${e.phone||'—'}</td>
+    <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?'Активный':'Уволен'}</span></td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-sm" onclick="openEmpModal(${JSON.stringify(e).replace(/"/g,"&quot;")})">✎</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteEmployee('${e.id}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// SALARY
+// ═══════════════════════════════════════════
+function openSalModal() {
+  populateEmpSelects();
+  document.getElementById('salDate').value = today();
+  document.getElementById('salAmount').value = '';
+  document.getElementById('salNote').value = '';
+  openModal('salModal');
+}
+
+async function saveSalaryEntry() {
+  const date = document.getElementById('salDate').value;
+  const empId = document.getElementById('salEmployee').value;
+  const type = document.getElementById('salType').value;
+  const amount = parseFloat(document.getElementById('salAmount').value);
+  const note = document.getElementById('salNote').value;
+  if (!date || !empId || !amount || amount <= 0) { showToast('Заполните все поля', true); return; }
+  const emp = _employees.find(e => e.id === empId);
+  const res = await API.post('/transactions', { id: uid(), date, type, cat: TYPE_LABELS[type], empId, amount, note: note||(emp?emp.name:'') });
+  if (res && res.ok) { closeModal('salModal'); renderSalary(); showToast('Выплата записана ✓'); }
+}
+
+async function renderSalary() {
+  _employees = await API.get('/employees') || [];
+  populateEmpSelects();
+  const month = document.getElementById('salFilterMonth').value;
+  const empId = document.getElementById('salFilterEmployee').value;
+  let url = '/transactions?';
+  const types = ['salary','advance','bonus','fine'];
+  if (month) url += 'month=' + month + '&';
+  if (empId) url += 'empId=' + empId;
+  let txs = (await API.get(url) || []).filter(t => types.includes(t.type));
+  const tbody = document.getElementById('salTable');
+  if (!txs.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">💰</div><p>Нет данных</p></div></td></tr>`; return; }
+  tbody.innerHTML = txs.map(t => {
+    const col = t.type==='bonus'?'var(--purple)':t.type==='fine'?'var(--red)':t.type==='advance'?'var(--blue)':'var(--accent)';
+    return `<tr>
+      <td>${dateLabel(t.date)}</td>
+      <td><b>${empName(t.emp_id)}</b></td>
+      <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
+      <td style="font-weight:600;color:${col}">${fmt(t.amount)} ${_currency}</td>
+      <td style="color:var(--text3)">${t.note||'—'}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteSalTx('${t.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteSalTx(id) {
+  if (!confirm('Удалить запись?')) return;
+  const res = await API.del('/transactions/' + id);
+  if (res && res.ok) { renderSalary(); showToast('Удалено'); }
+}
+
+// ═══════════════════════════════════════════
+// SALARY REPORT
+// ═══════════════════════════════════════════
+async function renderSalaryReport() {
+  _employees = await API.get('/employees') || [];
+  // populate month selector
+  const allTx = await API.get('/transactions') || [];
+  const months = [...new Set(allTx.filter(t=>['salary','advance','bonus','fine'].includes(t.type)).map(t=>monthOf(t.date)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const cur = today().slice(0,7);
+  const opts = (months.includes(cur)?months:[cur,...months]).slice(0,18);
+  const sel = document.getElementById('salReportMonth');
+  const prev = sel.value||cur;
+  sel.innerHTML = opts.map(m=>`<option value="${m}" ${m===prev?'selected':''}>${monthLabel(m)}</option>`).join('');
+  const month = sel.value||cur;
+
+  const rows = await API.get('/reports/salary?month=' + month) || [];
+  const container = document.getElementById('salaryReportCards');
+  if (!rows.length) { container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Нет данных за выбранный период</p></div>`; return; }
+
+  const totals = rows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
+  const totalNet = totals.salary+totals.bonus-totals.advance-totals.fine;
+
+  let html = `<div class="cards-row" style="margin-bottom:28px;">
+    <div class="stat-card yellow"><div class="stat-label">З/П начислено</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
+    <div class="stat-card blue"><div class="stat-label">Авансы</div><div class="stat-value blue">${fmt(totals.advance)} ${_currency}</div></div>
+    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus)} ${_currency}</div></div>
+    <div class="stat-card red"><div class="stat-label">Штрафы</div><div class="stat-value red">${fmt(totals.fine)} ${_currency}</div></div>
+    <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">К выплате итого</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
+  </div>`;
+
+  rows.forEach(r => {
+    const emp = _employees.find(e => e.id === r.emp_id);
+    const net = +r.salary + +r.bonus - +r.advance - +r.fine;
+    const netCol = net>=0?'var(--green)':'var(--red)';
+    html += `<div class="salary-card">
+      <div class="salary-card-header">
+        <div>
+          <div class="salary-card-name">${emp?emp.name:'ID: '+r.emp_id}</div>
+          <div class="salary-card-role">${emp?emp.role:''} · <span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span></div>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
+      </div>
+      <div class="salary-breakdown">
+        <div class="salary-item"><div class="salary-item-label">Зарплата</div><div class="salary-item-value" style="color:var(--accent)">${fmt(r.salary)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(r.advance)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(r.bonus)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(r.fine)}</div></div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════
+async function renderSettings() {
+  const s = await API.get('/settings') || {};
+  document.getElementById('settingCafeName').value = s.cafeName||'';
+  document.getElementById('settingCurrency').value = s.currency||'₴';
+}
+
+async function saveSettings() {
+  const cafeName = document.getElementById('settingCafeName').value;
+  const currency = document.getElementById('settingCurrency').value;
+  const res = await API.post('/settings', { cafeName, currency });
+  if (res && res.ok) {
+    _currency = currency;
+    document.getElementById('cafeNameSub').textContent = cafeName||'Управление кафе';
+    if (cafeName) document.title = cafeName + ' — CaféBook';
+    showToast('Настройки сохранены ✓');
+  }
+}
+
+async function exportData() {
+  showLoader(true);
+  const res = await fetch('/api/export', { headers: API.headers() });
+  const data = await res.json();
+  showLoader(false);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `cafebook-backup-${today()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Экспорт выполнен ✓');
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    const res = await API.post('/import', data);
+    if (res && res.ok) {
+      showToast('Данные импортированы ✓');
+      _employees = await API.get('/employees') || [];
+      renderDashboard();
+    }
+  } catch { showToast('Ошибка чтения файла', true); }
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════
+tryAutoLogin();
+</script>
+</body>
+</html>

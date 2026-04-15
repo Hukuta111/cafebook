@@ -1,0 +1,21 @@
+{
+  "name": "cafebook",
+  "version": "1.0.0",
+  "description": "Система учёта для кафе",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.51.2-build9",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "nedb-promises": "^6.2.3",
+    "sql.js": "^1.14.1"
+  }
+}
