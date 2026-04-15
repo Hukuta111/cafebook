@@ -1074,11 +1074,12 @@ async function renderDashboard() {
 // ═══════════════════════════════════════════
 function updateTxCats() {
   const type = document.getElementById('txType').value;
-  // для бонусов и штрафов — причины из БД + дефолтные
-  let cats = [...(TX_CATS[type]||[])];
+  let cats;
   if (type === 'bonus' || type === 'fine') {
     const dbReasons = _reasons.filter(r => r.type === type).map(r => r.name);
-    cats = [...new Set([...dbReasons, ...cats])];
+    cats = dbReasons.length ? dbReasons : (TX_CATS[type]||[]);
+  } else {
+    cats = TX_CATS[type]||[];
   }
   document.getElementById('txCat').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
 }
@@ -1617,14 +1618,16 @@ function renderReasonsList(type) {
   const list = document.getElementById(type === 'bonus' ? 'bonusReasonsList' : 'fineReasonsList');
   const items = _reasons.filter(r => r.type === type);
   if (!items.length) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">Нет причин</div>';
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">Пусто — будут использоваться стандартные категории</div>';
     return;
   }
   list.innerHTML = items.map(r => {
     const safeName = r.name.replace(/"/g, '&quot;');
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:13px">${r.name}</span>
-      <button class="btn btn-sm btn-danger" onclick="deleteReason('${r.id}','${type}')" style="padding:2px 8px;font-size:11px">✕</button>
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <input type="text" value="${safeName}" id="reason_${r.id}"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
+        onchange="renameReason('${r.id}','${type}',this.value)">
+      <button class="btn btn-sm btn-danger" onclick="deleteReason('${r.id}','${type}')" style="padding:3px 8px;font-size:11px">✕</button>
     </div>`;
   }).join('');
 }
@@ -1639,6 +1642,18 @@ async function addReason(type) {
     await loadReasons();
     renderReasonsList(type);
     showToast('Причина добавлена ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function renameReason(id, type, newName) {
+  newName = newName.trim();
+  if (!newName) { showToast('Название не может быть пустым', true); return; }
+  const res = await API.put('/reasons/' + id, { type, name: newName });
+  if (res && res.ok) {
+    await loadReasons();
+    showToast('Переименовано ✓');
   } else if (res) {
     showToast(res.error || 'Ошибка', true);
   }
