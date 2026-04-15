@@ -201,12 +201,13 @@
   #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
 
   /* SCHEDULE TABLE */
-  #scheduleTable th, #scheduleTable td { padding:5px 4px; text-align:center; border:1px solid var(--border); white-space:nowrap; }
-  #scheduleTable th { background:var(--surface2); font-size:10px; letter-spacing:.5px; text-transform:uppercase; color:var(--text3); font-weight:500; }
+  #scheduleTable { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+  #scheduleTable th, #scheduleTable td { padding:4px 2px; text-align:center; border:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; }
+  #scheduleTable th { background:var(--surface2); font-size:9px; letter-spacing:0; text-transform:uppercase; color:var(--text3); font-weight:500; }
   #scheduleTable td { cursor:pointer; transition:background .1s; }
   #scheduleTable td:hover { background:var(--surface2); }
   #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
-  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:10px; white-space:nowrap; }
+  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #scheduleTable .total-cell { font-weight:700; cursor:default; }
   #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
   .sched-print-title { display:none; }
@@ -428,7 +429,7 @@
       </div>
     </div>
     <div class="table-wrap" id="scheduleWrap" style="overflow-x:auto;">
-      <table id="scheduleTable" style="min-width:100%;font-size:12px;"></table>
+      <table id="scheduleTable"></table>
     </div>
   </div>
 
@@ -1109,13 +1110,13 @@ async function renderSchedule() {
   }
 
   // header: Сотрудник | 1 Пн | 2 Вт | ... | Часы | Сумма
-  let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left;min-width:120px">Сотрудник</th>';
+  let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left">Сотрудник</th>';
   for (let d = 1; d <= numDays; d++) {
     const dow = dayOfWeek(month, d);
     const isWeekend = dow === 0 || dow === 6;
-    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}min-width:32px">${d}<br>${SHORT_DAYS[dow]}</th>`;
+    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${SHORT_DAYS[dow]}</th>`;
   }
-  hdr += '<th style="min-width:50px">Часы</th><th style="min-width:70px">Сумма</th></tr></thead>';
+  hdr += '<th>Часы</th><th>Сумма</th></tr></thead>';
 
   // body
   let body = '<tbody>';
