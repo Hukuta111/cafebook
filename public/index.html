@@ -442,6 +442,7 @@
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
         <button class="btn btn-primary" onclick="openSchedModal()">+ Смена</button>
+        <button class="btn" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none">💰 Сформировать выплаты</button>
         <button class="btn" onclick="printSchedule()">🖨 Печать</button>
       </div>
     </div>
@@ -474,6 +475,13 @@
         </div>
         <div class="form-row"><label>Порог выручки для процента сотрудников</label><input type="number" id="settingRevenueThreshold" placeholder="0" min="0" step="1">
           <div style="color:var(--text3);font-size:11px;margin-top:4px;">Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня</div>
+        </div>
+        <div class="form-row" style="margin-top:16px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="settingScheduleTx" style="width:auto;accent-color:var(--accent);">
+            <span>Формировать транзакции из графика работы</span>
+          </label>
+          <div style="color:var(--text3);font-size:11px;margin-top:4px;">Кнопка «Сформировать выплаты» на странице График — создаёт транзакции зарплаты по отработанным часам и ставке каждого сотрудника</div>
         </div>
         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
       </div>
@@ -1207,6 +1215,11 @@ async function renderSchedule() {
   _employees = await API.get('/employees') || [];
   const active = _employees.filter(e => e.status === 'active');
 
+  // показать/скрыть кнопку формирования выплат
+  const settings = await API.get('/settings') || {};
+  const genBtn = document.getElementById('schedGenTxBtn');
+  if (genBtn) genBtn.style.display = settings.scheduleTx === 'true' ? '' : 'none';
+
   if (!_monthPickers['schedMonthPicker']) createMonthPicker('schedMonthPicker', () => renderSchedule());
   const cur = today().slice(0,7);
   const month = _monthPickers['schedMonthPicker']?.value || cur;
@@ -1352,6 +1365,21 @@ async function deleteScheduleEntry(id) {
   if (!confirm('Удалить запись смены?')) return;
   const res = await API.del('/schedule/' + id);
   if (res && res.ok) { renderSchedule(); showToast('Удалено'); }
+}
+
+async function generateScheduleTx() {
+  const cur = today().slice(0,7);
+  const month = _monthPickers['schedMonthPicker']?.value || cur;
+  const res = await API.post('/calc-schedule-tx', { month });
+  if (res && res.ok) {
+    if (res.created > 0) {
+      showToast(`Создано ${res.created} транзакция(й) за ${monthLabel(month)} ✓`);
+    } else {
+      showToast(res.message || 'Нет данных для формирования');
+    }
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
 }
 
 function printSchedule() {
@@ -1658,6 +1686,7 @@ async function renderSettings() {
   document.getElementById('settingCafeName').value = s.cafeName||'';
   document.getElementById('settingCurrency').value = s.currency||'₴';
   document.getElementById('settingRevenueThreshold').value = s.revenueThreshold||'';
+  document.getElementById('settingScheduleTx').checked = s.scheduleTx === 'true';
   await loadSalTypes();
   renderSalTypesList();
 }
@@ -1753,7 +1782,8 @@ async function saveSettings() {
   const cafeName = document.getElementById('settingCafeName').value;
   const currency = document.getElementById('settingCurrency').value;
   const revenueThreshold = document.getElementById('settingRevenueThreshold').value;
-  const res = await API.post('/settings', { cafeName, currency, revenueThreshold });
+  const scheduleTx = document.getElementById('settingScheduleTx').checked ? 'true' : 'false';
+  const res = await API.post('/settings', { cafeName, currency, revenueThreshold, scheduleTx });
   if (res && res.ok) {
     _currency = currency;
     document.getElementById('cafeNameSub').textContent = cafeName||'Управление кафе';

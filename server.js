@@ -509,6 +509,65 @@ app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
   res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue) });
 });
 
+// ─── SCHEDULE → TRANSACTIONS ──────────────────────────────
+app.post('/api/calc-schedule-tx', authMiddleware, (req, res) => {
+  const { month } = req.body;
+  if (!month) return res.status(400).json({ error: 'Укажите месяц' });
+
+  // проверить настройку
+  const setRows = db.exec('SELECT value FROM settings WHERE key=?', ['scheduleTx']);
+  const enabled = setRows[0] && setRows[0].values[0][0] === 'true';
+  if (!enabled) return res.status(400).json({ error: 'Функция отключена в настройках' });
+
+  // получить смены за месяц
+  const schedRows = db.exec(
+    'SELECT * FROM schedule WHERE strftime("%Y-%m", work_date) = ? ORDER BY emp_id, work_date',
+    [month]
+  );
+  const entries = schedRows[0] ? rowsToObjects(schedRows[0]) : [];
+  if (!entries.length) return res.json({ ok: true, created: 0, message: 'Нет смен за этот месяц' });
+
+  // получить сотрудников
+  const empRows = db.exec('SELECT * FROM employees');
+  const employees = empRows[0] ? rowsToObjects(empRows[0]) : [];
+  const empMap = {};
+  employees.forEach(e => { empMap[e.id] = e; });
+
+  // удалить старые авто-транзакции за месяц
+  db.run(
+    `DELETE FROM transactions WHERE type='salary' AND cat='График работы' AND strftime('%Y-%m', date)=?`,
+    [month]
+  );
+
+  // сгруппировать по сотрудникам и посчитать
+  const byEmp = {};
+  entries.forEach(s => {
+    if (!byEmp[s.emp_id]) byEmp[s.emp_id] = { hours: 0, total: 0 };
+    const emp = empMap[s.emp_id];
+    const rate = s.hourly_rate != null ? s.hourly_rate : (emp ? emp.hourly_rate || 0 : 0);
+    byEmp[s.emp_id].hours += s.hours;
+    byEmp[s.emp_id].total += s.hours * rate;
+  });
+
+  // создать транзакции
+  let created = 0;
+  const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
+  Object.entries(byEmp).forEach(([empId, data]) => {
+    if (data.total <= 0) return;
+    const emp = empMap[empId];
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    db.run(
+      'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+      [id, lastDay, 'salary', 'График работы', empId, Math.round(data.total * 100) / 100,
+       `${emp?emp.name:empId}: ${data.hours}ч × ставка = ${Math.round(data.total * 100) / 100}`]
+    );
+    created++;
+  });
+
+  saveDb();
+  res.json({ ok: true, created });
+});
+
 // ─── REPORTS ───────────────────────────────────────────────
 app.get('/api/reports/monthly', authMiddleware, (req, res) => {
   const rows = db.exec(`
