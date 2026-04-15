@@ -459,6 +459,56 @@ app.post('/api/settings', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── PERCENT BONUS CALC ───────────────────────────────────
+app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
+  const { month } = req.body;
+  if (!month) return res.status(400).json({ error: 'Укажите месяц' });
+
+  // получить порог
+  const setRows = db.exec('SELECT value FROM settings WHERE key=?', ['revenueThreshold']);
+  const threshold = parseFloat((setRows[0] && setRows[0].values[0][0]) || 0);
+  if (threshold <= 0) return res.status(400).json({ error: 'Порог выручки не задан в настройках' });
+
+  // сотрудники с процентом
+  const empRows = db.exec('SELECT * FROM employees WHERE percent > 0 AND status = ?', ['active']);
+  const employees = empRows[0] ? rowsToObjects(empRows[0]) : [];
+  if (!employees.length) return res.status(400).json({ error: 'Нет сотрудников с процентом' });
+
+  // выручка по дням за месяц
+  const txRows = db.exec(
+    `SELECT date, SUM(amount) as total FROM transactions WHERE type='income' AND strftime('%Y-%m', date)=? GROUP BY date`,
+    [month]
+  );
+  const dailyIncome = txRows[0] ? rowsToObjects(txRows[0]) : [];
+  const qualifyingRevenue = dailyIncome.filter(d => d.total > threshold).reduce((s, d) => s + d.total, 0);
+
+  if (qualifyingRevenue <= 0) return res.json({ ok: true, created: 0, message: 'Нет дней с выручкой выше порога' });
+
+  // удалить старые авто-бонусы за этот месяц
+  db.run(
+    `DELETE FROM transactions WHERE type='bonus' AND cat='Процент кассы' AND strftime('%Y-%m', date)=?`,
+    [month]
+  );
+
+  // создать новые транзакции
+  let created = 0;
+  const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
+  employees.forEach(emp => {
+    const bonus = qualifyingRevenue * (emp.percent / 100);
+    if (bonus > 0) {
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      db.run(
+        'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+        [id, lastDay, 'bonus', 'Процент кассы', emp.id, Math.round(bonus * 100) / 100, `Процент кассы ${emp.percent}% от ${Math.round(qualifyingRevenue)} (порог ${threshold})`]
+      );
+      created++;
+    }
+  });
+
+  saveDb();
+  res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue) });
+});
+
 // ─── REPORTS ───────────────────────────────────────────────
 app.get('/api/reports/monthly', authMiddleware, (req, res) => {
   const rows = db.exec(`
