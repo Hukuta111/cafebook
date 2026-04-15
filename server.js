@@ -447,6 +447,12 @@ app.post('/api/settings', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
+app.post('/api/settings/:key', authMiddleware, (req, res) => {
+  const { value } = req.body;
+  db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [req.params.key, value||'']);
+  saveDb();
+  res.json({ ok: true });
+});
 
 // ─── REPORTS ───────────────────────────────────────────────
 app.get('/api/reports/monthly', authMiddleware, (req, res) => {

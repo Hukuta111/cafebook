@@ -487,11 +487,15 @@
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;">Типы выплат</div>
-        <div style="color:var(--text3);font-size:12px;margin-bottom:12px;">Свои типы отображаются в начислении выплат рядом со стандартными (Зарплата, Аванс, Бонус, Штраф)</div>
+        <div style="color:var(--text3);font-size:12px;margin-bottom:12px;">Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.</div>
         <div id="salTypesList" style="margin-bottom:12px;"></div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="newSalTypeName" placeholder="Новый тип выплаты" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addSalType()">
-          <button class="btn btn-primary btn-sm" onclick="addSalType()">+ Добавить</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="newSalTypeName" placeholder="Название" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addSalType()">
+          <select id="newSalTypeSign" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 8px;color:var(--text);font-size:13px;outline:none;">
+            <option value="-">− расход</option>
+            <option value="+">+ доход</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="addSalType()">Добавить</button>
         </div>
       </div>
 
@@ -823,16 +827,15 @@ async function changePassword() {
 // ═══════════════════════════════════════════
 async function loadInitialData() {
   try {
-    const [settings, emps, positions, reasons] = await Promise.all([
+    const [settings, emps, positions] = await Promise.all([
       API.get('/settings'),
       API.get('/employees'),
       API.get('/positions'),
-      API.get('/reasons'),
     ]);
     _currency = (settings && settings.currency) || '₴';
     _employees = emps || [];
     _positions = positions || [];
-    _reasons = reasons || [];
+    try { _salTypes = JSON.parse((settings && settings.salTypes) || '[]'); } catch { _salTypes = []; }
     if (settings && settings.cafeName) {
       document.getElementById('cafeNameSub').textContent = settings.cafeName;
       document.title = settings.cafeName + ' — CaféBook';
@@ -1502,14 +1505,19 @@ async function saveSalaryEntry() {
   const emp = _employees.find(e => e.id === empId);
 
   // определяем тип и категорию
+  const allTypes = getAllSalTypes();
+  const salTypeObj = allTypes.find(t => t.id === typeVal);
   let type, cat;
-  if (typeVal.startsWith('custom_')) {
-    const reason = _reasons.find(r => r.id === typeVal.replace('custom_',''));
-    type = 'salary';
-    cat = reason ? reason.name : typeVal;
-  } else {
+  if (salTypeObj && salTypeObj.builtin) {
     type = typeVal;
-    cat = TYPE_LABELS[typeVal] || typeVal;
+    cat = salTypeObj.label;
+  } else if (salTypeObj) {
+    // кастомный тип: sign '+' → income, sign '-' → expense
+    type = salTypeObj.sign === '+' ? 'income' : 'salary';
+    cat = salTypeObj.label;
+  } else {
+    type = 'salary';
+    cat = typeVal;
   }
 
   const res = await API.post('/transactions', { id: uid(), date, type, cat, empId, amount, note: note||(emp?emp.name:'') });
@@ -1599,49 +1607,66 @@ async function renderSalaryReport() {
 // ═══════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════
-let _reasons = [];
-
-async function loadReasons() {
-  _reasons = await API.get('/reasons') || [];
-}
-
 async function renderSettings() {
   const s = await API.get('/settings') || {};
   document.getElementById('settingCafeName').value = s.cafeName||'';
   document.getElementById('settingCurrency').value = s.currency||'₴';
-  await loadReasons();
+  await loadSalTypes();
   renderSalTypesList();
 }
 
 // ═══════════════════════════════════════════
-// SALARY TYPES (reasons)
+// SALARY TYPES (stored in settings as JSON)
 // ═══════════════════════════════════════════
-const DEFAULT_SAL_TYPES = [
-  { value:'salary', label:'Зарплата' },
-  { value:'advance', label:'Аванс' },
-  { value:'bonus', label:'Бонус' },
-  { value:'fine', label:'Штраф' },
+const BUILTIN_SAL_TYPES = [
+  { id:'salary',  label:'Зарплата', sign:'-', builtin:true },
+  { id:'advance', label:'Аванс',    sign:'-', builtin:true },
+  { id:'bonus',   label:'Бонус',    sign:'-', builtin:true },
+  { id:'fine',    label:'Штраф',    sign:'+', builtin:true },
 ];
+let _salTypes = [];
+
+async function loadSalTypes() {
+  const s = await API.get('/settings') || {};
+  try { _salTypes = JSON.parse(s.salTypes || '[]'); } catch { _salTypes = []; }
+}
+
+async function saveSalTypes() {
+  await API.post('/settings/salTypes', { value: JSON.stringify(_salTypes) });
+}
+
+function getAllSalTypes() {
+  return [...BUILTIN_SAL_TYPES, ..._salTypes];
+}
 
 function populateSalTypeSelect() {
   const sel = document.getElementById('salType');
-  const custom = _reasons.map(r => `<option value="custom_${r.id}">${r.name}</option>`).join('');
-  sel.innerHTML = DEFAULT_SAL_TYPES.map(o => `<option value="${o.value}">${o.label}</option>`).join('') + custom;
+  sel.innerHTML = getAllSalTypes().map(t =>
+    `<option value="${t.id}">${t.label} (${t.sign === '+' ? '+' : '−'})</option>`
+  ).join('');
 }
 
 function renderSalTypesList() {
   const list = document.getElementById('salTypesList');
-  if (!_reasons.length) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">Нет кастомных типов</div>';
-    return;
-  }
-  list.innerHTML = _reasons.map(r => {
-    const safeName = r.name.replace(/"/g, '&quot;');
+  const all = getAllSalTypes();
+  list.innerHTML = all.map(t => {
+    const safeName = t.label.replace(/"/g, '&quot;');
+    if (t.builtin) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="flex:1;font-size:13px;color:var(--text)">${t.label}</span>
+        <span class="badge ${t.sign==='+'?'badge-green':'badge-red'}" style="font-size:11px">${t.sign === '+' ? '+ доход' : '− расход'}</span>
+        <span style="color:var(--text3);font-size:11px;width:28px;text-align:center">—</span>
+      </div>`;
+    }
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
       <input type="text" value="${safeName}"
         style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
-        onchange="renameSalType('${r.id}',this.value)">
-      <button class="btn btn-sm btn-danger" onclick="deleteSalType('${r.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+        onchange="renameSalType('${t.id}',this.value)">
+      <select onchange="changeSalTypeSign('${t.id}',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 6px;color:var(--text);font-size:11px;outline:none;">
+        <option value="-" ${t.sign!=='+'?'selected':''}>− расход</option>
+        <option value="+" ${t.sign==='+'?'selected':''}>+ доход</option>
+      </select>
+      <button class="btn btn-sm btn-danger" onclick="deleteSalType('${t.id}')" style="padding:3px 8px;font-size:11px">✕</button>
     </div>`;
   }).join('');
 }
@@ -1649,35 +1674,32 @@ function renderSalTypesList() {
 async function addSalType() {
   const input = document.getElementById('newSalTypeName');
   const name = input.value.trim();
+  const sign = document.getElementById('newSalTypeSign').value;
   if (!name) { showToast('Введите название', true); return; }
-  const res = await API.post('/reasons', { id: uid(), type: 'custom', name });
-  if (res && res.ok) {
-    input.value = '';
-    await loadReasons();
-    renderSalTypesList();
-    showToast('Тип добавлен ✓');
-  } else if (res) {
-    showToast(res.error || 'Ошибка', true);
-  }
+  _salTypes.push({ id: uid(), label: name, sign: sign });
+  await saveSalTypes();
+  input.value = '';
+  renderSalTypesList();
+  showToast('Тип добавлен ✓');
 }
 
 async function renameSalType(id, newName) {
   newName = newName.trim();
   if (!newName) { showToast('Название не может быть пустым', true); return; }
-  const res = await API.put('/reasons/' + id, { type: 'custom', name: newName });
-  if (res && res.ok) {
-    await loadReasons();
-    showToast('Переименовано ✓');
-  }
+  const t = _salTypes.find(t => t.id === id);
+  if (t) { t.label = newName; await saveSalTypes(); showToast('Сохранено ✓'); }
+}
+
+async function changeSalTypeSign(id, sign) {
+  const t = _salTypes.find(t => t.id === id);
+  if (t) { t.sign = sign; await saveSalTypes(); renderSalTypesList(); showToast('Сохранено ✓'); }
 }
 
 async function deleteSalType(id) {
-  const res = await API.del('/reasons/' + id);
-  if (res && res.ok) {
-    await loadReasons();
-    renderSalTypesList();
-    showToast('Удалено');
-  }
+  _salTypes = _salTypes.filter(t => t.id !== id);
+  await saveSalTypes();
+  renderSalTypesList();
+  showToast('Удалено');
 }
 
 async function saveSettings() {
