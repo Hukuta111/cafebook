@@ -137,10 +137,29 @@
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
 
-  /* DATE RANGE */
-  .date-range { display:inline-flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
-  .date-range input[type="date"] { border:none; background:transparent; padding:7px 10px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; width:130px; }
-  .date-range .date-range-sep { color:var(--text3); font-size:11px; padding:0 2px; }
+  /* DATE RANGE PICKER */
+  .drp-wrap { position:relative; display:inline-block; }
+  .drp-trigger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; user-select:none; transition:border-color .15s; white-space:nowrap; }
+  .drp-trigger:hover { border-color:var(--accent); }
+  .drp-trigger .drp-dates { color:var(--accent); }
+  .drp-popup { display:none; position:absolute; top:calc(100% + 6px); left:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; z-index:500; box-shadow:0 8px 24px rgba(0,0,0,.4); min-width:280px; animation:fadeIn .15s ease; }
+  .drp-popup.open { display:block; }
+  .drp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .drp-header .drp-title { font-family:'DM Serif Display',serif; font-size:16px; color:var(--accent); }
+  .drp-header button { background:none; border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); width:28px; height:28px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .drp-header button:hover { border-color:var(--accent); color:var(--accent); }
+  .drp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:10px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:.5px; }
+  .drp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .drp-grid button { padding:6px 2px; border:none; border-radius:4px; background:transparent; color:var(--text2); font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:all .1s; }
+  .drp-grid button:hover { background:var(--surface2); color:var(--text); }
+  .drp-grid button.in-range { background:rgba(201,168,76,.15); color:var(--accent); }
+  .drp-grid button.range-start,.drp-grid button.range-end { background:var(--accent); color:#1a1714; font-weight:600; }
+  .drp-grid button.today { border:1px solid var(--accent); }
+  .drp-grid button.other-month { color:var(--text3); opacity:.4; }
+  .drp-actions { display:flex; gap:8px; justify-content:space-between; margin-top:10px; }
+  .drp-actions button { padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; }
+  .drp-actions button:hover { border-color:var(--accent); color:var(--accent); }
+  .drp-actions button.drp-apply { background:var(--accent); border-color:var(--accent); color:#1a1714; font-weight:600; }
 
   /* MONTH PICKER */
   .mp-trigger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; user-select:none; transition:border-color .15s; }
@@ -353,7 +372,7 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
-      <div class="date-range"><input type="date" id="txDateFrom" onchange="renderTransactions()"><span class="date-range-sep">—</span><input type="date" id="txDateTo" onchange="renderTransactions()"></div>
+      <div class="drp-wrap" id="txDateRange"></div>
       <select id="txFilterType" onchange="renderTransactions()">
         <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
         <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
@@ -377,7 +396,7 @@
       <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="dailyMonthPicker"></div>
-        <div class="date-range"><input type="date" id="dailyDateFrom" onchange="renderDaily()"><span class="date-range-sep">—</span><input type="date" id="dailyDateTo" onchange="renderDaily()"></div>
+        <div class="drp-wrap" id="dailyDateRange"></div>
         <select id="dailySortOrder" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
           <option value="desc">Сначала новые</option>
           <option value="asc">Сначала старые</option>
@@ -431,7 +450,7 @@
     </div>
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
-      <div class="date-range"><input type="date" id="salDateFrom" onchange="renderSalary()"><span class="date-range-sep">—</span><input type="date" id="salDateTo" onchange="renderSalary()"></div>
+      <div class="drp-wrap" id="salDateRange"></div>
       <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
       <select id="salSortOrder" onchange="renderSalary()">
         <option value="desc">Сначала новые</option>
@@ -963,11 +982,153 @@ function mpSetValue(id, val) {
   mpRenderGrid(id);
 }
 
-// close popups on outside click
-document.addEventListener('click', () => {
-  Object.keys(_monthPickers).forEach(k => {
-    document.getElementById(k + '_popup')?.classList.remove('open');
+// ═══════════════════════════════════════════
+// DATE RANGE PICKER
+// ═══════════════════════════════════════════
+const _dateRangePickers = {};
+const DRP_MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DRP_WEEKDAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function createDateRangePicker(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return null;
+  const now = new Date();
+  const drp = { from: '', to: '', tempFrom: '', tempTo: '', viewYear: now.getFullYear(), viewMonth: now.getMonth(), onChange, containerId };
+
+  container.innerHTML = `
+    <div class="drp-trigger" id="${containerId}_trigger">📅 <span id="${containerId}_label">Все даты</span></div>
+    <div class="drp-popup" id="${containerId}_popup">
+      <div class="drp-header">
+        <button onclick="drpNav('${containerId}',-1)">◀</button>
+        <span class="drp-title" id="${containerId}_title"></span>
+        <button onclick="drpNav('${containerId}',1)">▶</button>
+      </div>
+      <div class="drp-weekdays">${DRP_WEEKDAYS.map(d=>'<span>'+d+'</span>').join('')}</div>
+      <div class="drp-grid" id="${containerId}_grid"></div>
+      <div class="drp-actions">
+        <button onclick="drpClear('${containerId}')">Сбросить</button>
+        <button class="drp-apply" onclick="drpApply('${containerId}')">Применить</button>
+      </div>
+    </div>`;
+
+  container.querySelector('.drp-trigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // close others
+    Object.keys(_dateRangePickers).forEach(k => { if (k !== containerId) document.getElementById(k+'_popup')?.classList.remove('open'); });
+    Object.keys(_monthPickers).forEach(k => { document.getElementById(k+'_popup')?.classList.remove('open'); });
+    const popup = document.getElementById(containerId+'_popup');
+    popup.classList.toggle('open');
+    if (popup.classList.contains('open')) {
+      drp.tempFrom = drp.from;
+      drp.tempTo = drp.to;
+      drpRender(containerId);
+    }
   });
+
+  container.querySelector('.drp-popup').addEventListener('click', e => e.stopPropagation());
+
+  _dateRangePickers[containerId] = drp;
+  drpRender(containerId);
+  return drp;
+}
+
+function drpNav(id, delta) {
+  const d = _dateRangePickers[id];
+  d.viewMonth += delta;
+  if (d.viewMonth > 11) { d.viewMonth = 0; d.viewYear++; }
+  if (d.viewMonth < 0) { d.viewMonth = 11; d.viewYear--; }
+  drpRender(id);
+}
+
+function drpRender(id) {
+  const d = _dateRangePickers[id];
+  document.getElementById(id+'_title').textContent = DRP_MONTHS[d.viewMonth] + ' ' + d.viewYear;
+
+  const firstDay = new Date(d.viewYear, d.viewMonth, 1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
+  const daysInMo = new Date(d.viewYear, d.viewMonth + 1, 0).getDate();
+  const todayStr = today();
+
+  let html = '';
+  // prev month padding
+  const prevDays = new Date(d.viewYear, d.viewMonth, 0).getDate();
+  for (let i = startDow - 1; i >= 0; i--) {
+    const day = prevDays - i;
+    const dt = new Date(d.viewYear, d.viewMonth - 1, day);
+    const ds = dt.toISOString().slice(0,10);
+    html += `<button class="other-month ${drpDayClass(d,ds)}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+  }
+  // current month
+  for (let day = 1; day <= daysInMo; day++) {
+    const ds = d.viewYear + '-' + String(d.viewMonth+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    const cls = drpDayClass(d, ds) + (ds === todayStr ? ' today' : '');
+    html += `<button class="${cls}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+  }
+  // next month padding
+  const totalCells = startDow + daysInMo;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let day = 1; day <= remaining; day++) {
+    const dt = new Date(d.viewYear, d.viewMonth + 1, day);
+    const ds = dt.toISOString().slice(0,10);
+    html += `<button class="other-month ${drpDayClass(d,ds)}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+  }
+
+  document.getElementById(id+'_grid').innerHTML = html;
+}
+
+function drpDayClass(d, ds) {
+  const f = d.tempFrom, t = d.tempTo;
+  if (!f) return '';
+  if (ds === f && ds === t) return 'range-start range-end';
+  if (ds === f) return 'range-start';
+  if (ds === t) return 'range-end';
+  if (f && t && ds > f && ds < t) return 'in-range';
+  if (f && !t && ds === f) return 'range-start';
+  return '';
+}
+
+function drpClick(id, ds) {
+  const d = _dateRangePickers[id];
+  if (!d.tempFrom || d.tempTo || ds < d.tempFrom) {
+    d.tempFrom = ds;
+    d.tempTo = '';
+  } else {
+    d.tempTo = ds;
+  }
+  drpRender(id);
+}
+
+function drpApply(id) {
+  const d = _dateRangePickers[id];
+  d.from = d.tempFrom;
+  d.to = d.tempTo || d.tempFrom;
+  drpUpdateLabel(id);
+  document.getElementById(id+'_popup').classList.remove('open');
+  if (d.onChange) d.onChange(d.from, d.to);
+}
+
+function drpClear(id) {
+  const d = _dateRangePickers[id];
+  d.from = ''; d.to = ''; d.tempFrom = ''; d.tempTo = '';
+  drpUpdateLabel(id);
+  document.getElementById(id+'_popup').classList.remove('open');
+  if (d.onChange) d.onChange('', '');
+}
+
+function drpUpdateLabel(id) {
+  const d = _dateRangePickers[id];
+  const label = document.getElementById(id+'_label');
+  if (!d.from) { label.textContent = 'Все даты'; label.className = ''; return; }
+  const f = dateLabel(d.from);
+  const t = d.to && d.to !== d.from ? ' — ' + dateLabel(d.to) : '';
+  label.innerHTML = '<span class="drp-dates">' + f + t + '</span>';
+}
+
+// close all popups on outside click
+document.addEventListener('click', () => {
+  Object.keys(_monthPickers).forEach(k => { document.getElementById(k+'_popup')?.classList.remove('open'); });
+  Object.keys(_dateRangePickers).forEach(k => { document.getElementById(k+'_popup')?.classList.remove('open'); });
 });
 
 // ═══════════════════════════════════════════
@@ -1177,9 +1338,11 @@ async function renderTransactions() {
   if (month) url += 'month=' + month + '&';
   if (type) url += 'type=' + type + '&';
   if (empId) url += 'empId=' + empId;
+  if (!_dateRangePickers['txDateRange']) createDateRangePicker('txDateRange', () => renderTransactions());
   let txs = await API.get(url) || [];
-  const txFrom = document.getElementById('txDateFrom').value;
-  const txTo = document.getElementById('txDateTo').value;
+  const txDrp = _dateRangePickers['txDateRange'];
+  const txFrom = txDrp?.from || '';
+  const txTo = txDrp?.to || '';
   if (txFrom) txs = txs.filter(t => t.date >= txFrom);
   if (txTo) txs = txs.filter(t => t.date <= txTo);
   const txSort = document.getElementById('txSortOrder').value;
@@ -1208,9 +1371,11 @@ async function renderTransactions() {
 async function renderDaily() {
   if (!_monthPickers['dailyMonthPicker']) createMonthPicker('dailyMonthPicker', () => renderDaily());
   const month = _monthPickers['dailyMonthPicker']?.value || '';
+  if (!_dateRangePickers['dailyDateRange']) createDateRangePicker('dailyDateRange', () => renderDaily());
   let rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
-  const dailyFrom = document.getElementById('dailyDateFrom').value;
-  const dailyTo = document.getElementById('dailyDateTo').value;
+  const dailyDrp = _dateRangePickers['dailyDateRange'];
+  const dailyFrom = dailyDrp?.from || '';
+  const dailyTo = dailyDrp?.to || '';
   if (dailyFrom) rows = rows.filter(r => r.date >= dailyFrom);
   if (dailyTo) rows = rows.filter(r => r.date <= dailyTo);
   const dailySort = document.getElementById('dailySortOrder').value;
@@ -1647,9 +1812,11 @@ async function renderSalary() {
   const types = ['salary','advance','bonus','fine'];
   if (month) url += 'month=' + month + '&';
   if (empId) url += 'empId=' + empId;
+  if (!_dateRangePickers['salDateRange']) createDateRangePicker('salDateRange', () => renderSalary());
   let txs = (await API.get(url) || []).filter(t => types.includes(t.type));
-  const salFrom = document.getElementById('salDateFrom').value;
-  const salTo = document.getElementById('salDateTo').value;
+  const salDrp = _dateRangePickers['salDateRange'];
+  const salFrom = salDrp?.from || '';
+  const salTo = salDrp?.to || '';
   if (salFrom) txs = txs.filter(t => t.date >= salFrom);
   if (salTo) txs = txs.filter(t => t.date <= salTo);
   const salSort = document.getElementById('salSortOrder').value;
