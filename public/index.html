@@ -167,7 +167,7 @@
   .salary-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
   .salary-card-name { font-weight:600; font-size:16px; }
   .salary-card-role { font-size:12px; color:var(--text3); margin-top:2px; }
-  .salary-breakdown { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .salary-breakdown { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:12px; }
   .salary-item { text-align:center; padding:10px; background:var(--surface2); border-radius:var(--radius-sm); }
   .salary-item-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:4px; }
   .salary-item-value { font-size:18px; font-weight:600; }
@@ -401,7 +401,7 @@
       <button class="btn btn-primary" onclick="openEmpModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
+      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
       <tbody id="empTable"></tbody></table>
     </div>
   </div>
@@ -470,6 +470,9 @@
         <div class="form-row"><label>Название кафе</label><input type="text" id="settingCafeName" placeholder="Например: Кафе Уют"></div>
         <div class="form-row"><label>Валюта</label>
           <select id="settingCurrency"><option value="₴">₴ — Гривна</option><option value="₽">₽ — Рубль</option><option value="$">$ — Доллар</option><option value="€">€ — Евро</option></select>
+        </div>
+        <div class="form-row"><label>Порог выручки для процента сотрудников</label><input type="number" id="settingRevenueThreshold" placeholder="0" min="0" step="1">
+          <div style="color:var(--text3);font-size:11px;margin-top:4px;">Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня</div>
         </div>
         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
       </div>
@@ -554,6 +557,9 @@
     </div>
     <div class="form-2col">
       <div class="form-row"><label>Ставка/час</label><input type="number" id="empHourlyRate" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Процент от выручки (%)</label><input type="number" id="empPercent" placeholder="0" min="0" max="100" step="0.1"></div>
       <div class="form-row"><label>Телефон</label><input type="text" id="empPhone"></div>
       <div class="form-row"><label>Дата начала</label><input type="date" id="empStart"></div>
     </div>
@@ -1430,6 +1436,7 @@ function openEmpModal(emp) {
   document.getElementById('empType').value = emp ? emp.type||'staff' : 'staff';
   document.getElementById('empSalary').value = emp ? emp.salary||'' : '';
   document.getElementById('empHourlyRate').value = emp ? emp.hourly_rate||'' : '';
+  document.getElementById('empPercent').value = emp ? emp.percent||'' : '';
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
   document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
@@ -1444,6 +1451,7 @@ async function saveEmployee() {
     type: document.getElementById('empType').value,
     salary: parseFloat(document.getElementById('empSalary').value)||0,
     hourly_rate: parseFloat(document.getElementById('empHourlyRate').value)||0,
+    percent: parseFloat(document.getElementById('empPercent').value)||0,
     phone: document.getElementById('empPhone').value,
     start_date: document.getElementById('empStart').value,
     status: document.getElementById('empStatus').value,
@@ -1467,13 +1475,14 @@ async function deleteEmployee(id) {
 
 function renderEmployees() {
   const tbody = document.getElementById('empTable');
-  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
+  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
   tbody.innerHTML = _employees.map(e => `<tr>
     <td><b>${e.name}</b></td>
     <td>${e.role||'—'}</td>
     <td><span class="badge badge-blue">${EMP_TYPE_LABELS[e.type]||e.type}</span></td>
     <td>${fmt(e.salary||0)} ${_currency}</td>
     <td>${e.hourly_rate ? fmt(e.hourly_rate)+' '+_currency : '—'}</td>
+    <td>${e.percent ? e.percent+'%' : '—'}</td>
     <td>${e.phone||'—'}</td>
     <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?'Активный':'Уволен'}</span></td>
     <td style="display:flex;gap:6px;">
@@ -1565,30 +1574,64 @@ async function renderSalaryReport() {
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
 
-  const rows = await API.get('/reports/salary?month=' + month) || [];
+  const [rows, allTx, settings] = await Promise.all([
+    API.get('/reports/salary?month=' + month),
+    API.get('/transactions?month=' + month),
+    API.get('/settings'),
+  ]);
   const container = document.getElementById('salaryReportCards');
-  if (!rows.length) { container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Нет данных за выбранный период</p></div>`; return; }
 
-  const totals = rows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
-  const totalNet = totals.salary+totals.bonus-totals.advance-totals.fine;
+  // расчёт процентных бонусов
+  const threshold = parseFloat((settings && settings.revenueThreshold) || 0);
+  const incomeByDay = {};
+  (allTx||[]).filter(t => t.type === 'income').forEach(t => {
+    incomeByDay[t.date] = (incomeByDay[t.date]||0) + +t.amount;
+  });
+  // дни где выручка > порога
+  const qualifyingDays = Object.entries(incomeByDay).filter(([,v]) => threshold > 0 && v > threshold);
+  const totalQualifyingRevenue = qualifyingDays.reduce((s,[,v]) => s + v, 0);
+
+  // процентные бонусы по сотрудникам
+  const percentBonuses = {};
+  _employees.filter(e => e.percent > 0).forEach(emp => {
+    percentBonuses[emp.id] = totalQualifyingRevenue * (emp.percent / 100);
+  });
+
+  if ((!rows || !rows.length) && !Object.values(percentBonuses).some(v => v > 0)) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Нет данных за выбранный период</p></div>`;
+    return;
+  }
+
+  // объединяем данные: добавляем сотрудников с процентом даже если у них нет транзакций
+  const reportMap = {};
+  (rows||[]).forEach(r => { reportMap[r.emp_id] = { ...r }; });
+  _employees.filter(e => e.percent > 0 && !reportMap[e.id]).forEach(e => {
+    reportMap[e.id] = { emp_id: e.id, salary:0, advance:0, bonus:0, fine:0 };
+  });
+  const reportRows = Object.values(reportMap);
+
+  const totals = reportRows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
+  const totalPctBonus = Object.values(percentBonuses).reduce((s,v)=>s+v, 0);
+  const totalNet = totals.salary+totals.bonus+totalPctBonus-totals.advance-totals.fine;
 
   let html = `<div class="cards-row" style="margin-bottom:28px;">
     <div class="stat-card yellow"><div class="stat-label">З/П начислено</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
     <div class="stat-card blue"><div class="stat-label">Авансы</div><div class="stat-value blue">${fmt(totals.advance)} ${_currency}</div></div>
-    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus)} ${_currency}</div></div>
+    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus + totalPctBonus)} ${_currency}</div></div>
     <div class="stat-card red"><div class="stat-label">Штрафы</div><div class="stat-value red">${fmt(totals.fine)} ${_currency}</div></div>
     <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">К выплате итого</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
   </div>`;
 
-  rows.forEach(r => {
+  reportRows.forEach(r => {
     const emp = _employees.find(e => e.id === r.emp_id);
-    const net = +r.salary + +r.bonus - +r.advance - +r.fine;
+    const pctBonus = percentBonuses[r.emp_id] || 0;
+    const net = +r.salary + +r.bonus + pctBonus - +r.advance - +r.fine;
     const netCol = net>=0?'var(--green)':'var(--red)';
     html += `<div class="salary-card">
       <div class="salary-card-header">
         <div>
           <div class="salary-card-name">${emp?emp.name:'Удалённый сотрудник'}</div>
-          <div class="salary-card-role">${emp?(emp.role||''):''}${emp?' · ':''}<span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span></div>
+          <div class="salary-card-role">${emp?(emp.role||''):''}${emp?' · ':''}<span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span>${emp&&emp.percent ? ' · <span style="color:var(--accent)">'+emp.percent+'% от выручки</span>' : ''}</div>
         </div>
         <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
       </div>
@@ -1597,6 +1640,7 @@ async function renderSalaryReport() {
         <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(r.advance)}</div></div>
         <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(r.bonus)}</div></div>
         <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(r.fine)}</div></div>
+        ${pctBonus > 0 ? '<div class="salary-item"><div class="salary-item-label">% от выручки</div><div class="salary-item-value" style="color:var(--green)">+'+fmt(pctBonus)+'</div></div>' : ''}
       </div>
     </div>`;
   });
@@ -1611,6 +1655,7 @@ async function renderSettings() {
   const s = await API.get('/settings') || {};
   document.getElementById('settingCafeName').value = s.cafeName||'';
   document.getElementById('settingCurrency').value = s.currency||'₴';
+  document.getElementById('settingRevenueThreshold').value = s.revenueThreshold||'';
   await loadSalTypes();
   renderSalTypesList();
 }
@@ -1705,7 +1750,8 @@ async function deleteSalType(id) {
 async function saveSettings() {
   const cafeName = document.getElementById('settingCafeName').value;
   const currency = document.getElementById('settingCurrency').value;
-  const res = await API.post('/settings', { cafeName, currency });
+  const revenueThreshold = document.getElementById('settingRevenueThreshold').value;
+  const res = await API.post('/settings', { cafeName, currency, revenueThreshold });
   if (res && res.ok) {
     _currency = currency;
     document.getElementById('cafeNameSub').textContent = cafeName||'Управление кафе';
