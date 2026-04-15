@@ -52,6 +52,10 @@ async function initDb() {
       hours REAL NOT NULL, hourly_rate REAL, note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS reasons (
+      id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
   `);
 
@@ -268,6 +272,36 @@ app.delete('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
   }
   cfg.users = cfg.users.filter(u => u.id !== req.params.id);
   saveConfig(cfg);
+  res.json({ ok: true });
+});
+
+// ─── REASONS (bonus/fine categories) ──────────────────────
+app.get('/api/reasons', authMiddleware, (req, res) => {
+  const { type } = req.query;
+  let sql = 'SELECT * FROM reasons';
+  const params = [];
+  if (type) { sql += ' WHERE type = ?'; params.push(type); }
+  sql += ' ORDER BY type, name';
+  const rows = db.exec(sql, params);
+  res.json(rows[0] ? rowsToObjects(rows[0]) : []);
+});
+app.post('/api/reasons', authMiddleware, (req, res) => {
+  const { id, type, name } = req.body;
+  if (!name || !name.trim() || !type) return res.status(400).json({ error: 'Заполните все поля' });
+  db.run('INSERT INTO reasons (id, type, name) VALUES (?, ?, ?)', [id, type, name.trim()]);
+  saveDb();
+  res.json({ ok: true });
+});
+app.put('/api/reasons/:id', authMiddleware, (req, res) => {
+  const { type, name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
+  db.run('UPDATE reasons SET type=?, name=? WHERE id=?', [type, name.trim(), req.params.id]);
+  saveDb();
+  res.json({ ok: true });
+});
+app.delete('/api/reasons/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM reasons WHERE id=?', [req.params.id]);
+  saveDb();
   res.json({ ok: true });
 });
 

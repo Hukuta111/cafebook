@@ -485,6 +485,24 @@
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Причины бонусов</div>
+        <div id="bonusReasonsList" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newBonusReason" placeholder="Новая причина бонуса" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
+          <button class="btn btn-primary btn-sm" onclick="addReason('bonus')">+ Добавить</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Причины штрафов</div>
+        <div id="fineReasonsList" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newFineReason" placeholder="Новая причина штрафа" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
+          <button class="btn btn-primary btn-sm" onclick="addReason('fine')">+ Добавить</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;">Данные</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="exportData()">📤 Экспорт JSON</button>
@@ -809,15 +827,17 @@ async function changePassword() {
 // INITIAL DATA LOAD
 // ═══════════════════════════════════════════
 async function loadInitialData() {
-  const [settings, emps, positions] = await Promise.all([
+  const [settings, emps, positions, reasons] = await Promise.all([
     fetch('/api/settings', { headers: API.headers() }).then(r => r.json()),
     fetch('/api/employees', { headers: API.headers() }).then(r => r.json()),
     fetch('/api/positions', { headers: API.headers() }).then(r => r.json()),
+    fetch('/api/reasons', { headers: API.headers() }).then(r => r.json()),
   ]);
   showLoader(false);
   _currency = settings.currency || '₴';
   _employees = emps || [];
   _positions = positions || [];
+  _reasons = reasons || [];
   if (settings.cafeName) {
     document.getElementById('cafeNameSub').textContent = settings.cafeName;
     document.title = settings.cafeName + ' — CaféBook';
@@ -1048,7 +1068,13 @@ async function renderDashboard() {
 // ═══════════════════════════════════════════
 function updateTxCats() {
   const type = document.getElementById('txType').value;
-  document.getElementById('txCat').innerHTML = (TX_CATS[type]||[]).map(c=>`<option>${c}</option>`).join('');
+  // для бонусов и штрафов — причины из БД + дефолтные
+  let cats = [...(TX_CATS[type]||[])];
+  if (type === 'bonus' || type === 'fine') {
+    const dbReasons = _reasons.filter(r => r.type === type).map(r => r.name);
+    cats = [...new Set([...dbReasons, ...cats])];
+  }
+  document.getElementById('txCat').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
 }
 
 function openTxModal() {
@@ -1566,10 +1592,59 @@ async function renderSalaryReport() {
 // ═══════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════
+let _reasons = [];
+
+async function loadReasons() {
+  _reasons = await API.get('/reasons') || [];
+}
+
 async function renderSettings() {
   const s = await API.get('/settings') || {};
   document.getElementById('settingCafeName').value = s.cafeName||'';
   document.getElementById('settingCurrency').value = s.currency||'₴';
+  await loadReasons();
+  renderReasonsList('bonus');
+  renderReasonsList('fine');
+}
+
+function renderReasonsList(type) {
+  const list = document.getElementById(type === 'bonus' ? 'bonusReasonsList' : 'fineReasonsList');
+  const items = _reasons.filter(r => r.type === type);
+  if (!items.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">Нет причин</div>';
+    return;
+  }
+  list.innerHTML = items.map(r => {
+    const safeName = r.name.replace(/"/g, '&quot;');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px">${r.name}</span>
+      <button class="btn btn-sm btn-danger" onclick="deleteReason('${r.id}','${type}')" style="padding:2px 8px;font-size:11px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addReason(type) {
+  const input = document.getElementById(type === 'bonus' ? 'newBonusReason' : 'newFineReason');
+  const name = input.value.trim();
+  if (!name) { showToast('Введите причину', true); return; }
+  const res = await API.post('/reasons', { id: uid(), type, name });
+  if (res && res.ok) {
+    input.value = '';
+    await loadReasons();
+    renderReasonsList(type);
+    showToast('Причина добавлена ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function deleteReason(id, type) {
+  const res = await API.del('/reasons/' + id);
+  if (res && res.ok) {
+    await loadReasons();
+    renderReasonsList(type);
+    showToast('Удалено');
+  }
 }
 
 async function saveSettings() {
