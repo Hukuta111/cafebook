@@ -16,7 +16,10 @@ echo "✅ CaféBook запущен!"
 echo "   Локально:   http://localhost:$PORT"
 echo "   В сети:     http://$LOCAL_IP:$PORT"
 echo ""
-
+echo "   Логин: admin | Пароль: admin123"
+echo "   (смените пароль после первого входа)"
+echo ""
+echo "Нажмите Ctrl+C для остановки"
 
 trap "kill $SERVER_PID 2>/dev/null; echo 'Сервер остановлен'" EXIT
 wait $SERVER_PID

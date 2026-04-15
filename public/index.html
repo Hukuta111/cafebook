@@ -177,6 +177,29 @@
     .chart-row{grid-template-columns:1fr} .salary-breakdown{grid-template-columns:1fr 1fr} .form-2col{grid-template-columns:1fr} .cards-row{grid-template-columns:1fr 1fr}
   }
 
+
+  .badge-online { background:rgba(93,185,124,.15); color:var(--green); }
+  .badge-offline { background:rgba(107,100,85,.15); color:var(--text3); }
+  .admin-only { display:none; }
+
+  /* Session-replaced overlay */
+  #sessionBanner {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(15,13,10,.92);
+    z-index:99999;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:16px;
+    text-align:center;
+    padding:32px;
+  }
+  #sessionBanner.show { display:flex; }
+  #sessionBanner h2 { font-family:"DM Serif Display",serif; font-size:24px; color:var(--red); }
+  #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
+
   @media print {
     .sidebar,.hamburger,.btn,.filters,.page-header .btn{display:none!important}
     .main{margin-left:0;padding:0}
@@ -207,6 +230,14 @@
 </div>
 
 <!-- LOADER -->
+
+<!-- SESSION REPLACED BANNER -->
+<div id="sessionBanner">
+  <h2>⚠️ Сессия завершена</h2>
+  <p>Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('sessionBanner').classList.remove('show'); doLogout();">Войти снова</button>
+</div>
+
 <div class="loader" id="loader"><div class="spinner"></div></div>
 
 <button class="hamburger" onclick="toggleSidebar()">☰</button>
@@ -228,7 +259,8 @@
     <div class="nav-item" data-page="employees" onclick="nav(this)"><span class="icon">👥</span> Сотрудники</div>
     <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
     <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
-    <div class="nav-group-label">Настройки</div>
+    <div class="nav-group-label">Система</div>
+    <div class="nav-item admin-only" data-page="users" onclick="nav(this)"><span class="icon">🔐</span> Пользователи</div>
     <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
   </nav>
   <div class="sidebar-bottom">
@@ -339,6 +371,18 @@
   </div>
 
   <!-- SETTINGS -->
+  <!-- USERS -->
+  <div class="page" id="page-users">
+    <div class="page-header">
+      <div><div class="page-title">Пользователи</div><div class="page-subtitle">Управление доступом к системе</div></div>
+      <button class="btn btn-primary" onclick="openUserModal()">+ Добавить</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Имя</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Последний вход</th><th></th></tr></thead>
+      <tbody id="usersTable"></tbody></table>
+    </div>
+  </div>
+
   <div class="page" id="page-settings">
     <div class="page-header"><div class="page-title">Настройки</div></div>
     <div style="max-width:500px;">
@@ -450,6 +494,33 @@
   </div>
 </div>
 
+
+<!-- USER MODAL -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-title" id="userModalTitle">Новый пользователь</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Логин (a-z, 0-9, _)</label><input type="text" id="uUsername" placeholder="ivan" autocomplete="off"></div>
+      <div class="form-row"><label>Отображаемое имя</label><input type="text" id="uDisplayName" placeholder="Иван Иванов"></div>
+    </div>
+    <div class="form-row"><label>Роль</label>
+      <select id="uRole">
+        <option value="user">Сотрудник — только просмотр и ввод данных</option>
+        <option value="admin">Администратор — полный доступ</option>
+      </select>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label id="uPassLabel">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" placeholder="мин. 4 символа"></div>
+      <div class="form-row"><label>Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" placeholder="повторите пароль"></div>
+    </div>
+    <input type="hidden" id="uEditId">
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('userModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveUser()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -553,9 +624,12 @@ async function doLogin() {
     API.token = data.token;
     sessionStorage.setItem('cb_token', data.token);
     sessionStorage.setItem('cb_user', data.username);
-    document.getElementById('userNameDisplay').textContent = data.username;
+    sessionStorage.setItem('cb_role', data.role);
+    document.getElementById('userNameDisplay').textContent = data.displayName || data.username;
     document.getElementById('loginScreen').classList.remove('show');
     document.getElementById('mainContent').style.display = '';
+    applyRoleUI(data.role);
+    startSessionPoll();
     await loadInitialData();
   } catch(e) {
     showLoader(false);
@@ -563,10 +637,15 @@ async function doLogin() {
   }
 }
 
-function doLogout() {
+async function doLogout() {
+  stopSessionPoll();
+  if (API.token) {
+    try { await fetch('/api/logout', { method:'POST', headers: API.headers() }); } catch {}
+  }
   API.token = null;
   sessionStorage.removeItem('cb_token');
   sessionStorage.removeItem('cb_user');
+  sessionStorage.removeItem('cb_role');
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginPass').value = '';
@@ -582,10 +661,14 @@ async function tryAutoLogin() {
   try {
     const res = await fetch('/api/settings', { headers: API.headers() });
     if (res.status === 401) { doLogout(); return; }
+    const settingsData = await res.json().catch(() => ({}));
     API.token = token;
+    const savedRole = sessionStorage.getItem('cb_role') || 'user';
     document.getElementById('userNameDisplay').textContent = user || 'admin';
     document.getElementById('loginScreen').classList.remove('show');
     document.getElementById('mainContent').style.display = '';
+    applyRoleUI(savedRole);
+    startSessionPoll();
     await loadInitialData();
   } catch { doLogout(); } finally { showLoader(false); }
 }
@@ -628,6 +711,13 @@ async function loadInitialData() {
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
+function applyRoleUI(role) {
+  const isAdmin = role === 'admin';
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+}
+
 function nav(el) {
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
@@ -643,6 +733,7 @@ function nav(el) {
   if (page === 'employees') renderEmployees();
   if (page === 'salary') { document.getElementById('salFilterMonth').value = today_month; renderSalary(); }
   if (page === 'salary-report') renderSalaryReport();
+  if (page === 'users') renderUsers();
   if (page === 'settings') renderSettings();
 }
 
@@ -1082,6 +1173,134 @@ async function importData(event) {
     }
   } catch { showToast('Ошибка чтения файла', true); }
   event.target.value = '';
+}
+
+// ═══════════════════════════════════════════
+// SESSION POLLING
+// ═══════════════════════════════════════════
+let _sessionPoll = null;
+
+function startSessionPoll() {
+  stopSessionPoll();
+  _sessionPoll = setInterval(async () => {
+    if (!API.token) return;
+    try {
+      const res = await fetch('/api/settings', { headers: API.headers() });
+      if (res.status === 401) {
+        const data = await res.json().catch(() => ({}));
+        stopSessionPoll();
+        if (data.reason === 'session_replaced') {
+          document.getElementById('sessionBanner').classList.add('show');
+        } else {
+          doLogout();
+        }
+      }
+    } catch {}
+  }, 20000);
+}
+
+function stopSessionPoll() {
+  if (_sessionPoll) { clearInterval(_sessionPoll); _sessionPoll = null; }
+}
+
+// ═══════════════════════════════════════════
+// USER MANAGEMENT
+// ═══════════════════════════════════════════
+function openUserModal(user) {
+  document.getElementById('userModalTitle').textContent = user ? 'Редактировать пользователя' : 'Новый пользователь';
+  document.getElementById('uEditId').value = user ? user.id : '';
+  document.getElementById('uUsername').value = user ? user.username : '';
+  document.getElementById('uUsername').disabled = !!user;
+  document.getElementById('uDisplayName').value = user ? (user.displayName || user.username) : '';
+  document.getElementById('uRole').value = user ? user.role : 'user';
+  document.getElementById('uPassword').value = '';
+  document.getElementById('uPassword2').value = '';
+  document.getElementById('uPassLabel').textContent = user
+    ? 'Новый пароль (оставьте пустым, чтобы не менять)'
+    : 'Пароль';
+  openModal('userModal');
+}
+
+async function saveUser() {
+  const editId = document.getElementById('uEditId').value;
+  const username = document.getElementById('uUsername').value.trim();
+  const displayName = document.getElementById('uDisplayName').value.trim();
+  const role = document.getElementById('uRole').value;
+  const password = document.getElementById('uPassword').value;
+  const password2 = document.getElementById('uPassword2').value;
+
+  if (!editId && !username) { showToast('Введите логин', true); return; }
+  if (!editId && !password) { showToast('Введите пароль', true); return; }
+  if (password && password !== password2) { showToast('Пароли не совпадают', true); return; }
+
+  let res;
+  if (editId) {
+    const body = { displayName, role };
+    if (password) body.newPassword = password;
+    res = await API.put('/users/' + editId, body);
+  } else {
+    res = await API.post('/users', { username, displayName, password, role });
+  }
+
+  if (res && res.ok) {
+    closeModal('userModal');
+    renderUsers();
+    showToast(editId ? 'Пользователь обновлён ✓' : 'Пользователь создан ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function kickUser(id, name) {
+  if (!confirm('Принудительно выйти пользователя "' + name + '"?\n\nЕго текущая сессия будет немедленно завершена.')) return;
+  const res = await API.post('/users/' + id + '/kick', {});
+  if (res && res.ok) { renderUsers(); showToast(name + ' выведен из системы'); }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm('Удалить пользователя "' + name + '"?\n\nЭто действие необратимо.')) return;
+  const res = await API.del('/users/' + id);
+  if (res && res.ok) { renderUsers(); showToast('Пользователь удалён'); }
+  else if (res) showToast(res.error || 'Ошибка', true);
+}
+
+async function renderUsers() {
+  const users = await API.get('/users');
+  if (!users) return;
+  const tbody = document.getElementById('usersTable');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">🔐</div><p>Нет пользователей</p></div></td></tr>';
+    return;
+  }
+  const myUsername = sessionStorage.getItem('cb_user');
+  tbody.innerHTML = users.map(u => {
+    const isMe = u.username === myUsername;
+    const onlineBadge = u.isOnline
+      ? '<span class="badge badge-online">● Онлайн</span>'
+      : '<span class="badge badge-offline">○ Офлайн</span>';
+    const roleBadge = u.role === 'admin'
+      ? '<span class="badge badge-yellow">Администратор</span>'
+      : '<span class="badge badge-blue">Сотрудник</span>';
+    const lastLogin = u.lastLoginAt
+      ? new Date(u.lastLoginAt).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : '—';
+    const safeUser = JSON.stringify(u).replace(/'/g, "\'");
+    const actions = isMe
+      ? '<span style="color:var(--text3);font-size:12px">это вы</span>'
+      : '<div style="display:flex;gap:6px;">'
+        + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser('' + u.id + '','' + (u.displayName||u.username).replace(/'/g,"\'") + '')" title="Выбить из системы">⏏ Выбить</button>' : '')
+        + '<button class="btn btn-sm" onclick='openUserModal(' + safeUser + ')'>✎</button>'
+        + '<button class="btn btn-sm btn-danger" onclick="deleteUser('' + u.id + '','' + (u.displayName||u.username).replace(/'/g,"\'") + '')">✕</button>'
+        + '</div>';
+    return '<tr>'
+      + '<td><b>' + (u.displayName||u.username) + '</b>' + (isMe ? ' <span style="color:var(--text3);font-size:11px">(вы)</span>' : '') + '</td>'
+      + '<td style="color:var(--text3);font-family:monospace">' + u.username + '</td>'
+      + '<td>' + roleBadge + '</td>'
+      + '<td>' + onlineBadge + '</td>'
+      + '<td style="color:var(--text3)">' + lastLogin + '</td>'
+      + '<td>' + actions + '</td>'
+      + '</tr>';
+  }).join('');
 }
 
 // ═══════════════════════════════════════════
