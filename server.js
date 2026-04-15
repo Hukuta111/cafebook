@@ -441,15 +441,10 @@ app.get('/api/settings', authMiddleware, (req, res) => {
   res.json(obj);
 });
 app.post('/api/settings', authMiddleware, (req, res) => {
-  const { cafeName, currency } = req.body;
-  db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('cafeName',?)`, [cafeName||'']);
-  db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('currency',?)`, [currency||'₴']);
-  saveDb();
-  res.json({ ok: true });
-});
-app.post('/api/settings/:key', authMiddleware, (req, res) => {
-  const { value } = req.body;
-  db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [req.params.key, value||'']);
+  const body = req.body;
+  Object.entries(body).forEach(([key, value]) => {
+    db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [key, value ?? '']);
+  });
   saveDb();
   res.json({ ok: true });
 });
