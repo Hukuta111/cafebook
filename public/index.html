@@ -353,6 +353,10 @@
         <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
       </select>
       <select id="txFilterEmployee" onchange="renderTransactions()"><option value="">Все сотрудники</option></select>
+      <select id="txSortOrder" onchange="renderTransactions()">
+        <option value="desc">Сначала новые</option>
+        <option value="asc">Сначала старые</option>
+      </select>
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title" id="txCount">Транзакции</span></div>
@@ -365,7 +369,13 @@
   <div class="page" id="page-daily">
     <div class="page-header">
       <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
-      <div class="mp-wrap" id="dailyMonthPicker"></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="mp-wrap" id="dailyMonthPicker"></div>
+        <select id="dailySortOrder" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
+          <option value="desc">Сначала новые</option>
+          <option value="asc">Сначала старые</option>
+        </select>
+      </div>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Дата</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Штрафы</th><th>Бонусы</th><th>Авансы</th><th>Итог</th></tr></thead>
@@ -415,6 +425,10 @@
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
       <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
+      <select id="salSortOrder" onchange="renderSalary()">
+        <option value="desc">Сначала новые</option>
+        <option value="asc">Сначала старые</option>
+      </select>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Дата</th><th>Сотрудник</th><th>Тип</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
@@ -1155,7 +1169,9 @@ async function renderTransactions() {
   if (month) url += 'month=' + month + '&';
   if (type) url += 'type=' + type + '&';
   if (empId) url += 'empId=' + empId;
-  const txs = await API.get(url) || [];
+  let txs = await API.get(url) || [];
+  const txSort = document.getElementById('txSortOrder').value;
+  txs.sort((a,b) => txSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   document.getElementById('txCount').textContent = `Транзакции (${txs.length})`;
   const tbody = document.getElementById('txTable');
   if (!txs.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`; return; }
@@ -1181,6 +1197,8 @@ async function renderDaily() {
   if (!_monthPickers['dailyMonthPicker']) createMonthPicker('dailyMonthPicker', () => renderDaily());
   const month = _monthPickers['dailyMonthPicker']?.value || '';
   const rows = await API.get('/reports/daily' + (month ? '?month=' + month : '')) || [];
+  const dailySort = document.getElementById('dailySortOrder').value;
+  rows.sort((a,b) => dailySort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   const tbody = document.getElementById('dailyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📅</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
@@ -1614,6 +1632,8 @@ async function renderSalary() {
   if (month) url += 'month=' + month + '&';
   if (empId) url += 'empId=' + empId;
   let txs = (await API.get(url) || []).filter(t => types.includes(t.type));
+  const salSort = document.getElementById('salSortOrder').value;
+  txs.sort((a,b) => salSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   const tbody = document.getElementById('salTable');
   if (!txs.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">💰</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = txs.map(t => {
