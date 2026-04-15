@@ -486,6 +486,16 @@
 
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Типы выплат</div>
+        <div style="color:var(--text3);font-size:12px;margin-bottom:12px;">Свои типы отображаются в начислении выплат рядом со стандартными (Зарплата, Аванс, Бонус, Штраф)</div>
+        <div id="salTypesList" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newSalTypeName" placeholder="Новый тип выплаты" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addSalType()">
+          <button class="btn btn-primary btn-sm" onclick="addSalType()">+ Добавить</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;">Данные</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="exportData()">📤 Экспорт JSON</button>
@@ -563,10 +573,7 @@
     </div>
     <div class="form-2col">
       <div class="form-row"><label>Тип</label>
-        <div style="display:flex;gap:6px;">
-          <select id="salType" style="flex:1"></select>
-          <button class="btn btn-sm" onclick="openNewSalTypePrompt()" title="Создать новый тип" style="padding:9px 12px;font-size:14px;">+</button>
-        </div>
+        <select id="salType"></select>
       </div>
       <div class="form-row"><label>Сумма</label><input type="number" id="salAmount" placeholder="0.00" min="0" step="0.01"></div>
     </div>
@@ -1602,6 +1609,8 @@ async function renderSettings() {
   const s = await API.get('/settings') || {};
   document.getElementById('settingCafeName').value = s.cafeName||'';
   document.getElementById('settingCurrency').value = s.currency||'₴';
+  await loadReasons();
+  renderSalTypesList();
 }
 
 // ═══════════════════════════════════════════
@@ -1614,32 +1623,61 @@ const DEFAULT_SAL_TYPES = [
   { value:'fine', label:'Штраф' },
 ];
 
-function getSalTypeOptions() {
-  const custom = _reasons.map(r => ({ value: 'custom_' + r.id, label: r.name, customId: r.id }));
-  return [...DEFAULT_SAL_TYPES, ...custom];
-}
-
 function populateSalTypeSelect() {
   const sel = document.getElementById('salType');
-  sel.innerHTML = getSalTypeOptions().map(o =>
-    `<option value="${o.value}">${o.label}</option>`
-  ).join('');
+  const custom = _reasons.map(r => `<option value="custom_${r.id}">${r.name}</option>`).join('');
+  sel.innerHTML = DEFAULT_SAL_TYPES.map(o => `<option value="${o.value}">${o.label}</option>`).join('') + custom;
 }
 
-function openNewSalTypePrompt() {
-  const name = prompt('Название нового типа выплаты:');
-  if (!name || !name.trim()) return;
-  API.post('/reasons', { id: uid(), type: 'custom', name: name.trim() }).then(async res => {
-    if (res && res.ok) {
-      await loadReasons();
-      populateSalTypeSelect();
-      // выбрать только что созданный
-      const sel = document.getElementById('salType');
-      const last = _reasons[_reasons.length - 1];
-      if (last) sel.value = 'custom_' + last.id;
-      showToast('Тип добавлен ✓');
-    }
-  });
+function renderSalTypesList() {
+  const list = document.getElementById('salTypesList');
+  if (!_reasons.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">Нет кастомных типов</div>';
+    return;
+  }
+  list.innerHTML = _reasons.map(r => {
+    const safeName = r.name.replace(/"/g, '&quot;');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <input type="text" value="${safeName}"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
+        onchange="renameSalType('${r.id}',this.value)">
+      <button class="btn btn-sm btn-danger" onclick="deleteSalType('${r.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addSalType() {
+  const input = document.getElementById('newSalTypeName');
+  const name = input.value.trim();
+  if (!name) { showToast('Введите название', true); return; }
+  const res = await API.post('/reasons', { id: uid(), type: 'custom', name });
+  if (res && res.ok) {
+    input.value = '';
+    await loadReasons();
+    renderSalTypesList();
+    showToast('Тип добавлен ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function renameSalType(id, newName) {
+  newName = newName.trim();
+  if (!newName) { showToast('Название не может быть пустым', true); return; }
+  const res = await API.put('/reasons/' + id, { type: 'custom', name: newName });
+  if (res && res.ok) {
+    await loadReasons();
+    showToast('Переименовано ✓');
+  }
+}
+
+async function deleteSalType(id) {
+  const res = await API.del('/reasons/' + id);
+  if (res && res.ok) {
+    await loadReasons();
+    renderSalTypesList();
+    showToast('Удалено');
+  }
 }
 
 async function saveSettings() {
