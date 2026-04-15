@@ -573,6 +573,7 @@
     <div class="form-row"><label>Комментарий</label><input type="text" id="schedNote" placeholder="Примечание"></div>
     <input type="hidden" id="schedEditId">
     <div class="modal-footer">
+      <button class="btn btn-danger" id="schedDeleteBtn" style="display:none;margin-right:auto" onclick="deleteScheduleFromModal()">Удалить</button>
       <button class="btn" onclick="closeModal('schedModal')">Отмена</button>
       <button class="btn btn-primary" onclick="saveScheduleEntry()">Сохранить</button>
     </div>
@@ -1184,8 +1185,17 @@ function openSchedModal(entry, dateStr, empId) {
   document.getElementById('schedHours').value = entry ? entry.hours : '';
   document.getElementById('schedRate').value = (entry && entry.hourly_rate != null) ? entry.hourly_rate : '';
   document.getElementById('schedNote').value = entry ? entry.note || '' : '';
+  document.getElementById('schedDeleteBtn').style.display = entry ? '' : 'none';
 
   openModal('schedModal');
+}
+
+async function deleteScheduleFromModal() {
+  const id = document.getElementById('schedEditId').value;
+  if (!id) return;
+  if (!confirm('Удалить эту смену?')) return;
+  const res = await API.del('/schedule/' + id);
+  if (res && res.ok) { closeModal('schedModal'); renderSchedule(); showToast('Смена удалена'); }
 }
 
 async function saveScheduleEntry() {
