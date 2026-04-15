@@ -1632,7 +1632,7 @@ async function loadSalTypes() {
 }
 
 async function saveSalTypes() {
-  await API.post('/settings/salTypes', { value: JSON.stringify(_salTypes) });
+  await API.post('/settings', { salTypes: JSON.stringify(_salTypes) });
 }
 
 function getAllSalTypes() {
