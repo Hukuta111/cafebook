@@ -676,6 +676,8 @@ const API = {
         body: body ? JSON.stringify(body) : undefined,
       });
       if (res.status === 401) { doLogout(); return null; }
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) return null;
       return await res.json();
     } catch (e) {
       showToast('Ошибка сети: ' + e.message, true);
@@ -827,21 +829,25 @@ async function changePassword() {
 // INITIAL DATA LOAD
 // ═══════════════════════════════════════════
 async function loadInitialData() {
-  const [settings, emps, positions, reasons] = await Promise.all([
-    fetch('/api/settings', { headers: API.headers() }).then(r => r.json()),
-    fetch('/api/employees', { headers: API.headers() }).then(r => r.json()),
-    fetch('/api/positions', { headers: API.headers() }).then(r => r.json()),
-    fetch('/api/reasons', { headers: API.headers() }).then(r => r.json()),
-  ]);
-  showLoader(false);
-  _currency = settings.currency || '₴';
-  _employees = emps || [];
-  _positions = positions || [];
-  _reasons = reasons || [];
-  if (settings.cafeName) {
-    document.getElementById('cafeNameSub').textContent = settings.cafeName;
-    document.title = settings.cafeName + ' — CaféBook';
+  try {
+    const [settings, emps, positions, reasons] = await Promise.all([
+      API.get('/settings'),
+      API.get('/employees'),
+      API.get('/positions'),
+      API.get('/reasons'),
+    ]);
+    _currency = (settings && settings.currency) || '₴';
+    _employees = emps || [];
+    _positions = positions || [];
+    _reasons = reasons || [];
+    if (settings && settings.cafeName) {
+      document.getElementById('cafeNameSub').textContent = settings.cafeName;
+      document.title = settings.cafeName + ' — CaféBook';
+    }
+  } catch(e) {
+    console.error('loadInitialData error:', e);
   }
+  showLoader(false);
   await renderDashboard();
 }
 
