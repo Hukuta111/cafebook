@@ -565,7 +565,7 @@ const TX_CATS = {
   income: ['Выручка кассы','Доставка','Кейтеринг','Прочий доход'],
   expense: ['Продукты','Напитки','Аренда','Коммунальные','Упаковка','Реклама','Оборудование','Прочий расход'],
   salary: ['Основная з/п'], advance: ['Аванс'],
-  bonus: ['Бонус за план','Праздничный бонус','Прочой бонус'],
+  bonus: ['Бонус за план','Праздничный бонус','Прочий бонус'],
   fine: ['Нарушение','Недостача','Опоздание','Прочее'],
 };
 const TYPE_LABELS = { income:'Доход', expense:'Расход', salary:'Зарплата', advance:'Аванс', bonus:'Бонус', fine:'Штраф' };
@@ -783,7 +783,7 @@ async function renderDashboard() {
     else if (t.type==='bonus') bonus+=t.amount;
     else if (t.type==='fine') fine+=t.amount;
   });
-  const profit = income + bonus - expense - salary - advance - fine;
+  const profit = income - expense - salary - advance - bonus + fine;
 
   document.getElementById('dashCards').innerHTML = `
     <div class="stat-card green"><div class="stat-label">Доходы</div><div class="stat-value green">${fmt(income)} ${_currency}</div><div class="stat-sub">за месяц</div></div>
@@ -797,7 +797,7 @@ async function renderDashboard() {
   const byDay = {};
   txs.forEach(t => {
     if (!byDay[t.date]) byDay[t.date] = { income:0, expense:0 };
-    if (t.type==='income'||t.type==='bonus') byDay[t.date].income += +t.amount;
+    if (t.type==='income') byDay[t.date].income += +t.amount;
     else byDay[t.date].expense += +t.amount;
   });
   const days = Object.keys(byDay).sort().slice(-14);
@@ -833,8 +833,8 @@ async function renderDashboard() {
   const recent = allTx.slice(0,8);
   document.getElementById('recentTx').innerHTML = recent.length
     ? recent.map(t=>{
-        const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
-        const sign = ['income','bonus'].includes(t.type)?'+':'-';
+        const col = ['income','fine'].includes(t.type)?'var(--green)':'var(--red)';
+        const sign = ['income','fine'].includes(t.type)?'+':'-';
         return `<tr>
           <td>${dateLabel(t.date)}</td>
           <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
@@ -898,8 +898,8 @@ async function renderTransactions() {
   const tbody = document.getElementById('txTable');
   if (!txs.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`; return; }
   tbody.innerHTML = txs.map(t => {
-    const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
-    const sign = ['income','bonus'].includes(t.type)?'+':'-';
+    const col = ['income','fine'].includes(t.type)?'var(--green)':'var(--red)';
+    const sign = ['income','fine'].includes(t.type)?'+':'-';
     return `<tr>
       <td>${dateLabel(t.date)}</td>
       <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
@@ -921,7 +921,7 @@ async function renderDaily() {
   const tbody = document.getElementById('dailyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📅</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
-    const total = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const total = +r.income - +r.expense - +r.salary - +r.advance - +r.bonus + +r.fine;
     const col = total>=0?'var(--green)':'var(--red)';
     return `<tr>
       <td><b>${dateLabel(r.date)}</b></td>
@@ -941,7 +941,7 @@ async function renderMonthly() {
   const tbody = document.getElementById('monthlyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📆</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
-    const profit = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const profit = +r.income - +r.expense - +r.salary - +r.advance - +r.bonus + +r.fine;
     const col = profit>=0?'var(--green)':'var(--red)';
     return `<tr>
       <td><b>${monthLabel(r.month)}</b></td>
@@ -1284,13 +1284,14 @@ async function renderUsers() {
     const lastLogin = u.lastLoginAt
       ? new Date(u.lastLoginAt).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
       : '—';
-    const safeUser = JSON.stringify(u).replace(/'/g, "\'");
+    const escapedName = (u.displayName||u.username).replace(/"/g, '&quot;');
+    const safeUser = JSON.stringify(u).replace(/"/g, '&quot;');
     const actions = isMe
       ? '<span style="color:var(--text3);font-size:12px">это вы</span>'
       : '<div style="display:flex;gap:6px;">'
-        + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser('' + u.id + '','' + (u.displayName||u.username).replace(/'/g,"\'") + '')" title="Выбить из системы">⏏ Выбить</button>' : '')
-        + '<button class="btn btn-sm" onclick='openUserModal(' + safeUser + ')'>✎</button>'
-        + '<button class="btn btn-sm btn-danger" onclick="deleteUser('' + u.id + '','' + (u.displayName||u.username).replace(/'/g,"\'") + '')">✕</button>'
+        + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)" title="Выбить из системы">⏏ Выбить</button>' : '')
+        + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')">✎</button>'
+        + '<button class="btn btn-sm btn-danger" onclick="deleteUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)">✕</button>'
         + '</div>';
     return '<tr>'
       + '<td><b>' + (u.displayName||u.username) + '</b>' + (isMe ? ' <span style="color:var(--text3);font-size:11px">(вы)</span>' : '') + '</td>'
