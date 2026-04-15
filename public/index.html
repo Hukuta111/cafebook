@@ -588,7 +588,9 @@
       <div class="form-row"><label>Сумма</label><input type="number" id="salAmount" placeholder="0.00" min="0" step="0.01"></div>
     </div>
     <div class="form-row"><label>Комментарий</label><input type="text" id="salNote" placeholder="Примечание"></div>
+    <input type="hidden" id="salEditId">
     <div class="modal-footer">
+      <button class="btn btn-danger" id="salDeleteBtn" style="display:none;margin-right:auto" onclick="deleteSalFromModal()">Удалить</button>
       <button class="btn" onclick="closeModal('salModal')">Отмена</button>
       <button class="btn btn-primary" onclick="saveSalaryEntry()">Сохранить</button>
     </div>
@@ -1495,16 +1497,22 @@ function renderEmployees() {
 // ═══════════════════════════════════════════
 // SALARY
 // ═══════════════════════════════════════════
-function openSalModal() {
+function openSalModal(tx) {
   populateEmpSelects();
   populateSalTypeSelect();
-  document.getElementById('salDate').value = today();
-  document.getElementById('salAmount').value = '';
-  document.getElementById('salNote').value = '';
+  document.getElementById('salEditId').value = tx ? tx.id : '';
+  document.getElementById('salDate').value = tx ? tx.date : today();
+  if (tx) document.getElementById('salEmployee').value = tx.emp_id || '';
+  document.getElementById('salType').value = tx ? tx.type : 'salary';
+  document.getElementById('salAmount').value = tx ? tx.amount : '';
+  document.getElementById('salNote').value = tx ? tx.note||'' : '';
+  document.getElementById('salDeleteBtn').style.display = tx ? '' : 'none';
+  document.querySelector('#salModal .modal-title').textContent = tx ? 'Редактировать выплату' : 'Начисление выплаты';
   openModal('salModal');
 }
 
 async function saveSalaryEntry() {
+  const editId = document.getElementById('salEditId').value;
   const date = document.getElementById('salDate').value;
   const empId = document.getElementById('salEmployee').value;
   const typeVal = document.getElementById('salType').value;
@@ -1521,7 +1529,6 @@ async function saveSalaryEntry() {
     type = typeVal;
     cat = salTypeObj.label;
   } else if (salTypeObj) {
-    // кастомный тип: sign '+' → income, sign '-' → expense
     type = salTypeObj.sign === '+' ? 'income' : 'salary';
     cat = salTypeObj.label;
   } else {
@@ -1529,8 +1536,17 @@ async function saveSalaryEntry() {
     cat = typeVal;
   }
 
-  const res = await API.post('/transactions', { id: uid(), date, type, cat, empId, amount, note: note||(emp?emp.name:'') });
-  if (res && res.ok) { closeModal('salModal'); renderSalary(); showToast('Выплата записана ✓'); }
+  const res = editId
+    ? await API.put('/transactions/' + editId, { date, type, cat, empId, amount, note: note||(emp?emp.name:'') })
+    : await API.post('/transactions', { id: uid(), date, type, cat, empId, amount, note: note||(emp?emp.name:'') });
+  if (res && res.ok) { closeModal('salModal'); renderSalary(); showToast(editId ? 'Выплата обновлена ✓' : 'Выплата записана ✓'); }
+}
+
+async function deleteSalFromModal() {
+  const id = document.getElementById('salEditId').value;
+  if (!id) return;
+  const res = await API.del('/transactions/' + id);
+  if (res && res.ok) { closeModal('salModal'); renderSalary(); showToast('Удалено'); }
 }
 
 async function renderSalary() {
@@ -1554,7 +1570,7 @@ async function renderSalary() {
       <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
       <td style="font-weight:600;color:${col}">${fmt(t.amount)} ${_currency}</td>
       <td style="color:var(--text3)">${t.note||'—'}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteSalTx('${t.id}')">✕</button></td>
+      <td style="display:flex;gap:4px;"><button class="btn btn-sm" onclick="openSalModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteSalTx('${t.id}')">✕</button></td>
     </tr>`;
   }).join('');
 }
