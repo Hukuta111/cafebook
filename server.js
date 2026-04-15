@@ -428,6 +428,15 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
+app.put('/api/transactions/:id', authMiddleware, (req, res) => {
+  const { date, type, cat, empId, amount, note } = req.body;
+  db.run(
+    'UPDATE transactions SET date=?,type=?,cat=?,emp_id=?,amount=?,note=? WHERE id=?',
+    [date, type, cat||'', empId||null, parseFloat(amount), note||'', req.params.id]
+  );
+  saveDb();
+  res.json({ ok: true });
+});
 app.delete('/api/transactions/:id', authMiddleware, (req, res) => {
   db.run('DELETE FROM transactions WHERE id=?', [req.params.id]);
   saveDb();
