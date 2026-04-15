@@ -987,10 +987,19 @@ function populateEmpSelects() {
   const active = _employees.filter(e => e.status === 'active');
   const opts = active.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
   const all = `<option value="">Все сотрудники</option>` + opts;
+
+  const txFilter = document.getElementById('txFilterEmployee');
+  const salFilter = document.getElementById('salFilterEmployee');
+  const prevTx = txFilter.value;
+  const prevSal = salFilter.value;
+
   document.getElementById('txEmployee').innerHTML = `<option value="">— не указан —</option>` + opts;
-  document.getElementById('txFilterEmployee').innerHTML = all;
+  txFilter.innerHTML = all;
   document.getElementById('salEmployee').innerHTML = opts || '<option value="">— нет сотрудников —</option>';
-  document.getElementById('salFilterEmployee').innerHTML = all;
+  salFilter.innerHTML = all;
+
+  txFilter.value = prevTx;
+  salFilter.value = prevSal;
 }
 
 function empName(id) {
