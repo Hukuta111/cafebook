@@ -256,6 +256,7 @@
     <div class="nav-item" data-page="daily" onclick="nav(this)"><span class="icon">📅</span> Дневные отчёты</div>
     <div class="nav-item" data-page="monthly" onclick="nav(this)"><span class="icon">📆</span> Месячные отчёты</div>
     <div class="nav-group-label">Персонал</div>
+    <div class="nav-item" data-page="positions" onclick="nav(this)"><span class="icon">📌</span> Должности</div>
     <div class="nav-item" data-page="employees" onclick="nav(this)"><span class="icon">👥</span> Сотрудники</div>
     <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
     <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
@@ -327,6 +328,18 @@
     <div class="table-wrap">
       <table><thead><tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
       <tbody id="monthlyTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- POSITIONS -->
+  <div class="page" id="page-positions">
+    <div class="page-header">
+      <div><div class="page-title">Должности</div><div class="page-subtitle">Управление списком должностей</div></div>
+      <button class="btn btn-primary" onclick="openPosModal()">+ Добавить</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Название</th><th></th></tr></thead>
+      <tbody id="posTable"></tbody></table>
     </div>
   </div>
 
@@ -450,7 +463,7 @@
     <div class="modal-title" id="empModalTitle">Сотрудник</div>
     <div class="form-2col">
       <div class="form-row"><label>Имя</label><input type="text" id="empName" placeholder="Полное имя"></div>
-      <div class="form-row"><label>Должность</label><input type="text" id="empRole" placeholder="Бариста, Администратор..."></div>
+      <div class="form-row"><label>Должность</label><select id="empRole"><option value="">— не указана —</option></select></div>
     </div>
     <div class="form-2col">
       <div class="form-row"><label>Тип персонала</label>
@@ -494,6 +507,19 @@
   </div>
 </div>
 
+
+<!-- POSITION MODAL -->
+<div class="modal-overlay" id="posModal">
+  <div class="modal">
+    <div class="modal-title" id="posModalTitle">Должность</div>
+    <div class="form-row"><label>Название</label><input type="text" id="posName" placeholder="Например: Бариста"></div>
+    <input type="hidden" id="posEditId">
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('posModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="savePosition()">Сохранить</button>
+    </div>
+  </div>
+</div>
 
 <!-- USER MODAL -->
 <div class="modal-overlay" id="userModal">
@@ -694,13 +720,15 @@ async function changePassword() {
 // INITIAL DATA LOAD
 // ═══════════════════════════════════════════
 async function loadInitialData() {
-  const [settings, emps] = await Promise.all([
+  const [settings, emps, positions] = await Promise.all([
     fetch('/api/settings', { headers: API.headers() }).then(r => r.json()),
     fetch('/api/employees', { headers: API.headers() }).then(r => r.json()),
+    fetch('/api/positions', { headers: API.headers() }).then(r => r.json()),
   ]);
   showLoader(false);
   _currency = settings.currency || '₴';
   _employees = emps || [];
+  _positions = positions || [];
   if (settings.cafeName) {
     document.getElementById('cafeNameSub').textContent = settings.cafeName;
     document.title = settings.cafeName + ' — CaféBook';
@@ -730,6 +758,7 @@ function nav(el) {
   if (page === 'transactions') { document.getElementById('txFilterMonth').value = today_month; renderTransactions(); }
   if (page === 'daily') { document.getElementById('dailyFilterMonth').value = today_month; renderDaily(); }
   if (page === 'monthly') renderMonthly();
+  if (page === 'positions') renderPositions();
   if (page === 'employees') renderEmployees();
   if (page === 'salary') { document.getElementById('salFilterMonth').value = today_month; renderSalary(); }
   if (page === 'salary-report') renderSalaryReport();
@@ -957,9 +986,75 @@ async function renderMonthly() {
 }
 
 // ═══════════════════════════════════════════
+// POSITIONS
+// ═══════════════════════════════════════════
+let _positions = [];
+
+async function loadPositions() {
+  _positions = await API.get('/positions') || [];
+}
+
+function populatePositionSelects() {
+  const opts = _positions.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  document.getElementById('empRole').innerHTML = '<option value="">— не указана —</option>' + opts;
+}
+
+async function renderPositions() {
+  await loadPositions();
+  const tbody = document.getElementById('posTable');
+  if (!_positions.length) {
+    tbody.innerHTML = '<tr><td colspan="2"><div class="empty-state"><div class="icon">📌</div><p>Нет должностей</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = _positions.map(p => {
+    const safeName = p.name.replace(/"/g, '&quot;');
+    const safeP = JSON.stringify(p).replace(/"/g, '&quot;');
+    return `<tr>
+      <td><b>${p.name}</b></td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm" onclick="openPosModal(${safeP})">✎</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePosition('${p.id}','${safeName}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openPosModal(pos) {
+  document.getElementById('posModalTitle').textContent = pos ? 'Редактировать должность' : 'Новая должность';
+  document.getElementById('posEditId').value = pos ? pos.id : '';
+  document.getElementById('posName').value = pos ? pos.name : '';
+  openModal('posModal');
+}
+
+async function savePosition() {
+  const id = document.getElementById('posEditId').value || uid();
+  const name = document.getElementById('posName').value.trim();
+  if (!name) { showToast('Введите название', true); return; }
+  const isEdit = !!document.getElementById('posEditId').value;
+  const res = isEdit
+    ? await API.put('/positions/' + id, { name })
+    : await API.post('/positions', { id, name });
+  if (res && res.ok) {
+    closeModal('posModal');
+    await loadPositions();
+    renderPositions();
+    showToast('Должность сохранена ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function deletePosition(id, name) {
+  if (!confirm('Удалить должность "' + name + '"?')) return;
+  const res = await API.del('/positions/' + id);
+  if (res && res.ok) { renderPositions(); showToast('Удалено'); }
+}
+
+// ═══════════════════════════════════════════
 // EMPLOYEES
 // ═══════════════════════════════════════════
 function openEmpModal(emp) {
+  populatePositionSelects();
   document.getElementById('empModalTitle').textContent = emp ? 'Редактировать сотрудника' : 'Новый сотрудник';
   document.getElementById('empEditId').value = emp ? emp.id : '';
   document.getElementById('empName').value = emp ? emp.name : '';

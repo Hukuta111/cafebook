@@ -43,6 +43,10 @@ async function initDb() {
       cat TEXT, emp_id TEXT, amount REAL NOT NULL, note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS positions (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
   `);
   saveDb();
@@ -255,6 +259,39 @@ app.delete('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
   }
   cfg.users = cfg.users.filter(u => u.id !== req.params.id);
   saveConfig(cfg);
+  res.json({ ok: true });
+});
+
+// ─── POSITIONS ────────────────────────────────────────────
+app.get('/api/positions', authMiddleware, (req, res) => {
+  const rows = db.exec('SELECT * FROM positions ORDER BY name');
+  res.json(rows[0] ? rowsToObjects(rows[0]) : []);
+});
+app.post('/api/positions', authMiddleware, (req, res) => {
+  const { id, name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
+  try {
+    db.run('INSERT INTO positions (id, name) VALUES (?, ?)', [id, name.trim()]);
+    saveDb();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: 'Такая должность уже существует' });
+  }
+});
+app.put('/api/positions/:id', authMiddleware, (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
+  try {
+    db.run('UPDATE positions SET name=? WHERE id=?', [name.trim(), req.params.id]);
+    saveDb();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: 'Такая должность уже существует' });
+  }
+});
+app.delete('/api/positions/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM positions WHERE id=?', [req.params.id]);
+  saveDb();
   res.json({ ok: true });
 });
 
