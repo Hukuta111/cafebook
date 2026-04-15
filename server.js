@@ -31,33 +31,34 @@ async function initDb() {
   } else {
     db = new SQL.Database();
   }
-  db.run(`
-    CREATE TABLE IF NOT EXISTS employees (
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS employees (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT,
       type TEXT DEFAULT 'staff', salary REAL DEFAULT 0,
       phone TEXT, start_date TEXT, status TEXT DEFAULT 'active',
       created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS transactions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY, date TEXT NOT NULL, type TEXT NOT NULL,
       cat TEXT, emp_id TEXT, amount REAL NOT NULL, note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS positions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS positions (
       id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
       created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS schedule (
+    )`,
+    `CREATE TABLE IF NOT EXISTS schedule (
       id TEXT PRIMARY KEY, emp_id TEXT NOT NULL, work_date TEXT NOT NULL,
       hours REAL NOT NULL, hourly_rate REAL, note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS reasons (
+    )`,
+    `CREATE TABLE IF NOT EXISTS reasons (
       id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
-  `);
+    )`,
+    `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
+  ];
+  tables.forEach(sql => db.run(sql));
 
   // Миграция: добавить hourly_rate в employees если нет
   try { db.run('ALTER TABLE employees ADD COLUMN hourly_rate REAL DEFAULT 0'); } catch(e) {}
