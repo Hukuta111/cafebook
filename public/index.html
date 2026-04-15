@@ -1193,7 +1193,6 @@ function openSchedModal(entry, dateStr, empId) {
 async function deleteScheduleFromModal() {
   const id = document.getElementById('schedEditId').value;
   if (!id) return;
-  if (!confirm('Удалить эту смену?')) return;
   const res = await API.del('/schedule/' + id);
   if (res && res.ok) { closeModal('schedModal'); renderSchedule(); showToast('Смена удалена'); }
 }
