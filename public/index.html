@@ -238,8 +238,8 @@
     body{background:#fff;color:#000;font-size:10px}
     .salary-card{border:1px solid #ccc;margin-bottom:12px}
     .stat-value.green{color:#2a7d4f} .stat-value.red{color:#c0392b}
-    .page:not(.print-target){display:none!important}
-    .page.print-target{display:block!important}
+    .page:not(.print-target):not(.active){display:none!important}
+    .page.print-target,.page.active{display:block!important}
 
     /* Schedule print */
     #page-schedule.print-target{page:schedule-landscape}
