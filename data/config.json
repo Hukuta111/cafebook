@@ -2,7 +2,7 @@
   "users": [
     {
       "username": "admin",
-      "passwordHash": "$2b$10$tLe0A8amoCP89TyZEfeR.erfUwZ9dG.s1bLMpPKw9lod4plBfnKvC",
+      "passwordHash": "$2b$10$sDpPLIz2.hLGpmyzfWFvxODnhCU0YVS9VooZFq/SV1N5FuTjDglgC",
       "role": "admin"
     }
   ]
