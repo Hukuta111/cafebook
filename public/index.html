@@ -778,6 +778,8 @@ const EMP_TYPE_LABELS = { staff:'Сотрудник', admin:'Администр�
 // ═══════════════════════════════════════════
 let _currency = '₴';
 let _employees = [];
+let _userRole = 'user';
+let _userPermissions = {};
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function fmt(n) { return (n||0).toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -1162,8 +1164,6 @@ document.addEventListener('click', () => {
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
-let _userRole = 'user';
-let _userPermissions = {};
 
 function canView(page) {
   if (_userRole === 'admin') return true;
