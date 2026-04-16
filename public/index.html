@@ -455,7 +455,7 @@
       <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
+      <table><thead><tr><th>Таб. №</th><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
       <tbody id="empTable"></tbody></table>
     </div>
   </div>
@@ -627,6 +627,7 @@
     </div>
     <div class="form-2col">
       <div class="form-row"><label>Ставка/час</label><input type="number" id="empHourlyRate" placeholder="0" min="0" step="0.01"></div>
+      <div class="form-row"><label>Табельный №</label><input type="text" id="empTabNumber" placeholder="например: 001"></div>
     </div>
     <div class="form-2col">
       <div class="form-row"><label>Процент от выручки (%)</label><input type="number" id="empPercent" placeholder="0" min="0" max="100" step="0.1"></div>
@@ -1799,6 +1800,7 @@ function openEmpModal(emp) {
   document.getElementById('empType').value = emp ? emp.type||'staff' : 'staff';
   document.getElementById('empSalary').value = emp ? emp.salary||'' : '';
   document.getElementById('empHourlyRate').value = emp ? emp.hourly_rate||'' : '';
+  document.getElementById('empTabNumber').value = emp ? emp.tab_number||'' : '';
   document.getElementById('empPercent').value = emp ? emp.percent||'' : '';
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
@@ -1814,6 +1816,7 @@ async function saveEmployee() {
     type: document.getElementById('empType').value,
     salary: parseFloat(document.getElementById('empSalary').value)||0,
     hourly_rate: parseFloat(document.getElementById('empHourlyRate').value)||0,
+    tab_number: document.getElementById('empTabNumber').value.trim() || null,
     percent: parseFloat(document.getElementById('empPercent').value)||0,
     phone: document.getElementById('empPhone').value,
     start_date: document.getElementById('empStart').value,
@@ -1838,8 +1841,9 @@ async function deleteEmployee(id) {
 
 function renderEmployees() {
   const tbody = document.getElementById('empTable');
-  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
+  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
   tbody.innerHTML = _employees.map(e => `<tr>
+    <td style="font-family:monospace;color:var(--accent)">${e.tab_number || '—'}</td>
     <td><b>${e.name}</b></td>
     <td>${e.role||'—'}</td>
     <td><span class="badge badge-blue">${EMP_TYPE_LABELS[e.type]||e.type}</span></td>
@@ -2000,7 +2004,7 @@ async function renderSalaryReport() {
     html += `<div class="salary-card">
       <div class="salary-card-header">
         <div>
-          <div class="salary-card-name">${emp?emp.name:'Удалённый сотрудник'}</div>
+          <div class="salary-card-name">${emp?emp.name:'Удалённый сотрудник'}${emp&&emp.tab_number ? ' <span style="color:var(--accent);font-family:monospace;font-size:13px;font-weight:500">№'+emp.tab_number+'</span>' : ''}</div>
           <div class="salary-card-role">${emp?(emp.role||''):''}${emp?' · ':''}<span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span>${emp&&emp.percent ? ' · <span style="color:var(--accent)">'+emp.percent+'% от выручки</span>' : ''}</div>
         </div>
         <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
