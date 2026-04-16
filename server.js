@@ -777,6 +777,18 @@ function uid() {
 
 // ─── START ─────────────────────────────────────────────────
 initDb().then(() => {
+  // Сброс пароля admin при запуске с RESET_ADMIN=1
+  if (process.env.RESET_ADMIN === '1') {
+    const admin = dbGetUserByUsername('admin');
+    if (admin) {
+      dbUpdateUser(admin.id, {
+        password_hash: bcrypt.hashSync('admin123', 10),
+        session_id: null,
+      });
+      saveDb();
+      console.log('\n🔐  Пароль admin сброшен на admin123\n');
+    }
+  }
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n✅  CaféBook запущен: http://localhost:${PORT}`);
     console.log(`🌐  В сети:           http://<ВАШ_IP>:${PORT}`);
