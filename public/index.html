@@ -467,6 +467,23 @@
       <div><div class="page-title">Сотрудники</div><div class="page-subtitle">Управление персоналом</div></div>
       <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()">+ Добавить</button>
     </div>
+    <div class="filters">
+      <input type="text" id="empFilterSearch" placeholder="🔍 Поиск по имени или табельному №" oninput="renderEmployees()" style="min-width:260px;">
+      <select id="empFilterPosition" onchange="renderEmployees()">
+        <option value="">Все должности</option>
+      </select>
+      <select id="empFilterType" onchange="renderEmployees()">
+        <option value="">Все типы</option>
+        <option value="staff">Сотрудник</option>
+        <option value="admin">Администратор</option>
+        <option value="manager">Менеджер</option>
+      </select>
+      <select id="empFilterStatus" onchange="renderEmployees()">
+        <option value="active">Активные</option>
+        <option value="inactive">Уволенные</option>
+        <option value="">Все</option>
+      </select>
+    </div>
     <div class="table-wrap">
       <table><thead><tr><th>Таб. №</th><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
       <tbody id="empTable"></tbody></table>
@@ -1900,8 +1917,40 @@ async function deleteEmployee(id) {
 
 function renderEmployees() {
   const tbody = document.getElementById('empTable');
-  if (!_employees.length) { tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>`; return; }
-  tbody.innerHTML = _employees.map(e => `<tr>
+
+  // заполнить список должностей в фильтре (без дублей)
+  const posFilter = document.getElementById('empFilterPosition');
+  if (posFilter) {
+    const prev = posFilter.value;
+    const uniqueRoles = [...new Set(_employees.map(e => e.role).filter(Boolean))].sort();
+    posFilter.innerHTML = '<option value="">Все должности</option>' + uniqueRoles.map(r => `<option value="${r}">${r}</option>`).join('');
+    posFilter.value = prev;
+  }
+
+  // применение фильтров
+  const search = (document.getElementById('empFilterSearch')?.value || '').trim().toLowerCase();
+  const filterPosition = document.getElementById('empFilterPosition')?.value || '';
+  const filterType = document.getElementById('empFilterType')?.value || '';
+  const filterStatus = document.getElementById('empFilterStatus')?.value || '';
+
+  const list = _employees.filter(e => {
+    if (search) {
+      const matchName = e.name && e.name.toLowerCase().includes(search);
+      const matchTab = e.tab_number && String(e.tab_number).toLowerCase().includes(search);
+      if (!matchName && !matchTab) return false;
+    }
+    if (filterPosition && e.role !== filterPosition) return false;
+    if (filterType && e.type !== filterType) return false;
+    if (filterStatus && e.status !== filterStatus) return false;
+    return true;
+  });
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">👥</div><p>${_employees.length ? 'Нет сотрудников по заданным фильтрам' : 'Нет сотрудников'}</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(e => `<tr>
     <td style="font-family:monospace;color:var(--accent)">${e.tab_number || '—'}</td>
     <td><b>${e.name}</b></td>
     <td>${e.role||'—'}</td>
