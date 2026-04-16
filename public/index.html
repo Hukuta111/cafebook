@@ -698,6 +698,13 @@
     <div class="form-row"><label>Статус</label>
       <select id="empStatus"><option value="active">Активный</option><option value="inactive">Уволен</option></select>
     </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="empHiddenInSchedule" style="accent-color:var(--accent);">
+        <span>Скрывать в графике работы</span>
+      </label>
+      <div style="color:var(--text3);font-size:11px;margin-top:4px;">Для сотрудников, которым не нужно отмечать часы (закупщик, администратор и т.п.)</div>
+    </div>
     <input type="hidden" id="empEditId">
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('empModal')">Отмена</button>
@@ -780,6 +787,13 @@
   <div class="modal">
     <div class="modal-title" id="posModalTitle">Должность</div>
     <div class="form-row"><label>Название</label><input type="text" id="posName" placeholder="Например: Бариста"></div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="posHiddenInSchedule" style="accent-color:var(--accent);">
+        <span>Скрывать в графике работы</span>
+      </label>
+      <div style="color:var(--text3);font-size:11px;margin-top:4px;">Должности, которым не нужно отмечать часы</div>
+    </div>
     <input type="hidden" id="posEditId">
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('posModal')">Отмена</button>
@@ -1666,7 +1680,14 @@ const SHORT_DAYS = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 
 async function renderSchedule() {
   _employees = await API.get('/employees') || [];
-  let active = _employees.filter(e => e.status === 'active');
+  _positions = await API.get('/positions') || [];
+  // названия должностей, которые скрыты в графике
+  const hiddenRoles = new Set(_positions.filter(p => +p.hidden_in_schedule).map(p => p.name));
+  let active = _employees.filter(e =>
+    e.status === 'active' &&
+    !+e.hidden_in_schedule &&
+    !hiddenRoles.has(e.role || '')
+  );
   // применить сохранённый порядок из localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('cb_sched_order') || '[]');
@@ -2035,7 +2056,7 @@ async function renderPositions() {
     const safeName = p.name.replace(/"/g, '&quot;');
     const safeP = JSON.stringify(p).replace(/"/g, '&quot;');
     return `<tr>
-      <td><b>${p.name}</b></td>
+      <td><b>${p.name}</b>${+p.hidden_in_schedule ? ' <span class="badge badge-purple" style="margin-left:8px;font-size:10px;">Скрыт в графике</span>' : ''}</td>
       <td style="text-align:right;">
         ${canEdit('positions') ? `<button class="btn btn-sm" onclick="openPosModal(${safeP})">✎</button>
         <button class="btn btn-sm btn-danger" onclick="deletePosition('${p.id}','${safeName}')">✕</button>` : ''}
@@ -2048,17 +2069,19 @@ function openPosModal(pos) {
   document.getElementById('posModalTitle').textContent = pos ? 'Редактировать должность' : 'Новая должность';
   document.getElementById('posEditId').value = pos ? pos.id : '';
   document.getElementById('posName').value = pos ? pos.name : '';
+  document.getElementById('posHiddenInSchedule').checked = !!(pos && pos.hidden_in_schedule);
   openModal('posModal');
 }
 
 async function savePosition() {
   const id = document.getElementById('posEditId').value || uid();
   const name = document.getElementById('posName').value.trim();
+  const hidden_in_schedule = document.getElementById('posHiddenInSchedule').checked ? 1 : 0;
   if (!name) { showToast('Введите название', true); return; }
   const isEdit = !!document.getElementById('posEditId').value;
   const res = isEdit
-    ? await API.put('/positions/' + id, { name })
-    : await API.post('/positions', { id, name });
+    ? await API.put('/positions/' + id, { name, hidden_in_schedule })
+    : await API.post('/positions', { id, name, hidden_in_schedule });
   if (res && res.ok) {
     closeModal('posModal');
     await loadPositions();
@@ -2092,6 +2115,7 @@ function openEmpModal(emp) {
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
   document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
+  document.getElementById('empHiddenInSchedule').checked = !!(emp && emp.hidden_in_schedule);
   openModal('empModal');
 }
 
@@ -2108,6 +2132,7 @@ async function saveEmployee() {
     phone: document.getElementById('empPhone').value,
     start_date: document.getElementById('empStart').value,
     status: document.getElementById('empStatus').value,
+    hidden_in_schedule: document.getElementById('empHiddenInSchedule').checked ? 1 : 0,
   };
   if (!data.name) { showToast('Введите имя', true); return; }
   const isEdit = !!document.getElementById('empEditId').value;
