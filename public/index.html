@@ -141,6 +141,18 @@
   .form-row select option { background:var(--surface2); }
   .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 
+  /* TOGGLE SWITCH */
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; user-select:none; }
+  .toggle-row:hover { border-color:var(--accent); }
+  .toggle-row .toggle-text { display:flex; flex-direction:column; gap:2px; }
+  .toggle-row .toggle-label { font-size:13px; color:var(--text); }
+  .toggle-row .toggle-hint { font-size:11px; color:var(--text3); }
+  .toggle-sw { position:relative; flex-shrink:0; width:38px; height:22px; background:var(--border); border-radius:11px; transition:background .2s; }
+  .toggle-sw::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:var(--text); border-radius:50%; transition:transform .2s, background .2s; }
+  .toggle-row input[type="checkbox"] { display:none; }
+  .toggle-row input[type="checkbox"]:checked ~ .toggle-sw { background:var(--accent); }
+  .toggle-row input[type="checkbox"]:checked ~ .toggle-sw::after { transform:translateX(16px); background:#1a1714; }
+
   /* FILTERS */
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
@@ -596,13 +608,14 @@
         <div class="form-row"><label>Порог выручки для процента сотрудников</label><input type="number" id="settingRevenueThreshold" placeholder="0" min="0" step="1">
           <div style="color:var(--text3);font-size:11px;margin-top:4px;">Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня</div>
         </div>
-        <div class="form-row" style="margin-top:16px;">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <input type="checkbox" id="settingScheduleTx" style="width:auto;accent-color:var(--accent);">
-            <span>Формировать транзакции из графика работы</span>
-          </label>
-          <div style="color:var(--text3);font-size:11px;margin-top:4px;">Кнопка «Сформировать выплаты» на странице График — создаёт транзакции зарплаты по отработанным часам и ставке каждого сотрудника</div>
-        </div>
+        <label class="toggle-row" style="margin-top:16px;">
+          <div class="toggle-text">
+            <span class="toggle-label">Формировать транзакции из графика работы</span>
+            <span class="toggle-hint">Кнопка «Сформировать выплаты» на странице График создаёт транзакции по часам и ставке</span>
+          </div>
+          <input type="checkbox" id="settingScheduleTx">
+          <span class="toggle-sw"></span>
+        </label>
         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
       </div>
 
@@ -698,13 +711,14 @@
     <div class="form-row"><label>Статус</label>
       <select id="empStatus"><option value="active">Активный</option><option value="inactive">Уволен</option></select>
     </div>
-    <div class="form-row">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="checkbox" id="empHiddenInSchedule" style="accent-color:var(--accent);">
-        <span>Скрывать в графике работы</span>
-      </label>
-      <div style="color:var(--text3);font-size:11px;margin-top:4px;">Для сотрудников, которым не нужно отмечать часы (закупщик, администратор и т.п.)</div>
-    </div>
+    <label class="toggle-row">
+      <div class="toggle-text">
+        <span class="toggle-label">Скрывать в графике работы</span>
+        <span class="toggle-hint">Для тех, кому не нужно отмечать часы (закупщик, админ и т.п.)</span>
+      </div>
+      <input type="checkbox" id="empHiddenInSchedule">
+      <span class="toggle-sw"></span>
+    </label>
     <input type="hidden" id="empEditId">
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('empModal')">Отмена</button>
@@ -787,13 +801,14 @@
   <div class="modal">
     <div class="modal-title" id="posModalTitle">Должность</div>
     <div class="form-row"><label>Название</label><input type="text" id="posName" placeholder="Например: Бариста"></div>
-    <div class="form-row">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="checkbox" id="posHiddenInSchedule" style="accent-color:var(--accent);">
-        <span>Скрывать в графике работы</span>
-      </label>
-      <div style="color:var(--text3);font-size:11px;margin-top:4px;">Должности, которым не нужно отмечать часы</div>
-    </div>
+    <label class="toggle-row">
+      <div class="toggle-text">
+        <span class="toggle-label">Скрывать в графике работы</span>
+        <span class="toggle-hint">Должности, которым не нужно отмечать часы</span>
+      </div>
+      <input type="checkbox" id="posHiddenInSchedule">
+      <span class="toggle-sw"></span>
+    </label>
     <input type="hidden" id="posEditId">
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('posModal')">Отмена</button>
