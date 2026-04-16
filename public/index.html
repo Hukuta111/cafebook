@@ -499,7 +499,7 @@
         <div class="mp-wrap" id="salReportMonthPicker"></div>
         <label class="no-print" style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;">
           <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()" style="accent-color:var(--accent);">
-          Дни работы
+          Детализация
         </label>
         <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
         <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
@@ -2013,14 +2013,23 @@ async function renderSalaryReport() {
   const rows = await API.get('/reports/salary?month=' + month) || [];
   const container = document.getElementById('salaryReportCards');
 
-  // загрузить график работы если включён переключатель
+  // загрузить график и транзакции если включён переключатель
   const showDays = document.getElementById('salReportShowDays')?.checked || false;
   let scheduleByEmp = {};
+  let txByEmp = {};
   if (showDays) {
-    const sched = await API.get('/schedule?month=' + month) || [];
-    sched.forEach(s => {
+    const [sched, allTx] = await Promise.all([
+      API.get('/schedule?month=' + month),
+      API.get('/transactions?month=' + month),
+    ]);
+    (sched || []).forEach(s => {
       if (!scheduleByEmp[s.emp_id]) scheduleByEmp[s.emp_id] = [];
       scheduleByEmp[s.emp_id].push(s);
+    });
+    const relevantTypes = ['salary','advance','bonus','fine'];
+    (allTx || []).filter(t => t.emp_id && relevantTypes.includes(t.type)).forEach(t => {
+      if (!txByEmp[t.emp_id]) txByEmp[t.emp_id] = [];
+      txByEmp[t.emp_id].push(t);
     });
   }
 
@@ -2072,29 +2081,44 @@ async function renderSalaryReport() {
     const tabBadge = g.tab_number ? ` <span style="color:var(--accent);font-family:monospace;font-size:13px;font-weight:500">№${g.tab_number}</span>` : '';
     const multi = g.items.length > 1;
 
-    // вспомогательная функция: вывод дней работы для одной должности
+    // вспомогательная функция: вывод детализации (смены + операции) для одной должности
     function shiftsBlockForEmp(emp) {
       if (!showDays || !emp) return '';
-      const shifts = (scheduleByEmp[emp.id] || []).slice().sort((a,b) => a.work_date.localeCompare(b.work_date));
-      if (!shifts.length) return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет смен за месяц</div>';
-      const totalH = shifts.reduce((s,x) => s + +x.hours, 0);
-      const totalP = shifts.reduce((s,x) => {
-        const rate = x.hourly_rate != null ? +x.hourly_rate : (+emp.hourly_rate || 0);
-        return s + +x.hours * rate;
-      }, 0);
+
+      // смены → операции
+      const shifts = (scheduleByEmp[emp.id] || []).map(s => {
+        const rate = s.hourly_rate != null ? +s.hourly_rate : (+emp.hourly_rate || 0);
+        return {
+          date: s.work_date,
+          kind: 'shift',
+          label: `${s.hours}ч`,
+          amount: +s.hours * rate,
+          sign: '+',
+          color: 'var(--green)',
+        };
+      });
+      // транзакции
+      const txs = (txByEmp[emp.id] || []).map(t => {
+        const isPositive = t.type === 'salary' || t.type === 'bonus';
+        const typeIcon = { salary:'💰', advance:'💵', bonus:'✨', fine:'⚠️' }[t.type] || '•';
+        const typeLbl = TYPE_LABELS[t.type] || t.type;
+        return {
+          date: t.date,
+          kind: t.type,
+          label: `${typeIcon} ${typeLbl}${t.cat && t.cat !== typeLbl ? ' · '+t.cat : ''}${t.note ? ' — '+t.note : ''}`,
+          amount: +t.amount,
+          sign: isPositive ? '+' : '−',
+          color: isPositive ? (t.type === 'bonus' ? 'var(--purple)' : 'var(--accent)') : (t.type === 'fine' ? 'var(--red)' : 'var(--blue)'),
+        };
+      });
+      const all = [...shifts, ...txs].sort((a,b) => a.date.localeCompare(b.date));
+      if (!all.length) return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет операций за месяц</div>';
+
       return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-        ${shifts.map(s => {
-          const rate = s.hourly_rate != null ? +s.hourly_rate : (+emp.hourly_rate || 0);
-          const pay = +s.hours * rate;
-          return `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;">
-            <span>${dateLabel(s.work_date)} · ${s.hours}ч</span>
-            <span style="color:var(--green);font-weight:600">${fmt(pay)} ${_currency}</span>
-          </div>`;
-        }).join('')}
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 10px;border-top:1px dashed var(--border);margin-top:2px;">
-          <span>Итого: ${shifts.length} смен, ${totalH}ч</span>
-          <span>${fmt(totalP)} ${_currency}</span>
-        </div>
+        ${all.map(o => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 10px;background:var(--surface);border-radius:4px;">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dateLabel(o.date)} · ${o.label}</span>
+          <span style="color:${o.color};font-weight:600;white-space:nowrap;">${o.sign}${fmt(o.amount)} ${_currency}</span>
+        </div>`).join('')}
       </div>`;
     }
 
