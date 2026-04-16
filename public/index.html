@@ -266,7 +266,9 @@
   #scheduleTable td:hover { background:var(--surface2); }
   #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
   #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; overflow:hidden; }
-  #scheduleTable td:not(.has-hours):not(.emp-name-cell):not(.total-cell):hover::after { content:'+'; color:var(--accent); font-size:14px; font-weight:700; }
+  #scheduleTable tr:not(.totals-row) td:not(.has-hours):not(.emp-name-cell):not(.total-cell):hover::after { content:'+'; color:var(--accent); font-size:14px; font-weight:700; }
+  #scheduleTable .totals-row td { cursor:default !important; }
+  #scheduleTable .totals-row td:hover { background:var(--surface2) !important; }
   #scheduleTable .total-cell { font-weight:700; cursor:default; }
   #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
   .sched-print-title { display:none; }
