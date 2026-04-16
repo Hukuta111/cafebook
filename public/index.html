@@ -265,7 +265,8 @@
   #scheduleTable td { cursor:pointer; transition:background .1s; }
   #scheduleTable td:hover { background:var(--surface2); }
   #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
-  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; overflow:hidden; }
+  #scheduleTable td:not(.has-hours):not(.emp-name-cell):not(.total-cell):hover::after { content:'+'; color:var(--accent); font-size:14px; font-weight:700; }
   #scheduleTable .total-cell { font-weight:700; cursor:default; }
   #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
   .sched-print-title { display:none; }
@@ -512,7 +513,10 @@
   <!-- SCHEDULE -->
   <div class="page" id="page-schedule">
     <div class="page-header">
-      <div><div class="page-title">График работы</div><div class="page-subtitle">Учёт смен по дням</div></div>
+      <div>
+        <div class="page-title">График работы</div>
+        <div class="page-subtitle">Клик на ячейку — добавить смену · клик на заполненную — редактировать</div>
+      </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
         <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()">+ Смена</button>
@@ -1647,7 +1651,10 @@ async function renderSchedule() {
     const empRate = emp.hourly_rate || 0;
     let totalHours = 0, totalSum = 0;
 
-    body += `<tr><td class="emp-name-cell">${emp.name}</td>`;
+    const roleLabel = emp.role || EMP_TYPE_LABELS[emp.type] || '';
+    const tabLabel = emp.tab_number ? ' <span style="color:var(--accent);font-family:monospace;font-size:10px;">№'+emp.tab_number+'</span>' : '';
+    const nameCell = `<div style="font-weight:600;line-height:1.1;">${emp.name}${tabLabel}</div>${roleLabel ? '<div style="color:var(--text3);font-size:10px;margin-top:2px;">'+roleLabel+'</div>' : ''}`;
+    body += `<tr><td class="emp-name-cell">${nameCell}</td>`;
     for (let d = 1; d <= numDays; d++) {
       const entry = lookup[emp.id + '_' + d];
       const dow = dayOfWeek(month, d);
