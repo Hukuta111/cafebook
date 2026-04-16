@@ -1176,15 +1176,15 @@ function canEdit(page) {
 
 function applyPermissions() {
   const isAdmin = _userRole === 'admin';
-  // управление пользователями — только admin
+  // управление пользователями — только admin (перебиваем CSS .admin-only { display:none; })
   document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = isAdmin ? '' : 'none';
+    el.style.display = isAdmin ? 'flex' : 'none';
   });
   // показать/скрыть пункты сайдбара по view
   document.querySelectorAll('.nav-item[data-page]').forEach(el => {
     const page = el.dataset.page;
     if (page === 'users') return; // уже обработали .admin-only
-    el.style.display = canView(page) ? '' : 'none';
+    el.style.display = canView(page) ? 'flex' : 'none';
   });
   // скрыть/показать редактирующие кнопки по edit
   applyEditRestrictions();
