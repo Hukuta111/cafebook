@@ -368,7 +368,7 @@
   <div class="page" id="page-transactions">
     <div class="page-header">
       <div><div class="page-title">Транзакции</div><div class="page-subtitle">Все финансовые операции</div></div>
-      <button class="btn btn-primary" onclick="openTxModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="transactions" onclick="openTxModal()">+ Добавить</button>
     </div>
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
@@ -422,7 +422,7 @@
   <div class="page" id="page-positions">
     <div class="page-header">
       <div><div class="page-title">Должности</div><div class="page-subtitle">Управление списком должностей</div></div>
-      <button class="btn btn-primary" onclick="openPosModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="positions" onclick="openPosModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Название</th><th></th></tr></thead>
@@ -434,7 +434,7 @@
   <div class="page" id="page-employees">
     <div class="page-header">
       <div><div class="page-title">Сотрудники</div><div class="page-subtitle">Управление персоналом</div></div>
-      <button class="btn btn-primary" onclick="openEmpModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
@@ -446,7 +446,7 @@
   <div class="page" id="page-salary">
     <div class="page-header">
       <div><div class="page-title">Зарплата и выплаты</div><div class="page-subtitle">Начисления, авансы, штрафы, бонусы</div></div>
-      <button class="btn btn-primary" onclick="openSalModal()">+ Начислить</button>
+      <button class="btn btn-primary" data-edit-page="salary" onclick="openSalModal()">+ Начислить</button>
     </div>
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
@@ -482,7 +482,7 @@
       <div><div class="page-title">График работы</div><div class="page-subtitle">Учёт смен по дням</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
-        <button class="btn btn-primary" onclick="openSchedModal()">+ Смена</button>
+        <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()">+ Смена</button>
         <button class="btn" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none">💰 Сформировать выплаты</button>
         <button class="btn" onclick="printSchedule()">🖨 Печать</button>
       </div>
@@ -694,14 +694,23 @@
       <div class="form-row"><label>Отображаемое имя</label><input type="text" id="uDisplayName" placeholder="Иван Иванов"></div>
     </div>
     <div class="form-row"><label>Роль</label>
-      <select id="uRole">
-        <option value="user">Сотрудник — только просмотр и ввод данных</option>
+      <select id="uRole" onchange="toggleUserPermsUI()">
+        <option value="user">Сотрудник — с ограниченными правами</option>
         <option value="admin">Администратор — полный доступ</option>
       </select>
     </div>
     <div class="form-2col">
       <div class="form-row"><label id="uPassLabel">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" placeholder="мин. 4 символа"></div>
       <div class="form-row"><label>Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" placeholder="повторите пароль"></div>
+    </div>
+    <div id="uPermsBlock" class="form-row">
+      <label>Права доступа к страницам</label>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface2);max-height:280px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+          <span>Страница</span><span style="text-align:center">👁 Видеть</span><span style="text-align:center">✎ Редакт.</span>
+        </div>
+        <div id="uPermsList"></div>
+      </div>
     </div>
     <input type="hidden" id="uEditId">
     <div class="modal-footer">
@@ -817,10 +826,13 @@ async function doLogin() {
     sessionStorage.setItem('cb_token', data.token);
     sessionStorage.setItem('cb_user', data.username);
     sessionStorage.setItem('cb_role', data.role);
+    sessionStorage.setItem('cb_perms', JSON.stringify(data.permissions || {}));
+    _userRole = data.role;
+    _userPermissions = data.permissions || {};
     document.getElementById('userNameDisplay').textContent = data.displayName || data.username;
     document.getElementById('loginScreen').classList.remove('show');
     document.getElementById('mainContent').style.display = '';
-    applyRoleUI(data.role);
+    applyPermissions();
     startSessionPoll();
     await loadInitialData();
   } catch(e) {
@@ -838,6 +850,9 @@ async function doLogout() {
   sessionStorage.removeItem('cb_token');
   sessionStorage.removeItem('cb_user');
   sessionStorage.removeItem('cb_role');
+  sessionStorage.removeItem('cb_perms');
+  _userRole = 'user';
+  _userPermissions = {};
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginPass').value = '';
@@ -851,15 +866,19 @@ async function tryAutoLogin() {
   // verify token is valid
   showLoader(true);
   try {
-    const res = await fetch('/api/settings', { headers: API.headers() });
-    if (res.status === 401) { doLogout(); return; }
-    const settingsData = await res.json().catch(() => ({}));
+    const meRes = await fetch('/api/me', { headers: API.headers() });
+    if (meRes.status === 401) { doLogout(); return; }
+    const me = await meRes.json().catch(() => null);
+    if (!me || !me.username) { doLogout(); return; }
     API.token = token;
-    const savedRole = sessionStorage.getItem('cb_role') || 'user';
-    document.getElementById('userNameDisplay').textContent = user || 'admin';
+    _userRole = me.role;
+    _userPermissions = me.permissions || {};
+    sessionStorage.setItem('cb_role', me.role);
+    sessionStorage.setItem('cb_perms', JSON.stringify(me.permissions || {}));
+    document.getElementById('userNameDisplay').textContent = me.displayName || me.username;
     document.getElementById('loginScreen').classList.remove('show');
     document.getElementById('mainContent').style.display = '';
-    applyRoleUI(savedRole);
+    applyPermissions();
     startSessionPoll();
     await loadInitialData();
   } catch { doLogout(); } finally { showLoader(false); }
@@ -904,7 +923,16 @@ async function loadInitialData() {
     console.error('loadInitialData error:', e);
   }
   showLoader(false);
-  await renderDashboard();
+  // открыть первую доступную страницу
+  if (canView('dashboard')) {
+    await renderDashboard();
+  } else {
+    const firstAllowed = PAGES_LIST.find(p => canView(p));
+    if (firstAllowed) {
+      const navEl = document.querySelector(`.nav-item[data-page="${firstAllowed}"]`);
+      if (navEl) nav(navEl);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1134,20 +1162,61 @@ document.addEventListener('click', () => {
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
-function applyRoleUI(role) {
-  const isAdmin = role === 'admin';
+let _userRole = 'user';
+let _userPermissions = {};
+
+function canView(page) {
+  if (_userRole === 'admin') return true;
+  return !!(_userPermissions[page] && _userPermissions[page].view);
+}
+function canEdit(page) {
+  if (_userRole === 'admin') return true;
+  return !!(_userPermissions[page] && _userPermissions[page].edit);
+}
+
+function applyPermissions() {
+  const isAdmin = _userRole === 'admin';
+  // управление пользователями — только admin
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin ? '' : 'none';
   });
+  // показать/скрыть пункты сайдбара по view
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    const page = el.dataset.page;
+    if (page === 'users') return; // уже обработали .admin-only
+    el.style.display = canView(page) ? '' : 'none';
+  });
+  // скрыть/показать редактирующие кнопки по edit
+  applyEditRestrictions();
 }
 
+function applyEditRestrictions() {
+  // на каждой странице кнопки с data-edit-page → скрыть если нет edit
+  document.querySelectorAll('[data-edit-page]').forEach(el => {
+    const page = el.dataset.editPage;
+    el.style.display = canEdit(page) ? '' : 'none';
+  });
+}
+
+function applyRoleUI(role) { _userRole = role; applyPermissions(); }
+
 function nav(el) {
+  const page = el.dataset.page;
+  // проверка прав
+  if (page !== 'users' && !canView(page)) {
+    showToast('Нет доступа к странице', true);
+    return;
+  }
+  if (page === 'users' && _userRole !== 'admin') {
+    showToast('Только для администратора', true);
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
-  const page = el.dataset.page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   closeSidebar();
+  applyEditRestrictions();
   const today_month = today().slice(0,7);
   if (page === 'dashboard') renderDashboard();
   if (page === 'transactions') { mpSetValue('txMonthPicker', today_month); renderTransactions(); }
@@ -1360,7 +1429,7 @@ async function renderTransactions() {
       <td>${empName(t.emp_id)}</td>
       <td style="font-weight:600;color:${col}">${sign}${fmt(t.amount)} ${_currency}</td>
       <td style="color:var(--text3)">${t.note||'—'}</td>
-      <td style="display:flex;gap:4px;"><button class="btn btn-sm" onclick="openTxModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteTx('${t.id}')">✕</button></td>
+      <td style="display:flex;gap:4px;">${canEdit('transactions') ? `<button class="btn btn-sm" onclick="openTxModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteTx('${t.id}')">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -1641,8 +1710,8 @@ async function renderPositions() {
     return `<tr>
       <td><b>${p.name}</b></td>
       <td style="text-align:right;">
-        <button class="btn btn-sm" onclick="openPosModal(${safeP})">✎</button>
-        <button class="btn btn-sm btn-danger" onclick="deletePosition('${p.id}','${safeName}')">✕</button>
+        ${canEdit('positions') ? `<button class="btn btn-sm" onclick="openPosModal(${safeP})">✎</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePosition('${p.id}','${safeName}')">✕</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1741,8 +1810,8 @@ function renderEmployees() {
     <td>${e.phone||'—'}</td>
     <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?'Активный':'Уволен'}</span></td>
     <td style="display:flex;gap:6px;">
-      <button class="btn btn-sm" onclick="openEmpModal(${JSON.stringify(e).replace(/"/g,"&quot;")})">✎</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteEmployee('${e.id}')">✕</button>
+      ${canEdit('employees') ? `<button class="btn btn-sm" onclick="openEmpModal(${JSON.stringify(e).replace(/"/g,"&quot;")})">✎</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteEmployee('${e.id}')">✕</button>` : ''}
     </td>
   </tr>`).join('');
 }
@@ -1831,7 +1900,7 @@ async function renderSalary() {
       <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
       <td style="font-weight:600;color:${col}">${fmt(t.amount)} ${_currency}</td>
       <td style="color:var(--text3)">${t.note||'—'}</td>
-      <td style="display:flex;gap:4px;"><button class="btn btn-sm" onclick="openSalModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteSalTx('${t.id}')">✕</button></td>
+      <td style="display:flex;gap:4px;">${canEdit('salary') ? `<button class="btn btn-sm" onclick="openSalModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteSalTx('${t.id}')">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -2095,7 +2164,64 @@ function openUserModal(user) {
   document.getElementById('uPassLabel').textContent = user
     ? 'Новый пароль (оставьте пустым, чтобы не менять)'
     : 'Пароль';
+
+  renderPermissionsUI(user ? (user.permissions || defaultPermissions()) : defaultPermissions());
+  toggleUserPermsUI();
   openModal('userModal');
+}
+
+const PAGE_LABELS = {
+  'dashboard':'Дашборд','transactions':'Транзакции','daily':'Дневные отчёты',
+  'monthly':'Месячные отчёты','positions':'Должности','employees':'Сотрудники',
+  'salary':'Зарплата и выплаты','salary-report':'Отчёт по зарплате',
+  'schedule':'График работы','settings':'Настройки'
+};
+const PAGES_LIST = Object.keys(PAGE_LABELS);
+
+function defaultPermissions() {
+  const p = {};
+  PAGES_LIST.forEach(page => { p[page] = { view: true, edit: false }; });
+  return p;
+}
+
+function renderPermissionsUI(perms) {
+  const list = document.getElementById('uPermsList');
+  list.innerHTML = PAGES_LIST.map(page => {
+    const p = perms[page] || { view:false, edit:false };
+    return `<div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;">
+      <span style="font-size:13px">${PAGE_LABELS[page]}</span>
+      <label style="text-align:center;cursor:pointer"><input type="checkbox" data-perm-view="${page}" ${p.view?'checked':''} onchange="onPermChange('${page}','view',this.checked)" style="accent-color:var(--accent);"></label>
+      <label style="text-align:center;cursor:pointer"><input type="checkbox" data-perm-edit="${page}" ${p.edit?'checked':''} onchange="onPermChange('${page}','edit',this.checked)" style="accent-color:var(--accent);"></label>
+    </div>`;
+  }).join('');
+}
+
+function onPermChange(page, action, checked) {
+  // если сняли view — снимаем и edit
+  if (action === 'view' && !checked) {
+    const editBox = document.querySelector(`[data-perm-edit="${page}"]`);
+    if (editBox) editBox.checked = false;
+  }
+  // если включили edit — включаем view
+  if (action === 'edit' && checked) {
+    const viewBox = document.querySelector(`[data-perm-view="${page}"]`);
+    if (viewBox) viewBox.checked = true;
+  }
+}
+
+function collectPermissionsFromUI() {
+  const p = {};
+  PAGES_LIST.forEach(page => {
+    const v = document.querySelector(`[data-perm-view="${page}"]`)?.checked || false;
+    const e = document.querySelector(`[data-perm-edit="${page}"]`)?.checked || false;
+    p[page] = { view: v, edit: e };
+  });
+  return p;
+}
+
+function toggleUserPermsUI() {
+  const role = document.getElementById('uRole').value;
+  document.getElementById('uPermsBlock').style.display = role === 'admin' ? 'none' : '';
 }
 
 async function saveUser() {
@@ -2105,6 +2231,7 @@ async function saveUser() {
   const role = document.getElementById('uRole').value;
   const password = document.getElementById('uPassword').value;
   const password2 = document.getElementById('uPassword2').value;
+  const permissions = role === 'admin' ? null : collectPermissionsFromUI();
 
   if (!editId && !username) { showToast('Введите логин', true); return; }
   if (!editId && !password) { showToast('Введите пароль', true); return; }
@@ -2112,11 +2239,11 @@ async function saveUser() {
 
   let res;
   if (editId) {
-    const body = { displayName, role };
+    const body = { displayName, role, permissions };
     if (password) body.newPassword = password;
     res = await API.put('/users/' + editId, body);
   } else {
-    res = await API.post('/users', { username, displayName, password, role });
+    res = await API.post('/users', { username, displayName, password, role, permissions });
   }
 
   if (res && res.ok) {
@@ -2129,7 +2256,6 @@ async function saveUser() {
 }
 
 async function kickUser(id, name) {
-  if (!confirm('Принудительно выйти пользователя "' + name + '"?\n\nЕго текущая сессия будет немедленно завершена.')) return;
   const res = await API.post('/users/' + id + '/kick', {});
   if (res && res.ok) { renderUsers(); showToast(name + ' выведен из системы'); }
 }

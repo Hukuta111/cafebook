@@ -56,6 +56,13 @@ async function initDb() {
       id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
+    `CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
+      display_name TEXT, password_hash TEXT NOT NULL,
+      role TEXT DEFAULT 'user', permissions TEXT,
+      session_id TEXT, last_login_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
     `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
   ];
   tables.forEach(sql => db.run(sql));
@@ -64,37 +71,100 @@ async function initDb() {
   try { db.run('ALTER TABLE employees ADD COLUMN hourly_rate REAL DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN percent REAL DEFAULT 0'); } catch(e) {}
 
+  // Миграция пользователей из config.json
+  migrateUsersFromConfig();
+
   saveDb();
 }
+
+// Список страниц для прав доступа
+const PAGES = ['dashboard','transactions','daily','monthly','positions','employees','salary','salary-report','schedule','settings'];
+
+function defaultPermissions() {
+  const p = {};
+  PAGES.forEach(page => { p[page] = { view: true, edit: false }; });
+  return p;
+}
+
+function migrateUsersFromConfig() {
+  // если уже есть пользователи — пропустить
+  const countRows = db.exec('SELECT COUNT(*) FROM users');
+  const count = countRows[0] ? countRows[0].values[0][0] : 0;
+  if (count > 0) return;
+
+  let sourceUsers = null;
+  if (fs.existsSync(CONFIG_PATH)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      sourceUsers = cfg.users || null;
+    } catch {}
+  }
+
+  if (!sourceUsers || !sourceUsers.length) {
+    // создаём дефолтного админа
+    sourceUsers = [{
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      username: 'admin',
+      displayName: 'Администратор',
+      passwordHash: bcrypt.hashSync('admin123', 10),
+      role: 'admin',
+    }];
+  }
+
+  sourceUsers.forEach(u => {
+    const perms = u.role === 'admin' ? null : JSON.stringify(defaultPermissions());
+    db.run(
+      `INSERT OR IGNORE INTO users (id,username,display_name,password_hash,role,permissions,session_id,last_login_at,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        u.id || (Date.now().toString(36) + Math.random().toString(36).slice(2)),
+        u.username, u.displayName || u.username, u.passwordHash,
+        u.role || 'user', perms,
+        u.sessionId || null, u.lastLoginAt || null,
+        u.createdAt || new Date().toISOString(),
+      ]
+    );
+  });
+
+  // переименовать старый config.json
+  if (fs.existsSync(CONFIG_PATH)) {
+    try { fs.renameSync(CONFIG_PATH, CONFIG_PATH + '.migrated'); } catch {}
+  }
+}
+
+// ─── USER DB HELPERS ──────────────────────────────────────
+function dbGetUsers() {
+  const rows = db.exec('SELECT * FROM users ORDER BY username');
+  return rows[0] ? rowsToObjects(rows[0]) : [];
+}
+
+function dbGetUserByUsername(username) {
+  const rows = db.exec('SELECT * FROM users WHERE username = ?', [username]);
+  return rows[0] ? rowsToObjects(rows[0])[0] : null;
+}
+
+function dbGetUserById(id) {
+  const rows = db.exec('SELECT * FROM users WHERE id = ?', [id]);
+  return rows[0] ? rowsToObjects(rows[0])[0] : null;
+}
+
+function dbUpdateUser(id, patch) {
+  const fields = Object.keys(patch);
+  if (!fields.length) return;
+  const sql = 'UPDATE users SET ' + fields.map(f => f + '=?').join(',') + ' WHERE id=?';
+  db.run(sql, [...fields.map(f => patch[f]), id]);
+}
+
+function parsePermissions(permsStr) {
+  if (!permsStr) return null;
+  try { return JSON.parse(permsStr); } catch { return null; }
+}
+
 
 function saveDb() {
   fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
 }
 setInterval(saveDb, 30000);
-
-// ─── CONFIG HELPERS ────────────────────────────────────────
-function getConfig() {
-  if (fs.existsSync(CONFIG_PATH)) {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-  }
-  const cfg = {
-    users: [{
-      id: uid(),
-      username: 'admin',
-      displayName: 'Администратор',
-      passwordHash: bcrypt.hashSync('admin123', 10),
-      role: 'admin',
-      sessionId: null,
-      createdAt: new Date().toISOString(),
-    }]
-  };
-  saveConfig(cfg);
-  return cfg;
-}
-
-function saveConfig(cfg) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
-}
 
 // ─── AUTH MIDDLEWARE ────────────────────────────────────────
 function authMiddleware(req, res, next) {
@@ -104,19 +174,23 @@ function authMiddleware(req, res, next) {
   }
   try {
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
-    const cfg = getConfig();
-    const user = cfg.users.find(u => u.username === payload.username);
+    const user = dbGetUserByUsername(payload.username);
     if (!user) {
       return res.status(401).json({ error: 'Пользователь не найден', reason: 'user_not_found' });
     }
-    // Ключевая проверка: sessionId в токене должен совпадать с актуальным
-    if (user.sessionId !== payload.sessionId) {
+    if (user.session_id !== payload.sessionId) {
       return res.status(401).json({
         error: 'Сессия завершена: выполнен вход с другого устройства',
         reason: 'session_replaced'
       });
     }
-    req.user = { ...payload, role: user.role };
+    req.user = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      permissions: parsePermissions(user.permissions),
+      sessionId: user.session_id,
+    };
     next();
   } catch {
     return res.status(401).json({ error: 'Токен недействителен или истёк', reason: 'token_invalid' });
@@ -130,6 +204,18 @@ function adminOnly(req, res, next) {
   next();
 }
 
+function checkPermission(page, action) {
+  return (req, res, next) => {
+    if (req.user?.role === 'admin') return next();
+    const perms = req.user?.permissions || {};
+    const p = perms[page];
+    if (!p || !p[action]) {
+      return res.status(403).json({ error: `Нет прав: ${action} на странице «${page}»` });
+    }
+    next();
+  };
+}
+
 // ─── AUTH ROUTES ───────────────────────────────────────────
 
 app.post('/api/login', (req, res) => {
@@ -137,17 +223,18 @@ app.post('/api/login', (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ error: 'Введите логин и пароль' });
   }
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.username === username.trim().toLowerCase());
-  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+  const normalizedUsername = username.trim().toLowerCase();
+  const user = dbGetUserByUsername(normalizedUsername);
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
   }
 
-  // Новый sessionId — старые токены этого пользователя становятся невалидными
   const newSessionId = uid();
-  user.sessionId = newSessionId;
-  user.lastLoginAt = new Date().toISOString();
-  saveConfig(cfg);
+  dbUpdateUser(user.id, {
+    session_id: newSessionId,
+    last_login_at: new Date().toISOString(),
+  });
+  saveDb();
 
   const token = jwt.sign(
     { username: user.username, role: user.role, sessionId: newSessionId },
@@ -158,15 +245,15 @@ app.post('/api/login', (req, res) => {
   res.json({
     token,
     username: user.username,
-    displayName: user.displayName || user.username,
+    displayName: user.display_name || user.username,
     role: user.role,
+    permissions: parsePermissions(user.permissions) || defaultPermissions(),
   });
 });
 
 app.post('/api/logout', authMiddleware, (req, res) => {
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.username === req.user.username);
-  if (user) { user.sessionId = null; saveConfig(cfg); }
+  dbUpdateUser(req.user.id, { session_id: null });
+  saveDb();
   res.json({ ok: true });
 });
 
@@ -175,106 +262,126 @@ app.post('/api/change-password', authMiddleware, (req, res) => {
   if (!newPassword || newPassword.length < 4) {
     return res.status(400).json({ error: 'Пароль слишком короткий (мин. 4 символа)' });
   }
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.username === req.user.username);
-  if (!user || !bcrypt.compareSync(oldPassword, user.passwordHash)) {
+  const user = dbGetUserById(req.user.id);
+  if (!user || !bcrypt.compareSync(oldPassword, user.password_hash)) {
     return res.status(401).json({ error: 'Неверный текущий пароль' });
   }
-  user.passwordHash = bcrypt.hashSync(newPassword, 10);
-  user.sessionId = null; // выбить все сессии после смены пароля
-  saveConfig(cfg);
+  dbUpdateUser(user.id, {
+    password_hash: bcrypt.hashSync(newPassword, 10),
+    session_id: null,
+  });
+  saveDb();
   res.json({ ok: true, message: 'Пароль изменён. Войдите снова.' });
 });
 
 // ─── USER MANAGEMENT (только admin) ───────────────────────
 
 app.get('/api/users', authMiddleware, adminOnly, (req, res) => {
-  const cfg = getConfig();
-  res.json(cfg.users.map(u => ({
+  const users = dbGetUsers();
+  res.json(users.map(u => ({
     id: u.id,
     username: u.username,
-    displayName: u.displayName || u.username,
+    displayName: u.display_name || u.username,
     role: u.role,
-    isOnline: !!u.sessionId,
-    lastLoginAt: u.lastLoginAt || null,
-    createdAt: u.createdAt || null,
+    permissions: parsePermissions(u.permissions) || defaultPermissions(),
+    isOnline: !!u.session_id,
+    lastLoginAt: u.last_login_at || null,
+    createdAt: u.created_at || null,
   })));
 });
 
 app.post('/api/users', authMiddleware, adminOnly, (req, res) => {
-  const { username, displayName, password, role } = req.body;
+  const { username, displayName, password, role, permissions } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Логин и пароль обязательны' });
   }
   if (password.length < 4) {
     return res.status(400).json({ error: 'Пароль слишком короткий (мин. 4 символа)' });
   }
-  const cfg = getConfig();
   const normalizedUsername = username.trim().toLowerCase();
   if (!/^[a-z0-9_]{2,32}$/.test(normalizedUsername)) {
     return res.status(400).json({ error: 'Логин: только a-z, 0-9, _ , от 2 до 32 символов' });
   }
-  if (cfg.users.find(u => u.username === normalizedUsername)) {
+  if (dbGetUserByUsername(normalizedUsername)) {
     return res.status(409).json({ error: `Пользователь "${normalizedUsername}" уже существует` });
   }
-  const newUser = {
-    id: uid(),
-    username: normalizedUsername,
-    displayName: displayName?.trim() || username.trim(),
-    passwordHash: bcrypt.hashSync(password, 10),
-    role: role === 'admin' ? 'admin' : 'user',
-    sessionId: null,
-    createdAt: new Date().toISOString(),
-  };
-  cfg.users.push(newUser);
-  saveConfig(cfg);
-  res.json({ ok: true, id: newUser.id });
+  const finalRole = role === 'admin' ? 'admin' : 'user';
+  const perms = finalRole === 'admin' ? null : JSON.stringify(permissions || defaultPermissions());
+  const id = uid();
+  db.run(
+    `INSERT INTO users (id,username,display_name,password_hash,role,permissions,session_id,created_at)
+     VALUES (?,?,?,?,?,?,?,?)`,
+    [id, normalizedUsername, displayName?.trim() || username.trim(),
+     bcrypt.hashSync(password, 10), finalRole, perms, null, new Date().toISOString()]
+  );
+  saveDb();
+  res.json({ ok: true, id });
 });
 
 app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
-  const { displayName, role, newPassword } = req.body;
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.id === req.params.id);
+  const { displayName, role, newPassword, permissions } = req.body;
+  const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+
   if (role && role !== 'admin' && user.role === 'admin') {
-    const adminCount = cfg.users.filter(u => u.role === 'admin').length;
-    if (adminCount <= 1) {
+    const admins = dbGetUsers().filter(u => u.role === 'admin');
+    if (admins.length <= 1) {
       return res.status(400).json({ error: 'Нельзя убрать роль у единственного администратора' });
     }
   }
-  if (displayName !== undefined) user.displayName = displayName.trim();
-  if (role !== undefined) user.role = role === 'admin' ? 'admin' : 'user';
+  const patch = {};
+  if (displayName !== undefined) patch.display_name = displayName.trim();
+  if (role !== undefined) patch.role = role === 'admin' ? 'admin' : 'user';
+  if (permissions !== undefined && (patch.role || user.role) !== 'admin') {
+    patch.permissions = JSON.stringify(permissions);
+  }
+  if (patch.role === 'admin') patch.permissions = null;
   if (newPassword) {
     if (newPassword.length < 4) return res.status(400).json({ error: 'Пароль слишком короткий' });
-    user.passwordHash = bcrypt.hashSync(newPassword, 10);
-    user.sessionId = null;
+    patch.password_hash = bcrypt.hashSync(newPassword, 10);
+    patch.session_id = null;
   }
-  saveConfig(cfg);
+  dbUpdateUser(user.id, patch);
+  saveDb();
   res.json({ ok: true });
 });
 
 app.post('/api/users/:id/kick', authMiddleware, adminOnly, (req, res) => {
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.id === req.params.id);
+  const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-  user.sessionId = null;
-  saveConfig(cfg);
+  dbUpdateUser(user.id, { session_id: null });
+  saveDb();
   res.json({ ok: true });
 });
 
 app.delete('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
-  const cfg = getConfig();
-  const user = cfg.users.find(u => u.id === req.params.id);
+  const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.username === req.user.username) {
     return res.status(400).json({ error: 'Нельзя удалить собственный аккаунт' });
   }
-  if (user.role === 'admin' && cfg.users.filter(u => u.role === 'admin').length <= 1) {
-    return res.status(400).json({ error: 'Нельзя удалить единственного администратора' });
+  if (user.role === 'admin') {
+    const admins = dbGetUsers().filter(u => u.role === 'admin');
+    if (admins.length <= 1) {
+      return res.status(400).json({ error: 'Нельзя удалить единственного администратора' });
+    }
   }
-  cfg.users = cfg.users.filter(u => u.id !== req.params.id);
-  saveConfig(cfg);
+  db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+  saveDb();
   res.json({ ok: true });
+});
+
+// Эндпоинт для клиента — получить свои права (при autologin)
+app.get('/api/me', authMiddleware, (req, res) => {
+  const user = dbGetUserById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Не найден' });
+  res.json({
+    id: user.id,
+    username: user.username,
+    displayName: user.display_name || user.username,
+    role: user.role,
+    permissions: parsePermissions(user.permissions) || defaultPermissions(),
+  });
 });
 
 // ─── REASONS (bonus/fine categories) ──────────────────────
