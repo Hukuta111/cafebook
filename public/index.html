@@ -1209,6 +1209,24 @@ function applyPermissions() {
   });
   // скрыть/показать редактирующие кнопки по edit
   applyEditRestrictions();
+
+  // если активная страница теперь недоступна — переключиться на разрешённую
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const pageId = activePage.id.replace('page-', '');
+    const allowed = pageId === 'users' ? isAdmin : canView(pageId);
+    if (!allowed) {
+      const firstAllowed = isAdmin ? 'dashboard' : PAGES_LIST.find(p => canView(p));
+      if (firstAllowed) {
+        const navEl = document.querySelector(`.nav-item[data-page="${firstAllowed}"]`);
+        if (navEl) nav(navEl);
+      } else {
+        // нет доступа никуда — разлогинить
+        showToast('У вас больше нет доступа', true);
+        setTimeout(doLogout, 1500);
+      }
+    }
+  }
 }
 
 function applyEditRestrictions() {
