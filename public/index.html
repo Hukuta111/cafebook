@@ -153,6 +153,14 @@
   .toggle-row input[type="checkbox"]:checked ~ .toggle-sw { background:var(--accent); }
   .toggle-row input[type="checkbox"]:checked ~ .toggle-sw::after { transform:translateX(16px); background:#1a1714; }
 
+  /* MINI TOGGLE (для компактных случаев, напр. права доступа) */
+  .toggle-mini { display:inline-flex; position:relative; cursor:pointer; user-select:none; }
+  .toggle-mini input { display:none; }
+  .toggle-mini .toggle-sw { width:30px; height:17px; border-radius:9px; }
+  .toggle-mini .toggle-sw::after { width:13px; height:13px; top:2px; left:2px; }
+  .toggle-mini input:checked ~ .toggle-sw { background:var(--accent); }
+  .toggle-mini input:checked ~ .toggle-sw::after { transform:translateX(13px); background:#1a1714; }
+
   /* FILTERS */
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
@@ -2817,10 +2825,10 @@ function renderPermissionsUI(perms) {
   const list = document.getElementById('uPermsList');
   list.innerHTML = PAGES_LIST.map(page => {
     const p = perms[page] || { view:false, edit:false };
-    return `<div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;">
+    return `<div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;">
       <span style="font-size:13px">${PAGE_LABELS[page]}</span>
-      <label style="text-align:center;cursor:pointer"><input type="checkbox" data-perm-view="${page}" ${p.view?'checked':''} onchange="onPermChange('${page}','view',this.checked)" style="accent-color:var(--accent);"></label>
-      <label style="text-align:center;cursor:pointer"><input type="checkbox" data-perm-edit="${page}" ${p.edit?'checked':''} onchange="onPermChange('${page}','edit',this.checked)" style="accent-color:var(--accent);"></label>
+      <label class="toggle-mini" style="justify-self:center"><input type="checkbox" data-perm-view="${page}" ${p.view?'checked':''} onchange="onPermChange('${page}','view',this.checked)"><span class="toggle-sw"></span></label>
+      <label class="toggle-mini" style="justify-self:center"><input type="checkbox" data-perm-edit="${page}" ${p.edit?'checked':''} onchange="onPermChange('${page}','edit',this.checked)"><span class="toggle-sw"></span></label>
     </div>`;
   }).join('');
 }
