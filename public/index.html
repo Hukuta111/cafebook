@@ -366,6 +366,7 @@
     <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
     <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
     <div class="nav-item" data-page="schedule" onclick="nav(this)"><span class="icon">🗓</span> График</div>
+    <div class="nav-item" data-page="banquets" onclick="nav(this)"><span class="icon">🎉</span> Банкеты</div>
     <div class="nav-group-label">Система</div>
     <div class="nav-item admin-only" data-page="users" onclick="nav(this)"><span class="icon">🔐</span> Пользователи</div>
     <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
@@ -558,6 +559,18 @@
     </div>
   </div>
 
+  <!-- BANQUETS -->
+  <div class="page" id="page-banquets">
+    <div class="page-header">
+      <div><div class="page-title">Банкеты</div><div class="page-subtitle">Распределение бонусов по работавшим в этот день</div></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="mp-wrap" id="banquetMonthPicker"></div>
+        <button class="btn btn-primary" data-edit-page="banquets" onclick="openBanquetModal()">+ Банкет</button>
+      </div>
+    </div>
+    <div id="banquetsList"></div>
+  </div>
+
   <!-- SETTINGS -->
   <!-- USERS -->
   <div class="page" id="page-users">
@@ -718,6 +731,29 @@
 
 
 <!-- SCHEDULE MODAL -->
+<!-- BANQUET MODAL -->
+<div class="modal-overlay" id="banquetModal">
+  <div class="modal">
+    <div class="modal-title" id="banquetModalTitle">Новый банкет</div>
+    <div class="form-2col">
+      <div class="form-row"><label>Дата</label><input type="date" id="banquetDate"></div>
+      <div class="form-row"><label>Сумма банкета</label><input type="number" id="banquetTotal" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Процент (%)</label><input type="number" id="banquetPercent" value="10" min="0" max="100" step="0.1"></div>
+      <div class="form-row"><label>Комментарий</label><input type="text" id="banquetNote" placeholder="Например: Юбилей"></div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--text3);">
+      Сумма бонуса автоматически поделится между всеми, кто работал в указанный день (по графику). Потом можно вручную изменить доли.
+    </div>
+    <input type="hidden" id="banquetEditId">
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('banquetModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveBanquet()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="schedModal">
   <div class="modal">
     <div class="modal-title" id="schedModalTitle">Добавить смену</div>
@@ -1315,6 +1351,7 @@ function nav(el) {
   if (page === 'salary') { mpSetValue('salMonthPicker', today_month); renderSalary(); }
   if (page === 'salary-report') renderSalaryReport();
   if (page === 'schedule') renderSchedule();
+  if (page === 'banquets') renderBanquets();
   if (page === 'users') renderUsers();
   if (page === 'settings') renderSettings();
 }
@@ -1854,6 +1891,123 @@ function printSchedule() {
   document.getElementById('page-schedule').classList.add('print-target');
   window.print();
   setTimeout(() => document.getElementById('page-schedule').classList.remove('print-target'), 500);
+}
+
+// ═══════════════════════════════════════════
+// BANQUETS
+// ═══════════════════════════════════════════
+let _banquets = [];
+
+async function renderBanquets() {
+  if (!_monthPickers['banquetMonthPicker']) createMonthPicker('banquetMonthPicker', () => renderBanquets());
+  const cur = today().slice(0,7);
+  const month = _monthPickers['banquetMonthPicker']?.value || cur;
+  _employees = await API.get('/employees') || [];
+  _banquets = await API.get('/banquets?month=' + month) || [];
+
+  const container = document.getElementById('banquetsList');
+  if (!_banquets.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🎉</div><p>Нет банкетов за ${monthLabel(month)}</p></div>`;
+    return;
+  }
+
+  container.innerHTML = _banquets.map(b => {
+    const bonus = +b.total * (+b.percent / 100);
+    const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
+    const diff = bonus - distributed;
+    const sharesHtml = (b.shares || []).length
+      ? '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">'
+        + b.shares.map(s => {
+          const emp = _employees.find(e => e.id === s.emp_id);
+          return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
+            <span style="flex:1;">${emp ? emp.name : 'Удалённый'}${emp && emp.role ? ' <span style="color:var(--text3);font-size:11px">— '+emp.role+'</span>' : ''}</span>
+            <input type="number" data-share-id="${s.id}" data-banquet-id="${b.id}" value="${+s.amount}" min="0" step="0.01"
+              ${canEdit('banquets') ? '' : 'readonly'}
+              onchange="updateBanquetShare('${b.id}','${s.id}',this.value)"
+              style="width:110px;text-align:right;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;">
+            <span style="color:var(--text3);width:40px;">${_currency}</span>
+          </div>`;
+        }).join('')
+        + `<div style="display:flex;justify-content:space-between;padding:6px 12px;font-size:11px;color:${Math.abs(diff)<0.01?'var(--text3)':'var(--red)'};">
+            <span>${Math.abs(diff)<0.01 ? 'Разница с расчётом' : 'Расхождение с бонусом'}</span>
+            <span>${diff>=0?'+':''}${fmt(diff)} ${_currency}</span>
+          </div>`
+        + '</div>'
+      : '<div style="color:var(--text3);font-size:12px;margin-top:10px;">Нет сотрудников работавших в этот день — добавьте смены в Графике</div>';
+
+    const editable = canEdit('banquets');
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
+          <div style="color:var(--text3);font-size:13px;margin-top:4px;">Сумма банкета: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b> · бонус <b style="color:var(--green)">${b.percent}%</b> = <b style="color:var(--green)">${fmt(bonus)} ${_currency}</b></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          ${editable ? `<button class="btn btn-sm" onclick='openBanquetModal(${JSON.stringify(b).replace(/"/g,"&quot;").replace(/'/g,"\\'")})'>✎ Изменить</button>
+          <button class="btn btn-sm" onclick="recalcBanquetShares('${b.id}')" title="Пересчитать доли поровну">⟲ Поровну</button>
+          <button class="btn btn-sm btn-primary" onclick="applyBanquet('${b.id}')">💰 Начислить</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteBanquet('${b.id}')">✕</button>` : ''}
+        </div>
+      </div>
+      ${sharesHtml}
+    </div>`;
+  }).join('');
+}
+
+function openBanquetModal(b) {
+  document.getElementById('banquetModalTitle').textContent = b ? 'Редактировать банкет' : 'Новый банкет';
+  document.getElementById('banquetEditId').value = b ? b.id : '';
+  document.getElementById('banquetDate').value = b ? b.date : today();
+  document.getElementById('banquetTotal').value = b ? b.total : '';
+  document.getElementById('banquetPercent').value = b ? b.percent : 10;
+  document.getElementById('banquetNote').value = b ? (b.note || '') : '';
+  openModal('banquetModal');
+}
+
+async function saveBanquet() {
+  const id = document.getElementById('banquetEditId').value;
+  const date = document.getElementById('banquetDate').value;
+  const total = parseFloat(document.getElementById('banquetTotal').value);
+  const percent = parseFloat(document.getElementById('banquetPercent').value) || 10;
+  const note = document.getElementById('banquetNote').value;
+  if (!date || !total || total <= 0) { showToast('Укажите дату и сумму банкета', true); return; }
+  const res = id
+    ? await API.put('/banquets/' + id, { date, total, percent, note, recalc: true })
+    : await API.post('/banquets', { id: uid(), date, total, percent, note });
+  if (res && res.ok) {
+    closeModal('banquetModal');
+    renderBanquets();
+    showToast('Банкет сохранён ✓');
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+async function updateBanquetShare(banquetId, shareId, newAmount) {
+  await API.put('/banquets/' + banquetId, { shares: [{ id: shareId, amount: parseFloat(newAmount)||0 }],
+    date: _banquets.find(b => b.id === banquetId)?.date,
+    total: _banquets.find(b => b.id === banquetId)?.total,
+    percent: _banquets.find(b => b.id === banquetId)?.percent,
+    note: _banquets.find(b => b.id === banquetId)?.note || '',
+  });
+  renderBanquets();
+}
+
+async function recalcBanquetShares(id) {
+  const b = _banquets.find(x => x.id === id);
+  if (!b) return;
+  const res = await API.put('/banquets/' + id, { date: b.date, total: b.total, percent: b.percent, note: b.note || '', recalc: true });
+  if (res && res.ok) { renderBanquets(); showToast('Доли пересчитаны поровну ✓'); }
+}
+
+async function applyBanquet(id) {
+  const res = await API.post('/banquets/' + id + '/apply', {});
+  if (res && res.ok) { showToast('Начислено ' + res.created + ' бонусов ✓'); }
+}
+
+async function deleteBanquet(id) {
+  const res = await API.del('/banquets/' + id);
+  if (res && res.ok) { renderBanquets(); showToast('Банкет удалён'); }
 }
 
 // ═══════════════════════════════════════════
@@ -2609,7 +2763,7 @@ const PAGE_LABELS = {
   'dashboard':'Дашборд','transactions':'Транзакции','daily':'Дневные отчёты',
   'monthly':'Месячные отчёты','positions':'Должности','employees':'Сотрудники',
   'salary':'Зарплата и выплаты','salary-report':'Отчёт по зарплате',
-  'schedule':'График работы','settings':'Настройки'
+  'schedule':'График работы','banquets':'Банкеты','settings':'Настройки'
 };
 const PAGES_LIST = Object.keys(PAGE_LABELS);
 
