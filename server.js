@@ -82,6 +82,8 @@ async function initDb() {
   try { db.run('ALTER TABLE employees ADD COLUMN hourly_rate REAL DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN percent REAL DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN tab_number TEXT'); } catch(e) {}
+  try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE positions ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
 
   // Миграция пользователей из config.json
   migrateUsersFromConfig();
@@ -458,10 +460,10 @@ app.get('/api/positions', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.post('/api/positions', authMiddleware, (req, res) => {
-  const { id, name } = req.body;
+  const { id, name, hidden_in_schedule } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
   try {
-    db.run('INSERT INTO positions (id, name) VALUES (?, ?)', [id, name.trim()]);
+    db.run('INSERT INTO positions (id, name, hidden_in_schedule) VALUES (?, ?, ?)', [id, name.trim(), hidden_in_schedule ? 1 : 0]);
     saveDb();
     res.json({ ok: true });
   } catch (e) {
@@ -469,10 +471,10 @@ app.post('/api/positions', authMiddleware, (req, res) => {
   }
 });
 app.put('/api/positions/:id', authMiddleware, (req, res) => {
-  const { name } = req.body;
+  const { name, hidden_in_schedule } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
   try {
-    db.run('UPDATE positions SET name=? WHERE id=?', [name.trim(), req.params.id]);
+    db.run('UPDATE positions SET name=?, hidden_in_schedule=? WHERE id=?', [name.trim(), hidden_in_schedule ? 1 : 0, req.params.id]);
     saveDb();
     res.json({ ok: true });
   } catch (e) {
@@ -491,20 +493,20 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.post('/api/employees', authMiddleware, (req, res) => {
-  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number } = req.body;
+  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя обязательно' });
   db.run(
-    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null]
+    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number,hidden_in_schedule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0]
   );
   saveDb();
   res.json({ ok: true });
 });
 app.put('/api/employees/:id', authMiddleware, (req, res) => {
-  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number } = req.body;
+  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule } = req.body;
   db.run(
-    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=? WHERE id=?`,
-    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, req.params.id]
+    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=? WHERE id=?`,
+    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, req.params.id]
   );
   saveDb();
   res.json({ ok: true });
