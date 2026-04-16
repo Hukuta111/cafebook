@@ -56,7 +56,11 @@
   .sidebar-logo { padding:28px 24px 20px; border-bottom:1px solid var(--border); }
   .sidebar-logo h1 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--accent); }
   .sidebar-logo span { font-size:11px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; }
-  .sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+  .sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width:6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background:transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background:var(--accent); }
   .nav-group-label { font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--text3); padding:12px 12px 6px; }
   .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; color:var(--text2); transition:all .15s; border:1px solid transparent; }
   .nav-item:hover { background:var(--surface2); color:var(--text); }
@@ -212,9 +216,13 @@
   .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:99; }
 
   @media(max-width:768px) {
-    .sidebar{transform:translateX(-100%)} .sidebar.open{transform:translateX(0)} .sidebar-overlay.open{display:block} .hamburger{display:block}
+    .sidebar{transform:translateX(-100%); width:100vw; max-width:100vw;}
+    .sidebar.open{transform:translateX(0)}
+    .sidebar-overlay.open{display:block}
+    .hamburger{display:block}
     .main{margin-left:0;padding:24px 16px;padding-top:64px;max-width:100vw}
     .chart-row{grid-template-columns:1fr} .salary-breakdown{grid-template-columns:1fr 1fr} .form-2col{grid-template-columns:1fr} .cards-row{grid-template-columns:1fr 1fr}
+    .sidebar-nav { padding-bottom:80px; }
   }
 
 
