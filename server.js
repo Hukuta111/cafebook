@@ -58,6 +58,15 @@ async function initDb() {
       id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
+    `CREATE TABLE IF NOT EXISTS banquets (
+      id TEXT PRIMARY KEY, date TEXT NOT NULL, total REAL NOT NULL,
+      percent REAL DEFAULT 10, note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS banquet_shares (
+      id TEXT PRIMARY KEY, banquet_id TEXT NOT NULL, emp_id TEXT NOT NULL,
+      amount REAL NOT NULL DEFAULT 0
+    )`,
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
       display_name TEXT, password_hash TEXT NOT NULL,
@@ -81,7 +90,7 @@ async function initDb() {
 }
 
 // Список страниц для прав доступа
-const PAGES = ['dashboard','transactions','daily','monthly','positions','employees','salary','salary-report','schedule','settings'];
+const PAGES = ['dashboard','transactions','daily','monthly','positions','employees','salary','salary-report','schedule','banquets','settings'];
 
 function defaultPermissions() {
   const p = {};
@@ -643,6 +652,120 @@ app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
 
   saveDb();
   res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue) });
+});
+
+// ─── БАНКЕТЫ ──────────────────────────────────────────────
+app.get('/api/banquets', authMiddleware, (req, res) => {
+  const { month } = req.query;
+  let sql = 'SELECT * FROM banquets';
+  const params = [];
+  if (month) { sql += ' WHERE strftime("%Y-%m", date) = ?'; params.push(month); }
+  sql += ' ORDER BY date DESC';
+  const rows = db.exec(sql, params);
+  const banquets = rows[0] ? rowsToObjects(rows[0]) : [];
+  // приложить shares
+  banquets.forEach(b => {
+    const sh = db.exec('SELECT * FROM banquet_shares WHERE banquet_id = ?', [b.id]);
+    b.shares = sh[0] ? rowsToObjects(sh[0]) : [];
+  });
+  res.json(banquets);
+});
+
+function recalcShares(banquetId, total, percent) {
+  // удалить старые
+  db.run('DELETE FROM banquet_shares WHERE banquet_id = ?', [banquetId]);
+  // найти дату банкета
+  const bRows = db.exec('SELECT date FROM banquets WHERE id = ?', [banquetId]);
+  if (!bRows[0]) return [];
+  const date = bRows[0].values[0][0];
+  // кто работал в этот день (из schedule)
+  const schedRows = db.exec(
+    'SELECT DISTINCT emp_id FROM schedule WHERE work_date = ?',
+    [date]
+  );
+  const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
+  if (!empIds.length) return [];
+  const bonus = total * (percent / 100);
+  const share = bonus / empIds.length;
+  const shares = [];
+  empIds.forEach(empId => {
+    const id = uid();
+    const amount = Math.round(share * 100) / 100;
+    db.run('INSERT INTO banquet_shares (id, banquet_id, emp_id, amount) VALUES (?,?,?,?)',
+      [id, banquetId, empId, amount]);
+    shares.push({ id, banquet_id: banquetId, emp_id: empId, amount });
+  });
+  return shares;
+}
+
+app.post('/api/banquets', authMiddleware, (req, res) => {
+  const { id, date, total, percent, note } = req.body;
+  if (!date || !total) return res.status(400).json({ error: 'Укажите дату и сумму' });
+  const bId = id || uid();
+  db.run('INSERT INTO banquets (id, date, total, percent, note) VALUES (?,?,?,?,?)',
+    [bId, date, parseFloat(total), parseFloat(percent) || 10, note || '']);
+  recalcShares(bId, parseFloat(total), parseFloat(percent) || 10);
+  saveDb();
+  res.json({ ok: true, id: bId });
+});
+
+app.put('/api/banquets/:id', authMiddleware, (req, res) => {
+  const { date, total, percent, note, shares, recalc } = req.body;
+  db.run('UPDATE banquets SET date=?, total=?, percent=?, note=? WHERE id=?',
+    [date, parseFloat(total), parseFloat(percent) || 10, note || '', req.params.id]);
+  if (recalc) {
+    recalcShares(req.params.id, parseFloat(total), parseFloat(percent) || 10);
+  } else if (Array.isArray(shares)) {
+    // обновить индивидуальные доли
+    shares.forEach(s => {
+      if (s.id) {
+        db.run('UPDATE banquet_shares SET amount=? WHERE id=?', [parseFloat(s.amount) || 0, s.id]);
+      }
+    });
+  }
+  saveDb();
+  res.json({ ok: true });
+});
+
+app.delete('/api/banquets/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM banquet_shares WHERE banquet_id = ?', [req.params.id]);
+  db.run('DELETE FROM banquets WHERE id = ?', [req.params.id]);
+  // удалить связанные авто-транзакции
+  db.run(
+    `DELETE FROM transactions WHERE type='bonus' AND note LIKE ?`,
+    ['Банкет ' + req.params.id + '%']
+  );
+  saveDb();
+  res.json({ ok: true });
+});
+
+// применить: создать bonus-транзакции
+app.post('/api/banquets/:id/apply', authMiddleware, (req, res) => {
+  const bRows = db.exec('SELECT * FROM banquets WHERE id = ?', [req.params.id]);
+  if (!bRows[0]) return res.status(404).json({ error: 'Банкет не найден' });
+  const banquet = rowsToObjects(bRows[0])[0];
+  const sRows = db.exec('SELECT * FROM banquet_shares WHERE banquet_id = ?', [req.params.id]);
+  const shares = sRows[0] ? rowsToObjects(sRows[0]) : [];
+
+  // удалить старые авто-транзакции этого банкета
+  db.run(
+    `DELETE FROM transactions WHERE type='bonus' AND note LIKE ?`,
+    ['Банкет ' + req.params.id + '%']
+  );
+
+  let created = 0;
+  shares.forEach(s => {
+    if (+s.amount <= 0) return;
+    const tid = uid();
+    db.run(
+      'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+      [tid, banquet.date, 'bonus', 'Банкет', s.emp_id, +s.amount,
+       'Банкет ' + banquet.id + (banquet.note ? ' — ' + banquet.note : '')]
+    );
+    created++;
+  });
+  saveDb();
+  res.json({ ok: true, created });
 });
 
 // ─── НАЧИСЛЕНИЕ ОКЛАДОВ ───────────────────────────────────
