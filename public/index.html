@@ -274,11 +274,21 @@
   @page { margin:10mm; }
   @page schedule-landscape { size:A4 landscape; margin:5mm; }
 
+  /* Days-of-work table in salary report */
+  .work-days-list { margin:12px 0; background:var(--surface2); border-radius:var(--radius-sm); padding:10px 14px; }
+  .work-days-list h4 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:8px; font-weight:500; }
+  .work-days-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:6px; font-size:12px; }
+  .work-days-grid .wd-row { display:flex; justify-content:space-between; padding:4px 8px; background:var(--surface); border-radius:4px; }
+  .work-days-grid .wd-row .wd-sum { color:var(--green); font-weight:600; }
+
   @media print {
+    .no-print { display:none!important; }
     .sidebar,.hamburger,.btn,.filters,.page-header .btn,.modal-overlay,.toast,.loader,.nav-group-label,.page-subtitle{display:none!important}
     .main{margin-left:0;padding:0;max-width:none}
     body{background:#fff;color:#000;font-size:10px}
     .salary-card{border:1px solid #ccc;margin-bottom:12px}
+    .work-days-list{background:#f8f8f8!important;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .work-days-grid .wd-row{background:#fff!important;border:1px solid #ddd}
     .stat-value.green{color:#2a7d4f} .stat-value.red{color:#c0392b}
     .page:not(.print-target):not(.active){display:none!important}
     .page.print-target,.page.active{display:block!important}
@@ -485,10 +495,14 @@
   <div class="page" id="page-salary-report">
     <div class="page-header">
       <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
-      <div style="display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div class="mp-wrap" id="salReportMonthPicker"></div>
-        <button class="btn btn-primary" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
-        <button class="btn" onclick="window.print()">🖨 Печать</button>
+        <label class="no-print" style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()" style="accent-color:var(--accent);">
+          Дни работы
+        </label>
+        <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
+        <button class="btn no-print" onclick="window.print()">🖨 Печать</button>
       </div>
     </div>
     <div id="salaryReportCards"></div>
@@ -1981,6 +1995,17 @@ async function renderSalaryReport() {
   const rows = await API.get('/reports/salary?month=' + month) || [];
   const container = document.getElementById('salaryReportCards');
 
+  // загрузить график работы если включён переключатель
+  const showDays = document.getElementById('salReportShowDays')?.checked || false;
+  let scheduleByEmp = {};
+  if (showDays) {
+    const sched = await API.get('/schedule?month=' + month) || [];
+    sched.forEach(s => {
+      if (!scheduleByEmp[s.emp_id]) scheduleByEmp[s.emp_id] = [];
+      scheduleByEmp[s.emp_id].push(s);
+    });
+  }
+
   if (!rows.length) {
     container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Нет данных за выбранный период</p></div>`;
     return;
@@ -2050,6 +2075,34 @@ async function renderSalaryReport() {
       ? `<span style="color:var(--text3)">Совмещение ${g.items.length} должност${g.items.length===2?'ей':'ей'}</span>`
       : `${first?(first.role||''):''}${first?' · ':''}<span class="badge badge-blue">${first?(EMP_TYPE_LABELS[first.type]||''):''}</span>${first&&first.percent ? ' · <span style="color:var(--accent)">'+first.percent+'% от выручки</span>' : ''}`;
 
+    // блок дней работы (если переключатель включён)
+    let workDaysHtml = '';
+    if (showDays) {
+      const allShifts = [];
+      g.items.forEach(({emp}) => {
+        if (!emp) return;
+        const shifts = scheduleByEmp[emp.id] || [];
+        shifts.forEach(s => {
+          const rate = s.hourly_rate != null ? +s.hourly_rate : (+emp.hourly_rate || 0);
+          allShifts.push({ ...s, empRole: emp.role || EMP_TYPE_LABELS[emp.type] || '—', rate });
+        });
+      });
+      if (allShifts.length) {
+        allShifts.sort((a,b) => a.work_date.localeCompare(b.work_date));
+        const totalHours = allShifts.reduce((s,x) => s + +x.hours, 0);
+        const totalPay = allShifts.reduce((s,x) => s + (+x.hours * +x.rate), 0);
+        workDaysHtml = `<div class="work-days-list">
+          <h4>Дни работы — ${allShifts.length} смен, ${totalHours}ч · ${fmt(totalPay)} ${_currency}</h4>
+          <div class="work-days-grid">
+            ${allShifts.map(s => {
+              const pay = +s.hours * +s.rate;
+              return `<div class="wd-row"><span>${dateLabel(s.work_date)} · ${s.hours}ч${multi?' <span style="color:var(--text3);font-size:10px">'+s.empRole+'</span>':''}</span><span class="wd-sum">${fmt(pay)}</span></div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }
+    }
+
     html += `<div class="salary-card">
       <div class="salary-card-header">
         <div>
@@ -2059,6 +2112,7 @@ async function renderSalaryReport() {
         <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
       </div>
       ${rolesBreakdown}
+      ${workDaysHtml}
       <div class="salary-breakdown">
         <div class="salary-item"><div class="salary-item-label">Зарплата</div><div class="salary-item-value" style="color:var(--accent)">${fmt(sum.salary)}</div></div>
         <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(sum.advance)}</div></div>
