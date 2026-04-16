@@ -550,8 +550,11 @@
       <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div class="mp-wrap" id="salReportMonthPicker"></div>
-        <button class="btn no-print" id="salReportDetailsBtn" onclick="toggleSalReportDetails()">Детализация</button>
-        <input type="checkbox" id="salReportShowDays" style="display:none" onchange="renderSalaryReport()">
+        <label class="toggle-mini no-print" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);gap:10px;align-items:center;font-size:13px;color:var(--text);">
+          <span>Детализация</span>
+          <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()">
+          <span class="toggle-sw"></span>
+        </label>
         <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
         <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
         <button class="btn no-print" onclick="window.print()">🖨 Печать</button>
@@ -2336,14 +2339,6 @@ async function deleteSalTx(id) {
 // ═══════════════════════════════════════════
 // SALARY REPORT
 // ═══════════════════════════════════════════
-function toggleSalReportDetails() {
-  const cb = document.getElementById('salReportShowDays');
-  const btn = document.getElementById('salReportDetailsBtn');
-  cb.checked = !cb.checked;
-  btn.classList.toggle('btn-primary', cb.checked);
-  renderSalaryReport();
-}
-
 async function calcMonthlySalary() {
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
