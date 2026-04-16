@@ -5,8 +5,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const initSqlJs = require('sql.js');
 const crypto = require('crypto');
+const { WebSocketServer } = require('ws');
 
 const app = express();
 app.use(express.json());
@@ -230,11 +232,19 @@ app.post('/api/login', (req, res) => {
   }
 
   const newSessionId = uid();
+  const oldSessionId = user.session_id;
   dbUpdateUser(user.id, {
     session_id: newSessionId,
     last_login_at: new Date().toISOString(),
   });
   saveDb();
+
+  // старая сессия — выбить через WS
+  if (oldSessionId) {
+    wsBroadcastToSession(oldSessionId, { type: 'session_replaced' });
+  }
+  // все админы — обновить список пользователей
+  wsBroadcast({ type: 'users_changed' });
 
   const token = jwt.sign(
     { username: user.username, role: user.role, sessionId: newSessionId },
@@ -254,6 +264,7 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', authMiddleware, (req, res) => {
   dbUpdateUser(req.user.id, { session_id: null });
   saveDb();
+  wsBroadcast({ type: 'users_changed' });
   res.json({ ok: true });
 });
 
@@ -315,6 +326,7 @@ app.post('/api/users', authMiddleware, adminOnly, (req, res) => {
      bcrypt.hashSync(password, 10), finalRole, perms, null, new Date().toISOString()]
   );
   saveDb();
+  wsBroadcast({ type: 'users_changed' });
   res.json({ ok: true, id });
 });
 
@@ -343,14 +355,28 @@ app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
   }
   dbUpdateUser(user.id, patch);
   saveDb();
+  // если сменили пароль/права — кикнуть старую сессию
+  if (patch.session_id === null && user.session_id) {
+    wsBroadcastToSession(user.session_id, { type: 'kicked' });
+  } else if (patch.permissions !== undefined || patch.role !== undefined) {
+    // права изменились — попросить клиент перезагрузить /me
+    if (user.session_id) wsBroadcastToSession(user.session_id, { type: 'perms_changed' });
+  }
+  wsBroadcast({ type: 'users_changed' });
   res.json({ ok: true });
 });
 
 app.post('/api/users/:id/kick', authMiddleware, adminOnly, (req, res) => {
   const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  const oldSessionId = user.session_id;
   dbUpdateUser(user.id, { session_id: null });
   saveDb();
+  // выбить сессию мгновенно через WS
+  if (oldSessionId) {
+    wsBroadcastToSession(oldSessionId, { type: 'kicked' });
+  }
+  wsBroadcast({ type: 'users_changed' });
   res.json({ ok: true });
 });
 
@@ -366,8 +392,10 @@ app.delete('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
       return res.status(400).json({ error: 'Нельзя удалить единственного администратора' });
     }
   }
+  if (user.session_id) wsBroadcastToSession(user.session_id, { type: 'kicked' });
   db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
   saveDb();
+  wsBroadcast({ type: 'users_changed' });
   res.json({ ok: true });
 });
 
@@ -789,9 +817,66 @@ initDb().then(() => {
       console.log('\n🔐  Пароль admin сброшен на admin123\n');
     }
   }
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = http.createServer(app);
+  setupWebSocket(server);
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n✅  CaféBook запущен: http://localhost:${PORT}`);
     console.log(`🌐  В сети:           http://<ВАШ_IP>:${PORT}`);
     console.log(`🔑  Логин по умолчанию: admin / admin123\n`);
   });
 });
+
+// ─── WEBSOCKET ─────────────────────────────────────────────
+const wsClients = new Map(); // ws → { userId, username, sessionId }
+
+function setupWebSocket(server) {
+  const wss = new WebSocketServer({ server, path: '/ws' });
+  wss.on('connection', (ws, req) => {
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        if (msg.type === 'auth' && msg.token) {
+          try {
+            const payload = jwt.verify(msg.token, JWT_SECRET);
+            const user = dbGetUserByUsername(payload.username);
+            if (!user || user.session_id !== payload.sessionId) {
+              ws.send(JSON.stringify({ type: 'auth_failed' }));
+              ws.close();
+              return;
+            }
+            wsClients.set(ws, {
+              userId: user.id, username: user.username, sessionId: payload.sessionId
+            });
+            ws.send(JSON.stringify({ type: 'auth_ok' }));
+          } catch {
+            ws.send(JSON.stringify({ type: 'auth_failed' }));
+            ws.close();
+          }
+        }
+      } catch {}
+    });
+    ws.on('close', () => wsClients.delete(ws));
+    ws.on('error', () => wsClients.delete(ws));
+  });
+}
+
+function wsBroadcast(msg) {
+  const data = JSON.stringify(msg);
+  wsClients.forEach((_info, ws) => {
+    if (ws.readyState === 1) ws.send(data);
+  });
+}
+
+function wsBroadcastToUser(userId, msg) {
+  const data = JSON.stringify(msg);
+  wsClients.forEach((info, ws) => {
+    if (info.userId === userId && ws.readyState === 1) ws.send(data);
+  });
+}
+
+function wsBroadcastToSession(sessionId, msg) {
+  const data = JSON.stringify(msg);
+  wsClients.forEach((info, ws) => {
+    if (info.sessionId === sessionId && ws.readyState === 1) ws.send(data);
+  });
+}
