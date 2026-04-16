@@ -1997,23 +1997,73 @@ async function renderSalaryReport() {
     <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">К выплате итого</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
   </div>`;
 
+  // группировка по табельному номеру (если есть)
+  const groups = []; // { key, tab_number, items: [{r, emp}] }
+  const byTab = {};
   rows.forEach(r => {
     const emp = _employees.find(e => e.id === r.emp_id);
-    const net = +r.salary + +r.bonus - +r.advance - +r.fine;
+    const tab = emp && emp.tab_number ? String(emp.tab_number).trim() : null;
+    if (tab) {
+      if (!byTab[tab]) {
+        byTab[tab] = { key:'tab_'+tab, tab_number:tab, items:[] };
+        groups.push(byTab[tab]);
+      }
+      byTab[tab].items.push({ r, emp });
+    } else {
+      groups.push({ key:'id_'+r.emp_id, tab_number:null, items:[{ r, emp }] });
+    }
+  });
+
+  groups.forEach(g => {
+    // суммарно по группе
+    const sum = g.items.reduce((a, {r}) => ({
+      salary: a.salary + +r.salary, advance: a.advance + +r.advance,
+      bonus: a.bonus + +r.bonus, fine: a.fine + +r.fine,
+    }), {salary:0, advance:0, bonus:0, fine:0});
+    const net = sum.salary + sum.bonus - sum.advance - sum.fine;
     const netCol = net>=0?'var(--green)':'var(--red)';
+
+    // имя: если в группе один — его имя; если несколько — имя первого + «(совмещает)»
+    const first = g.items[0].emp;
+    const displayName = first ? first.name : 'Удалённый сотрудник';
+    const tabBadge = g.tab_number ? ` <span style="color:var(--accent);font-family:monospace;font-size:13px;font-weight:500">№${g.tab_number}</span>` : '';
+    const multi = g.items.length > 1;
+
+    // разбивка по должностям (если больше одной)
+    let rolesBreakdown = '';
+    if (multi) {
+      rolesBreakdown = '<div style="margin:12px 0;display:flex;flex-direction:column;gap:8px;">'
+        + g.items.map(({r, emp}) => {
+          const itemNet = +r.salary + +r.bonus - +r.advance - +r.fine;
+          const role = emp ? (emp.role || EMP_TYPE_LABELS[emp.type] || '—') : '—';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
+            <div>
+              <span style="font-weight:600">${role}</span>
+              <span style="color:var(--text3);font-size:12px;margin-left:8px">з/п ${fmt(r.salary)} · аванс ${fmt(r.advance)} · бонус ${fmt(r.bonus)} · штраф ${fmt(r.fine)}</span>
+            </div>
+            <div style="font-weight:700;color:${itemNet>=0?'var(--green)':'var(--red)'}">${fmt(itemNet)} ${_currency}</div>
+          </div>`;
+        }).join('') + '</div>';
+    }
+
+    const headerRole = multi
+      ? `<span style="color:var(--text3)">Совмещение ${g.items.length} должност${g.items.length===2?'ей':'ей'}</span>`
+      : `${first?(first.role||''):''}${first?' · ':''}<span class="badge badge-blue">${first?(EMP_TYPE_LABELS[first.type]||''):''}</span>${first&&first.percent ? ' · <span style="color:var(--accent)">'+first.percent+'% от выручки</span>' : ''}`;
+
     html += `<div class="salary-card">
       <div class="salary-card-header">
         <div>
-          <div class="salary-card-name">${emp?emp.name:'Удалённый сотрудник'}${emp&&emp.tab_number ? ' <span style="color:var(--accent);font-family:monospace;font-size:13px;font-weight:500">№'+emp.tab_number+'</span>' : ''}</div>
-          <div class="salary-card-role">${emp?(emp.role||''):''}${emp?' · ':''}<span class="badge badge-blue">${emp?(EMP_TYPE_LABELS[emp.type]||''):''}</span>${emp&&emp.percent ? ' · <span style="color:var(--accent)">'+emp.percent+'% от выручки</span>' : ''}</div>
+          <div class="salary-card-name">${displayName}${tabBadge}</div>
+          <div class="salary-card-role">${headerRole}</div>
         </div>
         <div style="font-size:22px;font-weight:700;color:${netCol}">${fmt(net)} ${_currency}</div>
       </div>
+      ${rolesBreakdown}
       <div class="salary-breakdown">
-        <div class="salary-item"><div class="salary-item-label">Зарплата</div><div class="salary-item-value" style="color:var(--accent)">${fmt(r.salary)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(r.advance)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(r.bonus)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(r.fine)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Зарплата</div><div class="salary-item-value" style="color:var(--accent)">${fmt(sum.salary)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(sum.advance)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(sum.bonus)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(sum.fine)}</div></div>
       </div>
     </div>`;
   });
