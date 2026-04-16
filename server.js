@@ -645,6 +645,39 @@ app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
   res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue) });
 });
 
+// ─── НАЧИСЛЕНИЕ ОКЛАДОВ ───────────────────────────────────
+app.post('/api/calc-monthly-salary', authMiddleware, (req, res) => {
+  const { month } = req.body;
+  if (!month) return res.status(400).json({ error: 'Укажите месяц' });
+
+  const empRows = db.exec("SELECT * FROM employees WHERE salary > 0 AND status = 'active'");
+  const employees = empRows[0] ? rowsToObjects(empRows[0]) : [];
+  if (!employees.length) return res.json({ ok: true, created: 0, message: 'Нет активных сотрудников с окладом' });
+
+  // удалить старые авто-транзакции оклада за этот месяц
+  db.run(
+    `DELETE FROM transactions WHERE type='salary' AND cat='Месячный оклад' AND strftime('%Y-%m', date)=?`,
+    [month]
+  );
+
+  // последний день месяца
+  const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
+
+  let created = 0;
+  employees.forEach(emp => {
+    if (+emp.salary <= 0) return;
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    db.run(
+      'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+      [id, lastDay, 'salary', 'Месячный оклад', emp.id, +emp.salary, `Оклад ${emp.name}`]
+    );
+    created++;
+  });
+
+  saveDb();
+  res.json({ ok: true, created });
+});
+
 // ─── SCHEDULE → TRANSACTIONS ──────────────────────────────
 app.post('/api/calc-schedule-tx', authMiddleware, (req, res) => {
   const { month } = req.body;
