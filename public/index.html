@@ -501,6 +501,7 @@
           <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()" style="accent-color:var(--accent);">
           Дни работы
         </label>
+        <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
         <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
         <button class="btn no-print" onclick="window.print()">🖨 Печать</button>
       </div>
@@ -1970,6 +1971,23 @@ async function deleteSalTx(id) {
 // ═══════════════════════════════════════════
 // SALARY REPORT
 // ═══════════════════════════════════════════
+async function calcMonthlySalary() {
+  const cur = today().slice(0,7);
+  const month = _monthPickers['salReportMonthPicker']?.value || cur;
+  if (!confirm('Начислить оклады всем активным сотрудникам за ' + monthLabel(month) + '?\n\nСумма берётся из поля «Оклад» в профиле сотрудника.')) return;
+  const res = await API.post('/calc-monthly-salary', { month });
+  if (res && res.ok) {
+    if (res.created > 0) {
+      showToast('Начислено окладов: ' + res.created + ' ✓');
+      renderSalaryReport();
+    } else {
+      showToast(res.message || 'Нет сотрудников с окладом');
+    }
+  } else if (res) {
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
 async function calcPercentBonus() {
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
