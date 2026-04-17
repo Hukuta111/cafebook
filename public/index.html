@@ -850,8 +850,8 @@
     <div id="uPermsBlock" class="form-row">
       <label>Права доступа к страницам</label>
       <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface2);max-height:280px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;">
-          <span>Страница</span><span style="text-align:center">👁 Видеть</span><span style="text-align:center">✎ Редакт.</span>
+        <div style="display:grid;grid-template-columns:1fr 160px;gap:10px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+          <span>Страница</span><span>Уровень доступа</span>
         </div>
         <div id="uPermsList"></div>
       </div>
@@ -2937,33 +2937,28 @@ function renderPermissionsUI(perms) {
   const list = document.getElementById('uPermsList');
   list.innerHTML = PAGES_LIST.map(page => {
     const p = perms[page] || { view:false, edit:false };
-    return `<div style="display:grid;grid-template-columns:1fr 60px 60px;gap:4px 10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;">
+    let level = 'none';
+    if (p.view && p.edit) level = 'edit';
+    else if (p.view) level = 'view';
+    return `<div style="display:grid;grid-template-columns:1fr 160px;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;">
       <span style="font-size:13px">${PAGE_LABELS[page]}</span>
-      <label class="toggle-mini" style="justify-self:center"><input type="checkbox" data-perm-view="${page}" ${p.view?'checked':''} onchange="onPermChange('${page}','view',this.checked)"><span class="toggle-sw"></span></label>
-      <label class="toggle-mini" style="justify-self:center"><input type="checkbox" data-perm-edit="${page}" ${p.edit?'checked':''} onchange="onPermChange('${page}','edit',this.checked)"><span class="toggle-sw"></span></label>
+      <select data-perm="${page}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:12px;outline:none;">
+        <option value="none" ${level==='none'?'selected':''}>🚫 Нет доступа</option>
+        <option value="view" ${level==='view'?'selected':''}>👁 Только просмотр</option>
+        <option value="edit" ${level==='edit'?'selected':''}>✎ Полный доступ</option>
+      </select>
     </div>`;
   }).join('');
-}
-
-function onPermChange(page, action, checked) {
-  // если сняли view — снимаем и edit
-  if (action === 'view' && !checked) {
-    const editBox = document.querySelector(`[data-perm-edit="${page}"]`);
-    if (editBox) editBox.checked = false;
-  }
-  // если включили edit — включаем view
-  if (action === 'edit' && checked) {
-    const viewBox = document.querySelector(`[data-perm-view="${page}"]`);
-    if (viewBox) viewBox.checked = true;
-  }
 }
 
 function collectPermissionsFromUI() {
   const p = {};
   PAGES_LIST.forEach(page => {
-    const v = document.querySelector(`[data-perm-view="${page}"]`)?.checked || false;
-    const e = document.querySelector(`[data-perm-edit="${page}"]`)?.checked || false;
-    p[page] = { view: v, edit: e };
+    const level = document.querySelector(`[data-perm="${page}"]`)?.value || 'none';
+    p[page] = {
+      view: level === 'view' || level === 'edit',
+      edit: level === 'edit',
+    };
   });
   return p;
 }
