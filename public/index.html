@@ -776,6 +776,17 @@
       <div class="form-row"><label>Процент (%)</label><input type="number" id="banquetPercent" value="10" min="0" max="100" step="0.1"></div>
       <div class="form-row"><label>Комментарий</label><input type="text" id="banquetNote" placeholder="Например: Юбилей"></div>
     </div>
+    <div class="form-row" style="margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="margin:0;">Дополнительные статьи (доходы/расходы)</label>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="btn btn-sm" onclick="addBanquetItem('income')" style="border-color:var(--green);color:var(--green);padding:3px 10px;">+ Доход</button>
+          <button type="button" class="btn btn-sm" onclick="addBanquetItem('expense')" style="border-color:var(--red);color:var(--red);padding:3px 10px;">+ Расход</button>
+        </div>
+      </div>
+      <div id="banquetItemsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="banquetSummary" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);"></div>
+    </div>
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--text3);">
       Сумма бонуса автоматически поделится между всеми, кто работал в указанный день (по графику). Потом можно вручную изменить доли.
     </div>
@@ -2075,9 +2086,26 @@ async function renderBanquets() {
   }
 
   container.innerHTML = _banquets.map(b => {
-    const bonus = +b.total * (+b.percent / 100);
+    const items = Array.isArray(b.items) ? b.items : [];
+    const incomeSum = items.filter(x => x.type === 'income').reduce((s,x) => s + +x.amount, 0);
+    const expenseSum = items.filter(x => x.type === 'expense').reduce((s,x) => s + +x.amount, 0);
+    const netTotal = +b.total + incomeSum - expenseSum;
+    const bonus = Math.max(0, netTotal * (+b.percent / 100));
     const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
     const diff = bonus - distributed;
+    const itemsHtml = items.length
+      ? '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">'
+        + items.map(it => {
+          const color = it.type === 'income' ? 'var(--green)' : 'var(--red)';
+          const sign = it.type === 'income' ? '+' : '−';
+          const label = `${it.name || '(без названия)'}${+it.qty>1 || +it.price>0 ? ' · '+(+it.qty)+'×'+fmt(+it.price) : ''}`;
+          return `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 12px;background:var(--surface);border-radius:4px;">
+            <span>${label}</span>
+            <span style="color:${color};font-weight:600;">${sign}${fmt(+it.amount)} ${_currency}</span>
+          </div>`;
+        }).join('')
+        + '</div>'
+      : '';
     const sharesHtml = (b.shares || []).length
       ? '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">'
         + b.shares.map(s => {
@@ -2103,7 +2131,9 @@ async function renderBanquets() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div>
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
-          <div style="color:var(--text3);font-size:13px;margin-top:4px;">Сумма банкета: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b> · бонус <b style="color:var(--green)">${b.percent}%</b> = <b style="color:var(--green)">${fmt(bonus)} ${_currency}</b></div>
+          <div style="color:var(--text3);font-size:13px;margin-top:4px;">
+            Сумма: <b style="color:var(--text)">${fmt(b.total)}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус <b style="color:var(--green)">${b.percent}% = ${fmt(bonus)} ${_currency}</b>
+          </div>
         </div>
         <div style="display:flex;gap:8px;">
           ${editable ? `<button class="btn btn-sm" onclick='openBanquetModal(${JSON.stringify(b).replace(/"/g,"&quot;").replace(/'/g,"\\'")})'>✎ Изменить</button>
@@ -2112,10 +2142,13 @@ async function renderBanquets() {
           <button class="btn btn-sm btn-danger" onclick="deleteBanquet('${b.id}')">✕</button>` : ''}
         </div>
       </div>
+      ${itemsHtml}
       ${sharesHtml}
     </div>`;
   }).join('');
 }
+
+let _banquetItems = []; // локальный буфер в модалке: [{id?, type, name, qty, price}]
 
 function openBanquetModal(b) {
   document.getElementById('banquetModalTitle').textContent = b ? 'Редактировать банкет' : 'Новый банкет';
@@ -2125,7 +2158,62 @@ function openBanquetModal(b) {
   document.getElementById('banquetTotal').value = b ? b.total : '';
   document.getElementById('banquetPercent').value = b ? b.percent : 10;
   document.getElementById('banquetNote').value = b ? (b.note || '') : '';
+  _banquetItems = b && Array.isArray(b.items)
+    ? b.items.map(x => ({ id: x.id, type: x.type, name: x.name, qty: +x.qty || 1, price: +x.price || 0 }))
+    : [];
+  renderBanquetItems();
   openModal('banquetModal');
+}
+
+function renderBanquetItems() {
+  const list = document.getElementById('banquetItemsList');
+  if (!_banquetItems.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:6px 4px;">Статей нет. Можно добавить: «Открытие бутылок», «Аренда посуды», «Чаевые» и т.п.</div>';
+  } else {
+    list.innerHTML = _banquetItems.map((it, i) => {
+      const color = it.type === 'income' ? 'var(--green)' : 'var(--red)';
+      const label = it.type === 'income' ? '+' : '−';
+      const total = (+it.qty || 0) * (+it.price || 0);
+      return `<div style="display:grid;grid-template-columns:24px 1fr 70px 90px 90px 32px;gap:6px;align-items:center;padding:6px;background:var(--surface2);border-radius:var(--radius-sm);">
+        <span style="color:${color};font-size:18px;font-weight:700;text-align:center;">${label}</span>
+        <input type="text" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="Название" oninput="_banquetItems[${i}].name=this.value;updateBanquetSummary()"
+          style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;">
+        <input type="number" value="${it.qty}" step="0.01" min="0" placeholder="Кол-во" oninput="_banquetItems[${i}].qty=+this.value||0;renderBanquetItems()"
+          style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
+        <input type="number" value="${it.price}" step="0.01" min="0" placeholder="Цена" oninput="_banquetItems[${i}].price=+this.value||0;renderBanquetItems()"
+          style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
+        <div style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
+        <button type="button" onclick="removeBanquetItem(${i})" class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:12px;">✕</button>
+      </div>`;
+    }).join('');
+  }
+  updateBanquetSummary();
+}
+
+function updateBanquetSummary() {
+  const total = parseFloat(document.getElementById('banquetTotal').value) || 0;
+  const percent = parseFloat(document.getElementById('banquetPercent').value) || 0;
+  let income = 0, expense = 0;
+  _banquetItems.forEach(it => {
+    const sum = (+it.qty || 0) * (+it.price || 0);
+    if (it.type === 'income') income += sum; else expense += sum;
+  });
+  const net = total + income - expense;
+  const bonus = Math.max(0, net * percent / 100);
+  const el = document.getElementById('banquetSummary');
+  if (el) {
+    el.innerHTML = `Основная сумма: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''} &nbsp;·&nbsp; итого <b style="color:var(--text)">${fmt(net)}</b> &nbsp;⇒&nbsp; бонус <b style="color:var(--green)">${fmt(bonus)}</b>`;
+  }
+}
+
+function addBanquetItem(type) {
+  _banquetItems.push({ id: uid(), type, name: '', qty: 1, price: 0 });
+  renderBanquetItems();
+}
+
+function removeBanquetItem(index) {
+  _banquetItems.splice(index, 1);
+  renderBanquetItems();
 }
 
 async function saveBanquet() {
@@ -2135,10 +2223,19 @@ async function saveBanquet() {
   const percent = parseFloat(document.getElementById('banquetPercent').value) || 10;
   const note = document.getElementById('banquetNote').value;
   if (!date || !total || total <= 0) { showToast('Укажите дату и сумму банкета', true); return; }
+  const items = _banquetItems.map(it => ({
+    id: it.id, type: it.type, name: it.name || '',
+    qty: +it.qty || 0, price: +it.price || 0,
+    amount: (+it.qty || 0) * (+it.price || 0),
+  }));
   const res = id
-    ? await API.put('/banquets/' + id, { date, total, percent, note, recalc: true })
+    ? await API.put('/banquets/' + id, { date, total, percent, note, items, recalc: true })
     : await API.post('/banquets', { id: uid(), date, total, percent, note });
   if (res && res.ok) {
+    // если это создание — сразу же обновим items через PUT (POST не принимает items)
+    if (!id && items.length) {
+      await API.put('/banquets/' + res.id, { date, total, percent, note, items, recalc: true });
+    }
     closeModal('banquetModal');
     renderBanquets();
     showToast('Банкет сохранён ✓');

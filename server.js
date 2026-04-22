@@ -67,6 +67,12 @@ async function initDb() {
       id TEXT PRIMARY KEY, banquet_id TEXT NOT NULL, emp_id TEXT NOT NULL,
       amount REAL NOT NULL DEFAULT 0
     )`,
+    `CREATE TABLE IF NOT EXISTS banquet_items (
+      id TEXT PRIMARY KEY, banquet_id TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'income',
+      name TEXT NOT NULL, qty REAL DEFAULT 1, price REAL DEFAULT 0,
+      amount REAL NOT NULL DEFAULT 0
+    )`,
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
       display_name TEXT, password_hash TEXT NOT NULL,
@@ -665,29 +671,41 @@ app.get('/api/banquets', authMiddleware, (req, res) => {
   sql += ' ORDER BY date DESC';
   const rows = db.exec(sql, params);
   const banquets = rows[0] ? rowsToObjects(rows[0]) : [];
-  // приложить shares
   banquets.forEach(b => {
     const sh = db.exec('SELECT * FROM banquet_shares WHERE banquet_id = ?', [b.id]);
     b.shares = sh[0] ? rowsToObjects(sh[0]) : [];
+    const it = db.exec('SELECT * FROM banquet_items WHERE banquet_id = ?', [b.id]);
+    b.items = it[0] ? rowsToObjects(it[0]) : [];
   });
   res.json(banquets);
 });
 
+// чистая сумма банкета = total + доходы − расходы
+function banquetNetTotal(banquetId, fallbackTotal) {
+  const it = db.exec('SELECT type, amount FROM banquet_items WHERE banquet_id = ?', [banquetId]);
+  let delta = 0;
+  if (it[0]) {
+    it[0].values.forEach(([type, amount]) => {
+      if (type === 'income') delta += +amount;
+      else delta -= +amount;
+    });
+  }
+  return fallbackTotal + delta;
+}
+
 function recalcShares(banquetId, total, percent) {
-  // удалить старые
   db.run('DELETE FROM banquet_shares WHERE banquet_id = ?', [banquetId]);
-  // найти дату банкета
   const bRows = db.exec('SELECT date FROM banquets WHERE id = ?', [banquetId]);
   if (!bRows[0]) return [];
   const date = bRows[0].values[0][0];
-  // кто работал в этот день (из schedule)
   const schedRows = db.exec(
     'SELECT DISTINCT emp_id FROM schedule WHERE work_date = ?',
     [date]
   );
   const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
   if (!empIds.length) return [];
-  const bonus = total * (percent / 100);
+  const net = banquetNetTotal(banquetId, +total);
+  const bonus = Math.max(0, net * (percent / 100));
   const share = bonus / empIds.length;
   const shares = [];
   empIds.forEach(empId => {
@@ -712,13 +730,25 @@ app.post('/api/banquets', authMiddleware, (req, res) => {
 });
 
 app.put('/api/banquets/:id', authMiddleware, (req, res) => {
-  const { date, total, percent, note, shares, recalc } = req.body;
+  const { date, total, percent, note, shares, items, recalc } = req.body;
   db.run('UPDATE banquets SET date=?, total=?, percent=?, note=? WHERE id=?',
     [date, parseFloat(total), parseFloat(percent) || 10, note || '', req.params.id]);
+  // статьи (всегда перезаписываются полностью если переданы)
+  if (Array.isArray(items)) {
+    db.run('DELETE FROM banquet_items WHERE banquet_id = ?', [req.params.id]);
+    items.forEach(it => {
+      const qty = parseFloat(it.qty) || 1;
+      const price = parseFloat(it.price) || 0;
+      const amount = +it.amount != null && !isNaN(+it.amount) && +it.amount !== 0 ? parseFloat(it.amount) : qty * price;
+      db.run(
+        'INSERT INTO banquet_items (id, banquet_id, type, name, qty, price, amount) VALUES (?,?,?,?,?,?,?)',
+        [it.id || uid(), req.params.id, it.type === 'expense' ? 'expense' : 'income', it.name || '', qty, price, amount]
+      );
+    });
+  }
   if (recalc) {
     recalcShares(req.params.id, parseFloat(total), parseFloat(percent) || 10);
   } else if (Array.isArray(shares)) {
-    // обновить индивидуальные доли
     shares.forEach(s => {
       if (s.id) {
         db.run('UPDATE banquet_shares SET amount=? WHERE id=?', [parseFloat(s.amount) || 0, s.id]);
@@ -731,6 +761,7 @@ app.put('/api/banquets/:id', authMiddleware, (req, res) => {
 
 app.delete('/api/banquets/:id', authMiddleware, (req, res) => {
   db.run('DELETE FROM banquet_shares WHERE banquet_id = ?', [req.params.id]);
+  db.run('DELETE FROM banquet_items WHERE banquet_id = ?', [req.params.id]);
   db.run('DELETE FROM banquets WHERE id = ?', [req.params.id]);
   // удалить связанные авто-транзакции
   db.run(
