@@ -2182,15 +2182,15 @@ function renderBanquetItems() {
       const color = it.type === 'income' ? 'var(--green)' : 'var(--red)';
       const label = it.type === 'income' ? '+' : '−';
       const total = (+it.qty || 0) * (+it.price || 0);
-      return `<div style="display:grid;grid-template-columns:24px 1fr 70px 90px 90px 32px;gap:6px;align-items:center;padding:6px;background:var(--surface2);border-radius:var(--radius-sm);">
+      return `<div data-item-idx="${i}" style="display:grid;grid-template-columns:24px 1fr 70px 90px 90px 32px;gap:6px;align-items:center;padding:6px;background:var(--surface2);border-radius:var(--radius-sm);">
         <span style="color:${color};font-size:18px;font-weight:700;text-align:center;">${label}</span>
-        <input type="text" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="Название" oninput="_banquetItems[${i}].name=this.value;updateBanquetSummary()"
+        <input type="text" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="Название" oninput="_banquetItems[${i}].name=this.value"
           style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;">
-        <input type="number" value="${it.qty}" step="0.01" min="0" oninput="_banquetItems[${i}].qty=+this.value||0;renderBanquetItems()"
+        <input type="number" value="${it.qty}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'qty',this.value)"
           style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
-        <input type="number" value="${it.price}" step="0.01" min="0" oninput="_banquetItems[${i}].price=+this.value||0;renderBanquetItems()"
+        <input type="number" value="${it.price}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'price',this.value)"
           style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
-        <div style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
+        <div data-item-total="${i}" style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
         <button type="button" onclick="removeBanquetItem(${i})" class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:12px;">✕</button>
       </div>`;
     }).join('');
@@ -2212,6 +2212,18 @@ function updateBanquetSummary() {
   if (el) {
     el.innerHTML = `Основная сумма: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''} &nbsp;·&nbsp; итого <b style="color:var(--text)">${fmt(net)}</b> &nbsp;⇒&nbsp; бонус <b style="color:var(--green)">${fmt(bonus)}</b>`;
   }
+}
+
+function onBanquetItemChange(index, field, value) {
+  const v = +value || 0;
+  _banquetItems[index][field] = v;
+  // обновить только total строки
+  const it = _banquetItems[index];
+  const total = (+it.qty || 0) * (+it.price || 0);
+  const label = it.type === 'income' ? '+' : '−';
+  const el = document.querySelector('[data-item-total="' + index + '"]');
+  if (el) el.textContent = label + fmt(total);
+  updateBanquetSummary();
 }
 
 function addBanquetItem(type) {
