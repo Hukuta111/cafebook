@@ -312,6 +312,11 @@
     .main{margin-left:0;padding:0;max-width:none}
     body{background:#fff;color:#000;font-size:10px}
     .salary-card{border:1px solid #ccc;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
+    /* режим печати выбранных расчётных листов: скрыть невыбранные, каждый на отдельный лист */
+    body.print-payslips-mode #salaryReportCards > .cards-row { display:none !important; }
+    body.print-payslips-mode .salary-card:not(.print-selected) { display:none !important; }
+    body.print-payslips-mode .salary-card.print-selected { page-break-after:always; break-after:page; margin-bottom:0; }
+    body.print-payslips-mode .salary-card.print-selected:last-child { page-break-after:auto; break-after:auto; }
     #salaryReportCards > .cards-row{page-break-inside:avoid;break-inside:avoid}
     .work-days-list{background:#f8f8f8!important;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .work-days-grid .wd-row{background:#fff!important;border:1px solid #ddd}
@@ -560,7 +565,7 @@
         </label>
         <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
         <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
-        <button class="btn no-print" onclick="window.print()">🖨 Печать</button>
+        <button class="btn no-print" onclick="openSalReportPrintModal()">🖨 Печать</button>
       </div>
     </div>
     <div id="salaryReportCards"></div>
@@ -775,6 +780,23 @@
 
 <!-- SCHEDULE MODAL -->
 <!-- BANQUET MODAL -->
+<!-- PRINT SALARY REPORT MODAL -->
+<div class="modal-overlay" id="salReportPrintModal">
+  <div class="modal" style="width:560px;max-width:95vw;">
+    <div class="modal-title">Печать отчёта по зарплате</div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)">Снять всех</button>
+    </div>
+    <div id="salReportPrintList" style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('salReportPrintModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="doPrintSalReport()">🖨 Напечатать</button>
+    </div>
+  </div>
+</div>
+
 <!-- MONTHLY SALARY MODAL -->
 <div class="modal-overlay" id="monthlySalaryModal">
   <div class="modal" style="width:620px;max-width:95vw;">
@@ -2900,6 +2922,71 @@ async function deleteSalTx(id) {
 // ═══════════════════════════════════════════
 let _monthlySalaryCandidates = [];
 
+// ═══════════════════════════════════════════
+// PRINT SALARY REPORT (выбор кого печатать)
+// ═══════════════════════════════════════════
+let _salReportPrintList = []; // [{key, name, selected}]
+
+function openSalReportPrintModal() {
+  const cards = document.querySelectorAll('#salaryReportCards .salary-card');
+  if (!cards.length) { showToast('Нет данных для печати', true); return; }
+  _salReportPrintList = [...cards].map(c => ({
+    key: c.dataset.groupKey,
+    name: c.dataset.empName,
+    selected: true,
+  }));
+  renderSalReportPrintList();
+  openModal('salReportPrintModal');
+}
+
+function renderSalReportPrintList() {
+  const list = document.getElementById('salReportPrintList');
+  list.innerHTML = _salReportPrintList.map((c, i) => `
+    <label class="toggle-row" style="cursor:pointer;">
+      <div class="toggle-text">
+        <span class="toggle-label">${c.name}</span>
+      </div>
+      <input type="checkbox" ${c.selected?'checked':''} onchange="_salReportPrintList[${i}].selected=this.checked;srpUpdateSummary()">
+      <span class="toggle-sw"></span>
+    </label>
+  `).join('') + '<div id="srpSummary" style="margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);"></div>';
+  srpUpdateSummary();
+}
+
+function srpUpdateSummary() {
+  const sel = _salReportPrintList.filter(c => c.selected);
+  const el = document.getElementById('srpSummary');
+  if (el) el.textContent = `Будет напечатано ${sel.length} листов (по одному на сотрудника)`;
+}
+
+function srpToggleAll(value) {
+  _salReportPrintList.forEach(c => c.selected = value);
+  renderSalReportPrintList();
+}
+
+function doPrintSalReport() {
+  const selected = new Set(_salReportPrintList.filter(c => c.selected).map(c => c.key));
+  if (!selected.size) { showToast('Никто не выбран', true); return; }
+
+  // пометить карточки
+  document.querySelectorAll('#salaryReportCards .salary-card').forEach(card => {
+    if (selected.has(card.dataset.groupKey)) card.classList.add('print-selected');
+    else card.classList.remove('print-selected');
+  });
+  document.body.classList.add('print-payslips-mode');
+  closeModal('salReportPrintModal');
+
+  // дать браузеру время на перерисовку
+  setTimeout(() => {
+    window.print();
+    // очистка после печати
+    setTimeout(() => {
+      document.body.classList.remove('print-payslips-mode');
+      document.querySelectorAll('#salaryReportCards .salary-card.print-selected').forEach(c => c.classList.remove('print-selected'));
+    }, 500);
+  }, 100);
+}
+
 async function calcMonthlySalary() {
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
@@ -3144,7 +3231,7 @@ async function renderSalaryReport() {
       ? `<span style="color:var(--text3)">Совмещение ${g.items.length} должност${g.items.length===2?'ей':'ей'}</span>`
       : `${first?(first.role||''):''}${first?' · ':''}<span class="badge badge-blue">${first?(EMP_TYPE_LABELS[first.type]||''):''}</span>${first&&first.percent ? ' · <span style="color:var(--accent)">'+first.percent+'% от выручки</span>' : ''}`;
 
-    html += `<div class="salary-card">
+    html += `<div class="salary-card" data-group-key="${g.key}" data-emp-name="${displayName.replace(/"/g,'&quot;')}">
       <div class="salary-card-header">
         <div>
           <div class="salary-card-name">${displayName}${tabBadge}</div>
