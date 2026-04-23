@@ -90,6 +90,7 @@ async function initDb() {
   try { db.run('ALTER TABLE employees ADD COLUMN tab_number TEXT'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE positions ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_monthly INTEGER DEFAULT 0'); } catch(e) {}
 
   // Миграция пользователей из config.json
   migrateUsersFromConfig();
@@ -499,20 +500,20 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.post('/api/employees', authMiddleware, (req, res) => {
-  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule } = req.body;
+  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя обязательно' });
   db.run(
-    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number,hidden_in_schedule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0]
+    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number,hidden_in_schedule,hidden_in_monthly) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0]
   );
   saveDb();
   res.json({ ok: true });
 });
 app.put('/api/employees/:id', authMiddleware, (req, res) => {
-  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule } = req.body;
+  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
   db.run(
-    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=? WHERE id=?`,
-    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, req.params.id]
+    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=?,hidden_in_monthly=? WHERE id=?`,
+    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0, req.params.id]
   );
   saveDb();
   res.json({ ok: true });
