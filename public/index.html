@@ -1869,20 +1869,61 @@ async function loadMonthlyDetail(month) {
     }).join('');
   }
 
-  // по сотрудникам
-  const empHtml = salaryRows.length
-    ? salaryRows.map(r => {
-      const emp = emps.find(e => e.id === r.emp_id);
-      const net = +r.salary + +r.bonus - +r.advance - +r.fine;
+  // по сотрудникам — группировка по табельному номеру (один физ. человек на нескольких должностях)
+  const groups = [];
+  const byTab = {};
+  salaryRows.forEach(r => {
+    const emp = emps.find(e => e.id === r.emp_id);
+    const tab = emp && emp.tab_number ? String(emp.tab_number).trim() : null;
+    if (tab) {
+      if (!byTab[tab]) { byTab[tab] = { tab_number:tab, items:[] }; groups.push(byTab[tab]); }
+      byTab[tab].items.push({ r, emp });
+    } else {
+      groups.push({ tab_number:null, items:[{ r, emp }] });
+    }
+  });
+  const empHtml = groups.length
+    ? groups.map(g => {
+      const sum = g.items.reduce((a,{r}) => ({
+        salary:a.salary+ +r.salary, advance:a.advance+ +r.advance,
+        bonus:a.bonus+ +r.bonus, fine:a.fine+ +r.fine,
+      }), {salary:0,advance:0,bonus:0,fine:0});
+      const net = sum.salary + sum.bonus - sum.advance - sum.fine;
       const col = net>=0?'var(--green)':'var(--red)';
-      return `<div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:6px 10px;background:var(--surface);border-radius:4px;margin-bottom:3px;font-size:12.5px;">
-        <span><b>${emp?emp.name:'Удалённый'}</b>${emp&&emp.role?' <span style="color:var(--text3);font-size:11px">— '+emp.role+'</span>':''}</span>
-        <span style="color:var(--accent);text-align:right;">${fmt(r.salary)}</span>
-        <span style="color:var(--blue);text-align:right;">-${fmt(r.advance)}</span>
-        <span style="color:var(--purple);text-align:right;">+${fmt(r.bonus)}</span>
-        <span style="color:var(--red);text-align:right;">-${fmt(r.fine)}</span>
+      const first = g.items[0].emp;
+      const multi = g.items.length > 1;
+      const displayName = first ? first.name : 'Удалённый';
+      const tabBadge = g.tab_number ? ' <span style="color:var(--accent);font-family:monospace;font-size:11px;">№'+g.tab_number+'</span>' : '';
+      const rolesInfo = multi
+        ? ' <span style="color:var(--text3);font-size:11px">— совмещение '+g.items.length+' должностей</span>'
+        : (first && first.role ? ' <span style="color:var(--text3);font-size:11px">— '+first.role+'</span>' : '');
+
+      const header = `<div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:6px 10px;background:var(--surface);border-radius:4px;margin-bottom:3px;font-size:12.5px;">
+        <span><b>${displayName}</b>${tabBadge}${rolesInfo}</span>
+        <span style="color:var(--accent);text-align:right;">${fmt(sum.salary)}</span>
+        <span style="color:var(--blue);text-align:right;">-${fmt(sum.advance)}</span>
+        <span style="color:var(--purple);text-align:right;">+${fmt(sum.bonus)}</span>
+        <span style="color:var(--red);text-align:right;">-${fmt(sum.fine)}</span>
         <span style="color:${col};text-align:right;font-weight:700;">${fmt(net)} ${_currency}</span>
       </div>`;
+
+      // подстрочки по должностям при совмещении
+      const sub = multi
+        ? g.items.map(({r, emp}) => {
+          const itemNet = +r.salary + +r.bonus - +r.advance - +r.fine;
+          const role = emp ? (emp.role || EMP_TYPE_LABELS[emp.type] || '—') : '—';
+          return `<div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:3px 10px 3px 30px;font-size:11.5px;color:var(--text2);">
+            <span>↳ ${role}</span>
+            <span style="text-align:right;">${fmt(r.salary)}</span>
+            <span style="text-align:right;">-${fmt(r.advance)}</span>
+            <span style="text-align:right;">+${fmt(r.bonus)}</span>
+            <span style="text-align:right;">-${fmt(r.fine)}</span>
+            <span style="text-align:right;color:${itemNet>=0?'var(--green)':'var(--red)'}">${fmt(itemNet)}</span>
+          </div>`;
+        }).join('')
+        : '';
+
+      return header + sub;
     }).join('')
     : '<div style="color:var(--text3);font-size:12px;">Нет начислений</div>';
 
