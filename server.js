@@ -807,8 +807,15 @@ app.post('/api/banquets/:id/apply', authMiddleware, (req, res) => {
 });
 
 // ─── НАЧИСЛЕНИЕ ОКЛАДОВ ───────────────────────────────────
+// Возвращает список активных сотрудников с окладом > 0 (для UI выбора)
+app.get('/api/monthly-salary-candidates', authMiddleware, (req, res) => {
+  const empRows = db.exec("SELECT * FROM employees WHERE salary > 0 AND status = 'active' ORDER BY name");
+  const employees = empRows[0] ? rowsToObjects(empRows[0]) : [];
+  res.json(employees);
+});
+
 app.post('/api/calc-monthly-salary', authMiddleware, (req, res) => {
-  const { month } = req.body;
+  const { month, assignments } = req.body;
   if (!month) return res.status(400).json({ error: 'Укажите месяц' });
 
   const empRows = db.exec("SELECT * FROM employees WHERE salary > 0 AND status = 'active'");
@@ -821,16 +828,28 @@ app.post('/api/calc-monthly-salary', authMiddleware, (req, res) => {
     [month]
   );
 
-  // последний день месяца
   const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
 
+  // Если клиент прислал assignments — начисляем только указанным с указанными суммами
+  // Иначе — всем активным с их окладами из профиля
+  let targets = [];
+  if (Array.isArray(assignments) && assignments.length) {
+    assignments.forEach(a => {
+      if (!a.emp_id || +a.amount <= 0) return;
+      const emp = employees.find(e => e.id === a.emp_id);
+      if (emp) targets.push({ emp, amount: +a.amount });
+    });
+  } else {
+    targets = employees.filter(e => +e.salary > 0).map(e => ({ emp: e, amount: +e.salary }));
+  }
+
   let created = 0;
-  employees.forEach(emp => {
-    if (+emp.salary <= 0) return;
+  targets.forEach(({ emp, amount }) => {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
     db.run(
       'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
-      [id, lastDay, 'salary', 'Месячный оклад', emp.id, +emp.salary, `Оклад ${emp.name}`]
+      [id, lastDay, 'salary', 'Месячный оклад', emp.id, amount,
+       `Оклад ${emp.name}${amount !== +emp.salary ? ' (частично)' : ''}`]
     );
     created++;
   });
