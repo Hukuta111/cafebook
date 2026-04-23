@@ -122,6 +122,8 @@
   thead th { background:var(--surface2); padding:10px 16px; text-align:left; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text3); font-weight:500; }
   tbody tr { border-top:1px solid var(--border); transition:background .1s; }
   tbody tr:hover { background:var(--surface2); }
+  tbody tr.monthly-detail-row:hover { background:var(--surface2); }
+  tbody tr.monthly-detail-row { cursor:default; }
   tbody td { padding:11px 16px; }
   .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
   .badge-green{background:rgba(93,185,124,.15);color:var(--green)} .badge-red{background:rgba(224,85,85,.15);color:var(--red)} .badge-yellow{background:rgba(201,168,76,.15);color:var(--accent)} .badge-blue{background:rgba(91,143,212,.15);color:var(--blue)} .badge-purple{background:rgba(155,127,212,.15);color:var(--purple)}
@@ -466,7 +468,7 @@
   <div class="page" id="page-monthly">
     <div class="page-header"><div><div class="page-title">Месячные отчёты</div><div class="page-subtitle">Сводка по месяцам</div></div></div>
     <div class="table-wrap">
-      <table><thead><tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
+      <table><thead><tr><th style="width:24px"></th><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
       <tbody id="monthlyTable"></tbody></table>
     </div>
   </div>
@@ -1794,14 +1796,18 @@ async function renderDaily() {
   }).join('');
 }
 
+let _monthlyDetailOpen = new Set();
+
 async function renderMonthly() {
   const rows = await API.get('/reports/monthly') || [];
   const tbody = document.getElementById('monthlyTable');
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📆</div><p>Нет данных</p></div></td></tr>`; return; }
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">📆</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
     const profit = +r.income - +r.expense - +r.salary - +r.advance - +r.bonus + +r.fine;
     const col = profit>=0?'var(--green)':'var(--red)';
-    return `<tr>
+    const open = _monthlyDetailOpen.has(r.month);
+    return `<tr style="cursor:pointer;" onclick="toggleMonthlyDetail('${r.month}')">
+      <td style="width:24px;text-align:center;color:var(--text3);font-size:10px;">${open ? '▼' : '▶'}</td>
       <td><b>${monthLabel(r.month)}</b></td>
       <td style="color:var(--green)">${fmt(r.income)}</td>
       <td style="color:var(--red)">${fmt(r.expense)}</td>
@@ -1810,8 +1816,108 @@ async function renderMonthly() {
       <td style="color:var(--purple)">${fmt(r.bonus)}</td>
       <td style="color:var(--red)">${fmt(r.fine)}</td>
       <td style="font-weight:700;font-size:15px;color:${col}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</td>
-    </tr>`;
+    </tr>
+    ${open ? `<tr class="monthly-detail-row"><td colspan="9" style="padding:0;background:var(--surface2);"><div id="monthly-detail-${r.month}" style="padding:16px 20px;">Загрузка...</div></td></tr>` : ''}`;
   }).join('');
+
+  // загрузить детали для открытых месяцев
+  _monthlyDetailOpen.forEach(month => loadMonthlyDetail(month));
+}
+
+async function toggleMonthlyDetail(month) {
+  if (_monthlyDetailOpen.has(month)) _monthlyDetailOpen.delete(month);
+  else _monthlyDetailOpen.add(month);
+  renderMonthly();
+}
+
+async function loadMonthlyDetail(month) {
+  const el = document.getElementById('monthly-detail-' + month);
+  if (!el) return;
+
+  const [txs, daily, salary, empsRaw] = await Promise.all([
+    API.get('/transactions?month=' + month),
+    API.get('/reports/daily?month=' + month),
+    API.get('/reports/salary?month=' + month),
+    API.get('/employees'),
+  ]);
+
+  const allTx = txs || [];
+  const dailyRows = daily || [];
+  const salaryRows = salary || [];
+  const emps = empsRaw || [];
+
+  // категории по типам
+  const byType = {};
+  allTx.forEach(t => {
+    if (!byType[t.type]) byType[t.type] = {};
+    const cat = t.cat || '—';
+    byType[t.type][cat] = (byType[t.type][cat] || 0) + +t.amount;
+  });
+
+  function renderCats(type, color) {
+    const cats = byType[type] || {};
+    const entries = Object.entries(cats).sort((a,b) => b[1] - a[1]);
+    if (!entries.length) return '<div style="color:var(--text3);font-size:12px;">—</div>';
+    const total = entries.reduce((s,[,v]) => s + v, 0);
+    return entries.map(([cat, sum]) => {
+      const pct = total ? Math.round(sum / total * 100) : 0;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 10px;background:var(--surface);border-radius:4px;margin-bottom:3px;">
+        <span style="font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat}</span>
+        <span style="color:var(--text3);font-size:11px;">${pct}%</span>
+        <span style="color:${color};font-weight:600;font-size:12.5px;min-width:100px;text-align:right;">${fmt(sum)} ${_currency}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // по сотрудникам
+  const empHtml = salaryRows.length
+    ? salaryRows.map(r => {
+      const emp = emps.find(e => e.id === r.emp_id);
+      const net = +r.salary + +r.bonus - +r.advance - +r.fine;
+      const col = net>=0?'var(--green)':'var(--red)';
+      return `<div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:6px 10px;background:var(--surface);border-radius:4px;margin-bottom:3px;font-size:12.5px;">
+        <span><b>${emp?emp.name:'Удалённый'}</b>${emp&&emp.role?' <span style="color:var(--text3);font-size:11px">— '+emp.role+'</span>':''}</span>
+        <span style="color:var(--accent);text-align:right;">${fmt(r.salary)}</span>
+        <span style="color:var(--blue);text-align:right;">-${fmt(r.advance)}</span>
+        <span style="color:var(--purple);text-align:right;">+${fmt(r.bonus)}</span>
+        <span style="color:var(--red);text-align:right;">-${fmt(r.fine)}</span>
+        <span style="color:${col};text-align:right;font-weight:700;">${fmt(net)} ${_currency}</span>
+      </div>`;
+    }).join('')
+    : '<div style="color:var(--text3);font-size:12px;">Нет начислений</div>';
+
+  // по дням (топ 10)
+  const topDays = dailyRows.slice(0, 10).map(d => {
+    const total = +d.income - +d.expense - +d.salary - +d.advance - +d.bonus + +d.fine;
+    const col = total>=0?'var(--green)':'var(--red)';
+    return `<div style="display:grid;grid-template-columns:90px 1fr 1fr 110px;gap:8px;padding:5px 10px;background:var(--surface);border-radius:4px;margin-bottom:3px;font-size:12px;">
+      <span><b>${dateLabel(d.date)}</b></span>
+      <span style="color:var(--green);text-align:right;">+${fmt(d.income)}</span>
+      <span style="color:var(--red);text-align:right;">-${fmt(+d.expense + +d.salary + +d.advance + +d.bonus)}</span>
+      <span style="color:${col};text-align:right;font-weight:600;">${total>=0?'+':''}${fmt(total)}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">📈 Доходы по категориям</div>
+        ${renderCats('income','var(--green)')}
+
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">📉 Расходы по категориям</div>
+        ${renderCats('expense','var(--red)')}
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">👥 По сотрудникам</div>
+        <div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:0 10px 4px;font-size:10px;color:var(--text3);text-transform:uppercase;">
+          <span>Сотрудник</span><span style="text-align:right">З/П</span><span style="text-align:right">Аванс</span><span style="text-align:right">Бонус</span><span style="text-align:right">Штраф</span><span style="text-align:right">К выплате</span>
+        </div>
+        ${empHtml}
+
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">📅 Топ дней</div>
+        ${topDays || '<div style="color:var(--text3);font-size:12px;">Нет данных</div>'}
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -2090,7 +2196,8 @@ async function renderBanquets() {
     const incomeSum = items.filter(x => x.type === 'income').reduce((s,x) => s + +x.amount, 0);
     const expenseSum = items.filter(x => x.type === 'expense').reduce((s,x) => s + +x.amount, 0);
     const netTotal = +b.total + incomeSum - expenseSum;
-    const bonus = Math.max(0, netTotal * (+b.percent / 100));
+    // Бонус считается только от первоначальной суммы банкета
+    const bonus = Math.max(0, (+b.total) * (+b.percent / 100));
     const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
     const diff = bonus - distributed;
     const itemsHtml = items.length
@@ -2132,7 +2239,7 @@ async function renderBanquets() {
         <div>
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
           <div style="color:var(--text3);font-size:13px;margin-top:4px;">
-            Сумма: <b style="color:var(--text)">${fmt(b.total)}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус <b style="color:var(--green)">${b.percent}% = ${fmt(bonus)} ${_currency}</b>
+            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(b.total)} = ${fmt(bonus)}</b>
           </div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -2218,10 +2325,11 @@ function updateBanquetSummary() {
     if (it.type === 'income') income += sum; else expense += sum;
   });
   const net = total + income - expense;
-  const bonus = Math.max(0, net * percent / 100);
+  // Бонус сотрудникам считается ТОЛЬКО от первоначальной суммы банкета
+  const bonus = Math.max(0, total * percent / 100);
   const el = document.getElementById('banquetSummary');
   if (el) {
-    el.innerHTML = `Основная сумма: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''} &nbsp;·&nbsp; итого <b style="color:var(--text)">${fmt(net)}</b> &nbsp;⇒&nbsp; бонус <b style="color:var(--green)">${fmt(bonus)}</b>`;
+    el.innerHTML = `Основная сумма банкета: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''}${(income||expense) ? ' &nbsp;·&nbsp; факт на кассе: <b style="color:var(--text)">'+fmt(net)+'</b>' : ''}<br>Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(total)} = ${fmt(bonus)}</b>`;
   }
 }
 
@@ -2607,7 +2715,7 @@ async function calcPercentBonus() {
   const res = await API.post('/calc-percent-bonus', { month });
   if (res && res.ok) {
     if (res.created > 0) {
-      showToast(`Создано ${res.created} бонус(ов) от выручки ${fmt(res.qualifyingRevenue)} ${_currency} ✓`);
+      showToast(`Создано ${res.created} бонус(ов): ${res.qualifyingDaysCount || 0} дн × (> порога) = ${fmt(res.qualifyingRevenue)} ${_currency} ✓`);
     } else {
       showToast(res.message || 'Нет дней с выручкой выше порога');
     }

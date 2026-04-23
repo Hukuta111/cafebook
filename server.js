@@ -633,9 +633,12 @@ app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
     [month]
   );
   const dailyIncome = txRows[0] ? rowsToObjects(txRows[0]) : [];
-  const qualifyingRevenue = dailyIncome.filter(d => d.total > threshold).reduce((s, d) => s + d.total, 0);
+  // ВАЖНО: явное приведение к числу (из SQLite может прийти строка)
+  const qualifyingDays = dailyIncome.filter(d => +d.total > +threshold);
+  const qualifyingRevenue = qualifyingDays.reduce((s, d) => s + (+d.total), 0);
+  const qualifyingDayList = qualifyingDays.map(d => d.date).join(', ');
 
-  if (qualifyingRevenue <= 0) return res.json({ ok: true, created: 0, message: 'Нет дней с выручкой выше порога' });
+  if (qualifyingRevenue <= 0) return res.json({ ok: true, created: 0, message: 'Нет дней с выручкой выше порога ' + threshold });
 
   // удалить старые авто-бонусы за этот месяц
   db.run(
@@ -647,19 +650,20 @@ app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
   let created = 0;
   const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
   employees.forEach(emp => {
-    const bonus = qualifyingRevenue * (emp.percent / 100);
+    const bonus = qualifyingRevenue * ((+emp.percent) / 100);
     if (bonus > 0) {
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      const note = `Процент кассы ${emp.percent}% от ${Math.round(qualifyingRevenue)} (дней: ${qualifyingDays.length}${qualifyingDayList ? ' — '+qualifyingDayList : ''}, порог ${threshold})`;
       db.run(
         'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
-        [id, lastDay, 'bonus', 'Процент кассы', emp.id, Math.round(bonus * 100) / 100, `Процент кассы ${emp.percent}% от ${Math.round(qualifyingRevenue)} (порог ${threshold})`]
+        [id, lastDay, 'bonus', 'Процент кассы', emp.id, Math.round(bonus * 100) / 100, note]
       );
       created++;
     }
   });
 
   saveDb();
-  res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue) });
+  res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue), qualifyingDaysCount: qualifyingDays.length });
 });
 
 // ─── БАНКЕТЫ ──────────────────────────────────────────────
@@ -704,8 +708,8 @@ function recalcShares(banquetId, total, percent) {
   );
   const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
   if (!empIds.length) return [];
-  const net = banquetNetTotal(banquetId, +total);
-  const bonus = Math.max(0, net * (percent / 100));
+  // Бонус считается только от первоначальной суммы банкета, без учёта доп. статей
+  const bonus = Math.max(0, (+total) * (percent / 100));
   const share = bonus / empIds.length;
   const shares = [];
   empIds.forEach(empId => {
