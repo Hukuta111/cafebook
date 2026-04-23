@@ -563,6 +563,11 @@
           <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()">
           <span class="toggle-sw"></span>
         </label>
+        <label class="toggle-mini no-print" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);gap:10px;align-items:center;font-size:13px;color:var(--text);">
+          <span>Часы и ставка</span>
+          <input type="checkbox" id="salReportShowHours" onchange="renderSalaryReport()">
+          <span class="toggle-sw"></span>
+        </label>
         <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
         <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
         <button class="btn no-print" onclick="openSalReportPrintModal()">🖨 Печать</button>
@@ -3099,22 +3104,24 @@ async function renderSalaryReport() {
 
   // загрузить график и транзакции если включён переключатель
   const showDays = document.getElementById('salReportShowDays')?.checked || false;
+  const showHours = document.getElementById('salReportShowHours')?.checked || false;
   let scheduleByEmp = {};
   let txByEmp = {};
-  if (showDays) {
-    const [sched, allTx] = await Promise.all([
-      API.get('/schedule?month=' + month),
-      API.get('/transactions?month=' + month),
-    ]);
+  if (showDays || showHours) {
+    const requests = [API.get('/schedule?month=' + month)];
+    if (showDays) requests.push(API.get('/transactions?month=' + month));
+    const [sched, allTx] = await Promise.all(requests);
     (sched || []).forEach(s => {
       if (!scheduleByEmp[s.emp_id]) scheduleByEmp[s.emp_id] = [];
       scheduleByEmp[s.emp_id].push(s);
     });
-    const relevantTypes = ['salary','advance','bonus','fine'];
-    (allTx || []).filter(t => t.emp_id && relevantTypes.includes(t.type)).forEach(t => {
-      if (!txByEmp[t.emp_id]) txByEmp[t.emp_id] = [];
-      txByEmp[t.emp_id].push(t);
-    });
+    if (showDays) {
+      const relevantTypes = ['salary','advance','bonus','fine'];
+      (allTx || []).filter(t => t.emp_id && relevantTypes.includes(t.type)).forEach(t => {
+        if (!txByEmp[t.emp_id]) txByEmp[t.emp_id] = [];
+        txByEmp[t.emp_id].push(t);
+      });
+    }
   }
 
   if (!rows.length) {
@@ -3167,22 +3174,51 @@ async function renderSalaryReport() {
 
     // вспомогательная функция: вывод детализации (смены + операции) для одной должности
     function shiftsBlockForEmp(emp) {
-      if (!showDays || !emp) return '';
+      if ((!showDays && !showHours) || !emp) return '';
 
-      // смены → операции
+      // если только часы — показываем компактную таблицу часы × ставка
+      if (showHours && !showDays) {
+        const shifts = (scheduleByEmp[emp.id] || []).slice().sort((a,b) => a.work_date.localeCompare(b.work_date));
+        if (!shifts.length) return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет смен за месяц</div>';
+        const totalH = shifts.reduce((s,x) => s + +x.hours, 0);
+        const totalP = shifts.reduce((s,x) => {
+          const rate = x.hourly_rate != null ? +x.hourly_rate : (+emp.hourly_rate || 0);
+          return s + +x.hours * rate;
+        }, 0);
+        return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+          ${shifts.map(s => {
+            const rate = s.hourly_rate != null ? +s.hourly_rate : (+emp.hourly_rate || 0);
+            const pay = +s.hours * rate;
+            return `<div style="display:grid;grid-template-columns:80px 60px 80px 1fr;gap:8px;align-items:center;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;">
+              <span>${dateLabel(s.work_date)}</span>
+              <span style="color:var(--text2)">${s.hours}ч</span>
+              <span style="color:var(--text3);font-size:11.5px;">× ${fmt(rate)}</span>
+              <span style="color:var(--green);font-weight:600;text-align:right;">= ${fmt(pay)} ${_currency}</span>
+            </div>`;
+          }).join('')}
+          <div style="display:grid;grid-template-columns:80px 60px 80px 1fr;gap:8px;font-size:11px;color:var(--text3);padding:4px 10px;border-top:1px dashed var(--border);margin-top:2px;">
+            <span>Итого</span>
+            <span>${totalH}ч</span>
+            <span></span>
+            <span style="text-align:right">${fmt(totalP)} ${_currency}</span>
+          </div>
+        </div>`;
+      }
+
+      // режим "Детализация" (или оба переключателя) — смешиваем смены и транзакции
       const shifts = (scheduleByEmp[emp.id] || []).map(s => {
         const rate = s.hourly_rate != null ? +s.hourly_rate : (+emp.hourly_rate || 0);
         return {
           date: s.work_date,
           kind: 'shift',
-          label: `${s.hours}ч`,
+          label: `${s.hours}ч × ${fmt(rate)}`,
           amount: +s.hours * rate,
           sign: '+',
           color: 'var(--green)',
         };
       });
-      // транзакции
-      const txs = (txByEmp[emp.id] || []).map(t => {
+      // транзакции — только если showDays
+      const txs = showDays ? (txByEmp[emp.id] || []).map(t => {
         const isPositive = t.type === 'salary' || t.type === 'bonus';
         const typeIcon = { salary:'💰', advance:'💵', bonus:'✨', fine:'⚠️' }[t.type] || '•';
         const typeLbl = TYPE_LABELS[t.type] || t.type;
@@ -3194,7 +3230,7 @@ async function renderSalaryReport() {
           sign: isPositive ? '+' : '−',
           color: isPositive ? (t.type === 'bonus' ? 'var(--purple)' : 'var(--accent)') : (t.type === 'fine' ? 'var(--red)' : 'var(--blue)'),
         };
-      });
+      }) : [];
       const all = [...shifts, ...txs].sort((a,b) => a.date.localeCompare(b.date));
       if (!all.length) return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет операций за месяц</div>';
 
@@ -3206,9 +3242,9 @@ async function renderSalaryReport() {
       </div>`;
     }
 
-    // разбивка по должностям (всегда показываем блок если multi ИЛИ если showDays)
+    // разбивка по должностям (всегда показываем блок если multi ИЛИ если showDays/showHours)
     let rolesBreakdown = '';
-    const shouldShowRoles = multi || showDays;
+    const shouldShowRoles = multi || showDays || showHours;
     if (shouldShowRoles) {
       rolesBreakdown = '<div style="margin:12px 0;display:flex;flex-direction:column;gap:10px;">'
         + g.items.map(({r, emp}) => {
