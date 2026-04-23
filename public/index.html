@@ -733,6 +733,14 @@
       <input type="checkbox" id="empHiddenInSchedule">
       <span class="toggle-sw"></span>
     </label>
+    <label class="toggle-row" style="margin-top:8px;">
+      <div class="toggle-text">
+        <span class="toggle-label">Скрывать в месячных отчётах</span>
+        <span class="toggle-hint">Сотрудник не будет отображаться в разделе «По сотрудникам»</span>
+      </div>
+      <input type="checkbox" id="empHiddenInMonthly">
+      <span class="toggle-sw"></span>
+    </label>
     <input type="hidden" id="empEditId">
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('empModal')">Отмена</button>
@@ -1870,10 +1878,12 @@ async function loadMonthlyDetail(month) {
   }
 
   // по сотрудникам — группировка по табельному номеру (один физ. человек на нескольких должностях)
+  // + фильтр: скрываем сотрудников с hidden_in_monthly
   const groups = [];
   const byTab = {};
   salaryRows.forEach(r => {
     const emp = emps.find(e => e.id === r.emp_id);
+    if (emp && +emp.hidden_in_monthly) return; // пропустить скрытых
     const tab = emp && emp.tab_number ? String(emp.tab_number).trim() : null;
     if (tab) {
       if (!byTab[tab]) { byTab[tab] = { tab_number:tab, items:[] }; groups.push(byTab[tab]); }
@@ -2536,6 +2546,7 @@ function openEmpModal(emp) {
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
   document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
   document.getElementById('empHiddenInSchedule').checked = !!(emp && emp.hidden_in_schedule);
+  document.getElementById('empHiddenInMonthly').checked = !!(emp && emp.hidden_in_monthly);
   openModal('empModal');
 }
 
@@ -2553,6 +2564,7 @@ async function saveEmployee() {
     start_date: document.getElementById('empStart').value,
     status: document.getElementById('empStatus').value,
     hidden_in_schedule: document.getElementById('empHiddenInSchedule').checked ? 1 : 0,
+    hidden_in_monthly: document.getElementById('empHiddenInMonthly').checked ? 1 : 0,
   };
   if (!data.name) { showToast('Введите имя', true); return; }
   const isEdit = !!document.getElementById('empEditId').value;
