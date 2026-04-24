@@ -2422,7 +2422,31 @@ function attachScheduleRowDnD(table) {
 function openSchedModal(entry, dateStr, empId) {
   populateEmpSelects();
   const empSel = document.getElementById('schedEmployee');
-  empSel.innerHTML = _employees.filter(e => e.status === 'active').map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  // группируем по табельному номеру для совмещений (как в transaction/salary modal)
+  const active = _employees.filter(e => e.status === 'active');
+  const byTab = {}; const single = [];
+  active.forEach(e => {
+    const tab = e.tab_number ? String(e.tab_number).trim() : '';
+    if (tab) { if (!byTab[tab]) byTab[tab] = []; byTab[tab].push(e); }
+    else single.push(e);
+  });
+  let opts = '';
+  single.forEach(e => {
+    opts += `<option value="${e.id}">${e.name}${e.role ? ' ('+e.role+')' : ''}</option>`;
+  });
+  Object.entries(byTab).forEach(([tab, list]) => {
+    if (list.length === 1) {
+      const e = list[0];
+      opts += `<option value="${e.id}">${e.name}${e.role ? ' ('+e.role+')' : ''} №${tab}</option>`;
+    } else {
+      opts += `<optgroup label="${list[0].name} №${tab}">`;
+      list.forEach(e => {
+        opts += `<option value="${e.id}">${e.role || EMP_TYPE_LABELS[e.type] || '—'}</option>`;
+      });
+      opts += '</optgroup>';
+    }
+  });
+  empSel.innerHTML = opts;
 
   document.getElementById('schedModalTitle').textContent = entry ? 'Редактировать смену' : 'Добавить смену';
   document.getElementById('schedEditId').value = entry ? entry.id : '';
