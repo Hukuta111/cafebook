@@ -308,13 +308,15 @@ app.post('/api/change-password', authMiddleware, (req, res) => {
 
 app.get('/api/users', authMiddleware, adminOnly, (req, res) => {
   const users = dbGetUsers();
+  const onlineIds = new Set();
+  wsClients.forEach(info => { if (info && info.userId) onlineIds.add(info.userId); });
   res.json(users.map(u => ({
     id: u.id,
     username: u.username,
     displayName: u.display_name || u.username,
     role: u.role,
     permissions: parsePermissions(u.permissions) || defaultPermissions(),
-    isOnline: !!u.session_id,
+    isOnline: onlineIds.has(u.id),
     lastLoginAt: u.last_login_at || null,
     createdAt: u.created_at || null,
   })));
@@ -1085,6 +1087,8 @@ const wsClients = new Map(); // ws → { userId, username, sessionId }
 function setupWebSocket(server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
   wss.on('connection', (ws, req) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
     ws.on('message', (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
@@ -1101,16 +1105,44 @@ function setupWebSocket(server) {
               userId: user.id, username: user.username, sessionId: payload.sessionId
             });
             ws.send(JSON.stringify({ type: 'auth_ok' }));
+            // оповестить всех о новом онлайн-пользователе
+            wsBroadcast({ type: 'users_changed' });
           } catch {
             ws.send(JSON.stringify({ type: 'auth_failed' }));
             ws.close();
           }
+        } else if (msg.type === 'ping') {
+          // клиентский heartbeat
+          ws.isAlive = true;
+          try { ws.send(JSON.stringify({ type: 'pong' })); } catch {}
         }
       } catch {}
     });
-    ws.on('close', () => wsClients.delete(ws));
-    ws.on('error', () => wsClients.delete(ws));
+    const cleanup = () => {
+      const had = wsClients.has(ws);
+      wsClients.delete(ws);
+      if (had) {
+        // оповестить всех что кто-то отвалился
+        wsBroadcast({ type: 'users_changed' });
+      }
+    };
+    ws.on('close', cleanup);
+    ws.on('error', cleanup);
   });
+
+  // server-side heartbeat: каждые 15 сек проверяем что клиент отвечает на ping
+  // если пропустил два пинга (≈30 сек) — закрываем соединение и снимаем «онлайн»
+  const interval = setInterval(() => {
+    wss.clients.forEach(ws => {
+      if (ws.isAlive === false) {
+        try { ws.terminate(); } catch {}
+        return;
+      }
+      ws.isAlive = false;
+      try { ws.ping(); } catch {}
+    });
+  }, 15000);
+  wss.on('close', () => clearInterval(interval));
 }
 
 function wsBroadcast(msg) {
