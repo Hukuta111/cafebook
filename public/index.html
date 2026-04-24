@@ -3648,6 +3648,7 @@ function stopSessionPoll() {
 // ═══════════════════════════════════════════
 let _ws = null;
 let _wsReconnectTimer = null;
+let _wsPingTimer = null;
 
 function startWebSocket() {
   stopWebSocket();
@@ -3658,6 +3659,12 @@ function startWebSocket() {
     _ws = new WebSocket(url);
     _ws.addEventListener('open', () => {
       _ws.send(JSON.stringify({ type: 'auth', token: API.token }));
+      // application-level ping каждые 25 сек, чтобы прокси не закрывал idle
+      _wsPingTimer = setInterval(() => {
+        if (_ws && _ws.readyState === 1) {
+          try { _ws.send(JSON.stringify({ type: 'ping' })); } catch {}
+        }
+      }, 25000);
     });
     _ws.addEventListener('message', (e) => {
       try {
@@ -3666,6 +3673,7 @@ function startWebSocket() {
       } catch {}
     });
     _ws.addEventListener('close', () => {
+      if (_wsPingTimer) { clearInterval(_wsPingTimer); _wsPingTimer = null; }
       if (API.token) {
         // переподключение через 3 сек
         _wsReconnectTimer = setTimeout(startWebSocket, 3000);
@@ -3679,11 +3687,17 @@ function startWebSocket() {
 
 function stopWebSocket() {
   if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
+  if (_wsPingTimer) { clearInterval(_wsPingTimer); _wsPingTimer = null; }
   if (_ws) {
     try { _ws.close(); } catch {}
     _ws = null;
   }
 }
+
+// при закрытии вкладки/окна — попытаться корректно закрыть WS
+window.addEventListener('beforeunload', () => {
+  try { if (_ws) _ws.close(1000, 'page_unload'); } catch {}
+});
 
 async function handleWsMessage(msg) {
   if (msg.type === 'kicked' || msg.type === 'session_replaced') {
