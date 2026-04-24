@@ -101,7 +101,21 @@
   .login-error { color:var(--red); font-size:13px; margin-top:12px; min-height:18px; }
 
   /* SIDEBAR */
-  .sidebar { width:240px; height:100vh; height:100dvh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform .3s; }
+  :root { --sidebar-w: 240px; }
+  body.sidebar-collapsed { --sidebar-w: 60px; }
+  .sidebar { width:var(--sidebar-w); height:100vh; height:100dvh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform .3s, width .25s ease; }
+  .sidebar-collapse-btn { position:absolute; top:18px; right:-12px; width:24px; height:24px; background:var(--surface); border:1px solid var(--border); border-radius:50%; color:var(--text2); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; z-index:101; transition:all .15s; padding:0; line-height:1; }
+  .sidebar-collapse-btn:hover { color:var(--accent); border-color:var(--accent); }
+  body.sidebar-collapsed .sidebar-collapse-btn { transform:rotate(180deg); }
+  body.sidebar-collapsed .sidebar-logo h1 { font-size:0; }
+  body.sidebar-collapsed .sidebar-logo h1::before { content:'☕'; font-size:22px; }
+  body.sidebar-collapsed .sidebar-logo span { display:none; }
+  body.sidebar-collapsed .sidebar-logo { padding:18px 12px; text-align:center; }
+  body.sidebar-collapsed .nav-group-label { font-size:0; padding:6px 0; height:1px; background:var(--border); margin:8px 14px; }
+  body.sidebar-collapsed .nav-item { padding:12px 0; justify-content:center; gap:0; font-size:0; }
+  body.sidebar-collapsed .nav-item .icon { font-size:18px; width:auto; }
+  body.sidebar-collapsed .user-info { font-size:0; text-align:center; padding:10px 0; }
+  body.sidebar-collapsed .user-info::before { content:'⏻'; font-size:16px; color:var(--red); }
   .sidebar-logo { padding:28px 24px 20px; border-bottom:1px solid var(--border); }
   .sidebar-logo h1 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--accent); }
   .sidebar-logo span { font-size:11px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; }
@@ -120,7 +134,7 @@
   .user-info:hover { background:var(--surface2); color:var(--red); }
 
   /* MAIN */
-  .main { margin-left:calc(240px / var(--zoom, 1)); flex:1; min-height:calc(100vh / var(--zoom, 1)); padding:32px; max-width:calc((100vw - 240px) / var(--zoom, 1)); }
+  .main { margin-left:calc(var(--sidebar-w) / var(--zoom, 1)); flex:1; min-height:calc(100vh / var(--zoom, 1)); padding:32px; max-width:calc((100vw - var(--sidebar-w)) / var(--zoom, 1)); transition:margin-left .25s ease, max-width .25s ease; }
   .page { display:none; }
   .page.active { display:block; animation:fadeIn .2s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -174,6 +188,7 @@
   tbody tr.monthly-detail-row:hover { background:var(--surface2); }
   tbody tr.monthly-detail-row { cursor:default; }
   tbody td { padding:11px 16px; }
+  tbody td.nowrap, td[data-nowrap] { white-space:nowrap; }
   .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
   .badge-green{background:rgba(93,185,124,.15);color:var(--green)} .badge-red{background:rgba(224,85,85,.15);color:var(--red)} .badge-yellow{background:rgba(201,168,76,.15);color:var(--accent)} .badge-blue{background:rgba(91,143,212,.15);color:var(--blue)} .badge-purple{background:rgba(155,127,212,.15);color:var(--purple)}
 
@@ -291,11 +306,12 @@
   .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:99; }
 
   @media(max-width:768px) {
-    .sidebar{transform:translateX(-100%); width:100vw; max-width:100vw;}
+    .sidebar{transform:translateX(-100%); width:100vw !important; max-width:100vw;}
     .sidebar.open{transform:translateX(0)}
     .sidebar-overlay.open{display:block}
     .hamburger{display:block}
-    .main{margin-left:0;padding:24px 16px;padding-top:64px;max-width:100vw}
+    .sidebar-collapse-btn{display:none}
+    .main{margin-left:0 !important;padding:24px 16px;padding-top:64px;max-width:100vw !important}
     .chart-row{grid-template-columns:1fr} .salary-breakdown{grid-template-columns:1fr 1fr} .form-2col{grid-template-columns:1fr} .cards-row{grid-template-columns:1fr 1fr}
     .sidebar-bottom { position:sticky; bottom:0; background:var(--surface); z-index:2; }
     /* таблицы прокручиваются горизонтально */
@@ -426,6 +442,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <aside class="sidebar" id="sidebar">
+  <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Свернуть/развернуть меню">‹</button>
   <div class="sidebar-logo">
     <h1>CaféBook</h1>
     <span id="cafeNameSub">Управление кафе</span>
@@ -1792,7 +1809,7 @@ async function renderDashboard() {
           <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
           <td>${t.cat||'—'}</td>
           <td>${empName(t.emp_id)}</td>
-          <td style="font-weight:600;color:${col}">${sign}${fmt(t.amount)} ${_currency}</td>
+          <td style="font-weight:600;color:${col};white-space:nowrap">${sign}${fmt(t.amount)} ${_currency}</td>
           <td style="color:var(--text3)">${t.note||'—'}</td>
         </tr>`;
       }).join('')
@@ -1881,7 +1898,7 @@ async function renderTransactions() {
       <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
       <td>${t.cat||'—'}</td>
       <td>${empName(t.emp_id)}</td>
-      <td style="font-weight:600;color:${col}">${sign}${fmt(t.amount)} ${_currency}</td>
+      <td style="font-weight:600;color:${col};white-space:nowrap">${sign}${fmt(t.amount)} ${_currency}</td>
       <td style="color:var(--text3)">${t.note||'—'}</td>
       <td style="display:flex;gap:4px;">${canEdit('transactions') ? `<button class="btn btn-sm" onclick="openTxModal(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button><button class="btn btn-sm btn-danger" onclick="deleteTx('${t.id}')">✕</button>` : ''}</td>
     </tr>`;
@@ -3808,12 +3825,20 @@ function applyFontSize(size) {
   document.querySelectorAll('.font-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.font === size));
 }
 
+function toggleSidebarCollapse() {
+  const collapsed = document.body.classList.toggle('sidebar-collapsed');
+  localStorage.setItem('cb_sidebar_collapsed', collapsed ? '1' : '0');
+}
+
 // применить сохранённые настройки сразу при загрузке
 (function() {
   const theme = localStorage.getItem('cb_theme') || 'dark';
   const font = localStorage.getItem('cb_font') || 'medium';
   if (theme !== 'dark') document.body.classList.add('theme-' + theme);
   document.body.classList.add('font-' + font);
+  if (localStorage.getItem('cb_sidebar_collapsed') === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
   // обновить состояние кнопок когда DOM готов
   setTimeout(() => {
     document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.theme === theme));
