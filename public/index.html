@@ -1140,15 +1140,23 @@ const BUILTIN_TX_CATS = {
 };
 // Кастомные пользовательские категории (грузятся из settings.txCategories)
 let _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] };
+// Оверрайды для встроенных: { type: { originalName: { newName?, hidden? } } }
+let _txCatOverrides = {};
 
-// Полный список названий категорий для типа (built-in + кастомные)
+// Полный список названий категорий для типа (built-in с оверрайдами + кастомные, без скрытых)
 function getCategoriesForType(type) {
   const builtin = BUILTIN_TX_CATS[type] || [];
+  const overrides = (_txCatOverrides && _txCatOverrides[type]) || {};
   const custom = (_txCats[type] || []).map(c => c.label);
-  // убираем возможные дубликаты по имени, сохраняя порядок (built-in приоритет)
-  const seen = new Set();
   const out = [];
-  builtin.concat(custom).forEach(name => { if (!seen.has(name)) { seen.add(name); out.push(name); } });
+  const seen = new Set();
+  builtin.forEach(orig => {
+    const ov = overrides[orig];
+    if (ov && ov.hidden) return;
+    const name = (ov && ov.newName) ? ov.newName : orig;
+    if (!seen.has(name)) { seen.add(name); out.push(name); }
+  });
+  custom.forEach(name => { if (!seen.has(name)) { seen.add(name); out.push(name); } });
   return out;
 }
 
@@ -1160,10 +1168,11 @@ async function loadTxCats() {
   Object.keys(_txCats).forEach(k => {
     if (Array.isArray(parsed[k])) _txCats[k] = parsed[k].filter(c => c && c.label);
   });
+  try { _txCatOverrides = JSON.parse(s.txCatOverrides || '{}') || {}; } catch { _txCatOverrides = {}; }
 }
 
 async function saveTxCats() {
-  await API.post('/settings', { txCategories: JSON.stringify(_txCats) });
+  await API.post('/settings', { txCategories: JSON.stringify(_txCats), txCatOverrides: JSON.stringify(_txCatOverrides) });
 }
 
 // удобный геттер для совместимости со старым кодом
@@ -1367,6 +1376,7 @@ async function loadInitialData() {
       _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] };
       Object.keys(_txCats).forEach(k => { if (Array.isArray(parsed[k])) _txCats[k] = parsed[k].filter(c=>c&&c.label); });
     } catch { _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] }; }
+    try { _txCatOverrides = JSON.parse((settings && settings.txCatOverrides) || '{}') || {}; } catch { _txCatOverrides = {}; }
     if (settings && settings.cafeName) {
       const sub = document.getElementById('cafeNameSub');
       sub.textContent = settings.cafeName;
@@ -3634,17 +3644,29 @@ const BUILTIN_SAL_TYPES = [
 ];
 let _salTypes = [];
 
+// Оверрайды для встроенных типов выплат: { id: { label?, sign?, hidden? } }
+let _salTypeOverrides = {};
+
 async function loadSalTypes() {
   const s = await API.get('/settings') || {};
   try { _salTypes = JSON.parse(s.salTypes || '[]'); } catch { _salTypes = []; }
+  try { _salTypeOverrides = JSON.parse(s.salTypeOverrides || '{}') || {}; } catch { _salTypeOverrides = {}; }
 }
 
 async function saveSalTypes() {
-  await API.post('/settings', { salTypes: JSON.stringify(_salTypes) });
+  await API.post('/settings', { salTypes: JSON.stringify(_salTypes), salTypeOverrides: JSON.stringify(_salTypeOverrides) });
 }
 
 function getAllSalTypes() {
-  return [...BUILTIN_SAL_TYPES, ..._salTypes];
+  // применить оверрайды к built-in, отфильтровать скрытые
+  const builtins = BUILTIN_SAL_TYPES
+    .map(b => {
+      const ov = _salTypeOverrides[b.id] || {};
+      if (ov.hidden) return null;
+      return { ...b, label: ov.label || b.label, sign: ov.sign || b.sign };
+    })
+    .filter(Boolean);
+  return [...builtins, ..._salTypes];
 }
 
 function populateSalTypeSelect() {
@@ -3656,27 +3678,97 @@ function populateSalTypeSelect() {
 
 function renderSalTypesList() {
   const list = document.getElementById('salTypesList');
-  const all = getAllSalTypes();
-  list.innerHTML = all.map(t => {
-    const safeName = t.label.replace(/"/g, '&quot;');
-    if (t.builtin) {
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-        <span style="flex:1;font-size:13px;color:var(--text)">${t.label}</span>
-        <span class="badge ${t.sign==='+'?'badge-green':'badge-red'}" style="font-size:11px">${t.sign === '+' ? '+ доход' : '− расход'}</span>
-        <span style="color:var(--text3);font-size:11px;width:28px;text-align:center">—</span>
-      </div>`;
-    }
+  // покажем ВСЕ встроенные (даже скрытые), чтобы можно было восстановить
+  const safeAttr = s => String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  const builtinHtml = BUILTIN_SAL_TYPES.map(b => {
+    const ov = _salTypeOverrides[b.id] || {};
+    const isHidden = !!ov.hidden;
+    const label = ov.label || b.label;
+    const sign  = ov.sign  || b.sign;
+    const isModified = !!(ov.label || ov.sign || ov.hidden);
+    const restoreBtn = isModified
+      ? `<button class="btn btn-sm" onclick="resetBuiltinSalType('${b.id}')" style="padding:3px 8px;font-size:11px" title="${t('settings.restore')}">↺</button>`
+      : '';
+    const hiddenStyle = isHidden ? 'opacity:.5;' : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);${hiddenStyle}">
+      <input type="text" value="${safeAttr(label)}"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
+        onchange="renameBuiltinSalType('${b.id}', this.value)">
+      <select onchange="changeBuiltinSalTypeSign('${b.id}', this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 6px;color:var(--text);font-size:11px;outline:none;">
+        <option value="-" ${sign!=='+'?'selected':''}>− ${t('settings.expense')}</option>
+        <option value="+" ${sign==='+'?'selected':''}>+ ${t('settings.income')}</option>
+      </select>
+      <span class="badge badge-blue" style="font-size:11px" title="${t('settings.builtin')}">B</span>
+      ${restoreBtn}
+      <button class="btn btn-sm btn-danger" onclick="hideBuiltinSalType('${b.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+    </div>`;
+  }).join('');
+
+  const customHtml = _salTypes.map(c => {
+    const safeName = safeAttr(c.label);
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
       <input type="text" value="${safeName}"
         style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
-        onchange="renameSalType('${t.id}',this.value)">
-      <select onchange="changeSalTypeSign('${t.id}',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 6px;color:var(--text);font-size:11px;outline:none;">
-        <option value="-" ${t.sign!=='+'?'selected':''}>− расход</option>
-        <option value="+" ${t.sign==='+'?'selected':''}>+ доход</option>
+        onchange="renameSalType('${c.id}',this.value)">
+      <select onchange="changeSalTypeSign('${c.id}',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 6px;color:var(--text);font-size:11px;outline:none;">
+        <option value="-" ${c.sign!=='+'?'selected':''}>− ${t('settings.expense')}</option>
+        <option value="+" ${c.sign==='+'?'selected':''}>+ ${t('settings.income')}</option>
       </select>
-      <button class="btn btn-sm btn-danger" onclick="deleteSalType('${t.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+      <span class="badge badge-purple" style="font-size:11px" title="${t('settings.custom')}">C</span>
+      <button class="btn btn-sm btn-danger" onclick="deleteSalType('${c.id}')" style="padding:3px 8px;font-size:11px">✕</button>
     </div>`;
   }).join('');
+
+  list.innerHTML = builtinHtml + customHtml;
+}
+
+async function renameBuiltinSalType(id, newName) {
+  newName = (newName || '').trim();
+  if (!newName) { showToast(t('settings.txCatEmpty'), true); renderSalTypesList(); return; }
+  const orig = BUILTIN_SAL_TYPES.find(x => x.id === id);
+  if (!orig) return;
+  if (!_salTypeOverrides[id]) _salTypeOverrides[id] = {};
+  if (newName === orig.label) {
+    delete _salTypeOverrides[id].label;
+    if (!_salTypeOverrides[id].sign && !_salTypeOverrides[id].hidden) delete _salTypeOverrides[id];
+  } else {
+    _salTypeOverrides[id].label = newName;
+  }
+  await saveSalTypes();
+  renderSalTypesList();
+  showToast(t('settings.saved'));
+}
+
+async function changeBuiltinSalTypeSign(id, sign) {
+  const orig = BUILTIN_SAL_TYPES.find(x => x.id === id);
+  if (!orig) return;
+  if (!_salTypeOverrides[id]) _salTypeOverrides[id] = {};
+  if (sign === orig.sign) {
+    delete _salTypeOverrides[id].sign;
+    if (!_salTypeOverrides[id].label && !_salTypeOverrides[id].hidden) delete _salTypeOverrides[id];
+  } else {
+    _salTypeOverrides[id].sign = sign;
+  }
+  await saveSalTypes();
+  renderSalTypesList();
+  showToast(t('settings.saved'));
+}
+
+async function hideBuiltinSalType(id) {
+  if (!await confirmDialog({ text: t('confirm.hidePayType') })) return;
+  if (!_salTypeOverrides[id]) _salTypeOverrides[id] = {};
+  _salTypeOverrides[id].hidden = true;
+  await saveSalTypes();
+  renderSalTypesList();
+  showToast(t('settings.hidden'));
+}
+
+async function resetBuiltinSalType(id) {
+  delete _salTypeOverrides[id];
+  await saveSalTypes();
+  renderSalTypesList();
+  showToast(t('settings.restored'));
 }
 
 async function addSalType() {
@@ -3736,30 +3828,92 @@ function renderTxCatsList() {
   if (!list) return;
   const type = _txCatActiveType;
   const builtin = BUILTIN_TX_CATS[type] || [];
+  const overrides = (_txCatOverrides[type] || {});
   const custom  = _txCats[type] || [];
 
-  const builtinHtml = builtin.map(name => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-      <span style="flex:1;font-size:13px;color:var(--text)">${name}</span>
-      <span class="badge badge-blue" style="font-size:11px" data-i18n="settings.builtin">встроенная</span>
-      <span style="color:var(--text3);font-size:11px;width:28px;text-align:center">—</span>
-    </div>`).join('');
+  const safeAttr = s => String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  const builtinHtml = builtin.map(orig => {
+    const ov = overrides[orig] || {};
+    const isHidden = !!ov.hidden;
+    const display = ov.newName || orig;
+    const isModified = !!ov.newName || isHidden;
+    const safeDisplay = safeAttr(display);
+    const safeOrig = safeAttr(orig);
+    const restoreBtn = isModified
+      ? `<button class="btn btn-sm" onclick="resetBuiltinTxCat('${safeOrig}')" style="padding:3px 8px;font-size:11px" title="${t('settings.restore')}">↺</button>`
+      : '';
+    const hiddenStyle = isHidden ? 'opacity:.5;' : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);${hiddenStyle}">
+      <input type="text" value="${safeDisplay}"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
+        onchange="renameBuiltinTxCat('${safeOrig}', this.value)">
+      <span class="badge badge-blue" style="font-size:11px" title="${t('settings.builtin')}">B</span>
+      ${restoreBtn}
+      <button class="btn btn-sm btn-danger" onclick="hideBuiltinTxCat('${safeOrig}')" style="padding:3px 8px;font-size:11px">✕</button>
+    </div>`;
+  }).join('');
 
   const customHtml = custom.map(c => {
-    const safe = (c.label || '').replace(/"/g, '&quot;');
+    const safe = safeAttr(c.label);
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
       <input type="text" value="${safe}"
         style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
         onchange="renameTxCat('${c.id}', this.value)">
+      <span class="badge badge-purple" style="font-size:11px" title="${t('settings.custom')}">C</span>
       <button class="btn btn-sm btn-danger" onclick="deleteTxCat('${c.id}')" style="padding:3px 8px;font-size:11px">✕</button>
     </div>`;
   }).join('');
 
-  list.innerHTML = builtinHtml + customHtml ||
+  list.innerHTML = (builtinHtml + customHtml) ||
     `<div style="color:var(--text3);font-size:12px;padding:8px 0;">${t('settings.noTxCats')}</div>`;
-  // обновим placeholder при смене вкладки
   const ph = document.getElementById('newTxCatName');
   if (ph) ph.placeholder = t('settings.newTxCat');
+}
+
+async function renameBuiltinTxCat(originalName, newName) {
+  newName = (newName || '').trim();
+  if (!newName) { showToast(t('settings.txCatEmpty'), true); renderTxCatsList(); return; }
+  if (!_txCatOverrides[_txCatActiveType]) _txCatOverrides[_txCatActiveType] = {};
+  // если новое имя совпадает с оригиналом — снимаем оверрайд
+  if (newName === originalName) {
+    if (_txCatOverrides[_txCatActiveType][originalName]) {
+      delete _txCatOverrides[_txCatActiveType][originalName].newName;
+      // если объект пустой — удаляем
+      if (!_txCatOverrides[_txCatActiveType][originalName].hidden) {
+        delete _txCatOverrides[_txCatActiveType][originalName];
+      }
+    }
+  } else {
+    _txCatOverrides[_txCatActiveType][originalName] = {
+      ..._txCatOverrides[_txCatActiveType][originalName],
+      newName,
+    };
+  }
+  await saveTxCats();
+  renderTxCatsList();
+  showToast(t('settings.saved'));
+}
+
+async function hideBuiltinTxCat(originalName) {
+  if (!await confirmDialog({ text: t('confirm.hideTxCat') })) return;
+  if (!_txCatOverrides[_txCatActiveType]) _txCatOverrides[_txCatActiveType] = {};
+  _txCatOverrides[_txCatActiveType][originalName] = {
+    ..._txCatOverrides[_txCatActiveType][originalName],
+    hidden: true,
+  };
+  await saveTxCats();
+  renderTxCatsList();
+  showToast(t('settings.hidden'));
+}
+
+async function resetBuiltinTxCat(originalName) {
+  if (_txCatOverrides[_txCatActiveType]) {
+    delete _txCatOverrides[_txCatActiveType][originalName];
+  }
+  await saveTxCats();
+  renderTxCatsList();
+  showToast(t('settings.restored'));
 }
 
 async function addTxCat() {
@@ -4432,7 +4586,13 @@ const I18N = {
     'settings.scheduleTxHint': 'Кнопка «Сформировать выплаты» на странице График — создаёт транзакции зарплаты по отработанным часам и ставке каждого сотрудника',
     'settings.export': '📤 Экспорт JSON',
     'settings.import': '📥 Импорт JSON',
-    'settings.payTypesHint': 'Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.',
+    'settings.payTypesHint': 'Все типы можно переименовать или скрыть. Бейдж B = встроенный, C = свой. Стрелка ↺ восстанавливает исходное.',
+    'settings.income': 'доход',
+    'settings.expense': 'расход',
+    'settings.custom': 'свой',
+    'settings.restore': 'Восстановить исходное',
+    'settings.restored': 'Восстановлено',
+    'settings.hidden': 'Скрыто',
     'settings.newPayType': 'Название',
     'settings.signExpense': '− расход',
     'settings.signIncome': '+ доход',
@@ -4575,7 +4735,6 @@ const I18N = {
     'mp.required': 'Введите мастер-пароль для подтверждения',
     // tx categories management
     'settings.txCats': 'Категории транзакций',
-    'settings.txCatsHint': 'Категории, доступные при создании транзакции. Стандартные нельзя удалить.',
     'settings.builtin': 'встроенная',
     'settings.newTxCat': 'Название категории',
     'settings.txCatEmpty': 'Введите название категории',
@@ -4585,6 +4744,9 @@ const I18N = {
     'settings.saved': 'Сохранено ✓',
     'settings.deleted': 'Удалено',
     'confirm.delTxCat': 'Удалить эту категорию?',
+    'confirm.hideTxCat': 'Скрыть эту встроенную категорию из выпадающего списка? Можно вернуть кнопкой ↺.',
+    'confirm.hidePayType': 'Скрыть этот встроенный тип выплат? Можно вернуть кнопкой ↺.',
+    'settings.txCatsHint': 'Категории, доступные при создании транзакции. Можно переименовать или скрыть встроенные. Стрелка ↺ восстанавливает исходное.',
     // detail blocks (daily/monthly)
     'detail.incomeByCat': '📈 Доходы по категориям',
     'detail.expenseByCat': '📉 Расходы по категориям',
@@ -4912,8 +5074,17 @@ const I18N = {
     'mp.placeholder': 'введіть майстер-пароль',
     'mp.required': 'Введіть майстер-пароль для підтвердження',
     'settings.txCats': 'Категорії транзакцій',
-    'settings.txCatsHint': 'Категорії, доступні при створенні транзакції. Стандартні видалити не можна.',
+    'settings.txCatsHint': 'Категорії, доступні при створенні транзакції. Можна перейменувати або приховати вбудовані. Стрілка ↺ відновлює вихідне.',
+    'settings.payTypesHint': 'Усі типи можна перейменувати або приховати. Бейдж B = вбудований, C = свій. Стрілка ↺ відновлює вихідне.',
     'settings.builtin': 'вбудована',
+    'settings.income': 'дохід',
+    'settings.expense': 'витрата',
+    'settings.custom': 'свій',
+    'settings.restore': 'Відновити вихідне',
+    'settings.restored': 'Відновлено',
+    'settings.hidden': 'Приховано',
+    'confirm.hideTxCat': 'Приховати цю вбудовану категорію зі списку? Можна повернути кнопкою ↺.',
+    'confirm.hidePayType': 'Приховати цей вбудований тип виплат? Можна повернути кнопкою ↺.',
     'settings.newTxCat': 'Назва категорії',
     'settings.txCatEmpty': 'Введіть назву категорії',
     'settings.txCatDup': 'Така категорія вже існує',
@@ -5246,8 +5417,17 @@ const I18N = {
     'mp.placeholder': 'enter master password',
     'mp.required': 'Enter master password to confirm',
     'settings.txCats': 'Transaction categories',
-    'settings.txCatsHint': 'Categories shown when creating a transaction. Built-in ones cannot be deleted.',
+    'settings.txCatsHint': 'Categories shown when creating a transaction. Built-in ones can be renamed or hidden. The ↺ arrow restores the original.',
+    'settings.payTypesHint': 'All types can be renamed or hidden. Badge B = built-in, C = custom. The ↺ arrow restores the original.',
     'settings.builtin': 'built-in',
+    'settings.income': 'income',
+    'settings.expense': 'expense',
+    'settings.custom': 'custom',
+    'settings.restore': 'Restore original',
+    'settings.restored': 'Restored',
+    'settings.hidden': 'Hidden',
+    'confirm.hideTxCat': 'Hide this built-in category from the dropdown? You can restore it with the ↺ button.',
+    'confirm.hidePayType': 'Hide this built-in payout type? You can restore it with the ↺ button.',
     'settings.newTxCat': 'Category name',
     'settings.txCatEmpty': 'Enter category name',
     'settings.txCatDup': 'This category already exists',
