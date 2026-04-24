@@ -1039,6 +1039,19 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- CONFIRM DIALOG -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="width:440px;max-width:92vw;">
+    <div class="modal-title" id="confirmTitle" data-i18n="confirm.title">Подтвердите действие</div>
+    <div id="confirmText" style="color:var(--text2);font-size:14px;line-height:1.5;margin:6px 0 4px;"></div>
+    <div id="confirmHint" style="color:var(--text3);font-size:12px;margin-top:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn" id="confirmCancelBtn" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-danger" id="confirmOkBtn" data-i18n="common.delete">Удалить</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════
 // API CLIENT
@@ -1122,6 +1135,49 @@ function showToast(msg, isErr) {
 function showLoader(v) { document.getElementById('loader').classList.toggle('show', v); }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─── красивый confirm-диалог ─────────────────────────────────
+// confirmDialog({ text, hint, title, okText, danger })
+function confirmDialog(opts) {
+  if (typeof opts === 'string') opts = { text: opts };
+  opts = opts || {};
+  return new Promise(resolve => {
+    const m = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmTitle');
+    const textEl  = document.getElementById('confirmText');
+    const hintEl  = document.getElementById('confirmHint');
+    const okBtn   = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+
+    titleEl.textContent = opts.title || t('confirm.title');
+    textEl.textContent  = opts.text  || t('confirm.text');
+    hintEl.textContent  = opts.hint  || t('confirm.hint');
+    hintEl.style.display = hintEl.textContent ? 'block' : 'none';
+    okBtn.textContent   = opts.okText || t('common.delete');
+    cancelBtn.textContent = opts.cancelText || t('common.cancel');
+    okBtn.classList.toggle('btn-danger', opts.danger !== false);
+    okBtn.classList.toggle('btn-primary', opts.danger === false);
+
+    const cleanup = (val) => {
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      m.onclick = null;
+      document.removeEventListener('keydown', onKey);
+      m.classList.remove('open');
+      resolve(val);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') cleanup(false);
+      else if (e.key === 'Enter') cleanup(true);
+    };
+    okBtn.onclick = () => cleanup(true);
+    cancelBtn.onclick = () => cleanup(false);
+    m.onclick = (e) => { if (e.target === m) cleanup(false); };
+    document.addEventListener('keydown', onKey);
+    m.classList.add('open');
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
 
 // ═══════════════════════════════════════════
 // AUTH
@@ -1893,6 +1949,7 @@ async function saveTx() {
 }
 
 async function deleteTx(id) {
+  if (!await confirmDialog({ text: t('confirm.delTx'), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/transactions/' + id);
   if (res && res.ok) { renderTransactions(); showToast('Удалено'); }
 }
@@ -1900,6 +1957,7 @@ async function deleteTx(id) {
 async function deleteTxFromModal() {
   const id = document.getElementById('txEditId').value;
   if (!id) return;
+  if (!await confirmDialog({ text: t('confirm.delTx'), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/transactions/' + id);
   if (res && res.ok) { closeModal('txModal'); renderTransactions(); showToast('Удалено'); }
 }
@@ -2494,6 +2552,7 @@ function openSchedModal(entry, dateStr, empId) {
 async function deleteScheduleFromModal() {
   const id = document.getElementById('schedEditId').value;
   if (!id) return;
+  if (!await confirmDialog({ text: t('confirm.delShift') })) return;
   const res = await API.del('/schedule/' + id);
   if (res && res.ok) { closeModal('schedModal'); renderSchedule(); showToast('Смена удалена'); }
 }
@@ -2525,7 +2584,7 @@ async function saveScheduleEntry() {
 }
 
 async function deleteScheduleEntry(id) {
-  if (!confirm('Удалить запись смены?')) return;
+  if (!await confirmDialog({ text: t('confirm.delShift') })) return;
   const res = await API.del('/schedule/' + id);
   if (res && res.ok) { renderSchedule(); showToast('Удалено'); }
 }
@@ -2786,6 +2845,7 @@ async function applyBanquet(id) {
 }
 
 async function deleteBanquet(id) {
+  if (!await confirmDialog({ text: t('confirm.delBanquet'), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/banquets/' + id);
   if (res && res.ok) { renderBanquets(); showToast('Банкет удалён'); }
 }
@@ -2852,7 +2912,7 @@ async function savePosition() {
 }
 
 async function deletePosition(id, name) {
-  if (!confirm('Удалить должность "' + name + '"?')) return;
+  if (!await confirmDialog({ text: t('confirm.delPosition').replace('{name}', name) })) return;
   const res = await API.del('/positions/' + id);
   if (res && res.ok) { renderPositions(); showToast('Удалено'); }
 }
@@ -2907,7 +2967,7 @@ async function saveEmployee() {
 }
 
 async function deleteEmployee(id) {
-  if (!confirm('Удалить сотрудника?')) return;
+  if (!await confirmDialog({ text: t('confirm.delEmployee'), hint: t('confirm.delEmployeeHint') })) return;
   const res = await API.del('/employees/' + id);
   if (res && res.ok) { _employees = await API.get('/employees') || []; renderEmployees(); showToast('Удалено'); }
 }
@@ -3028,6 +3088,7 @@ async function saveSalaryEntry() {
 async function deleteSalFromModal() {
   const id = document.getElementById('salEditId').value;
   if (!id) return;
+  if (!await confirmDialog({ text: t('confirm.delSal'), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/transactions/' + id);
   if (res && res.ok) { closeModal('salModal'); renderSalary(); showToast('Удалено'); }
 }
@@ -3067,6 +3128,7 @@ async function renderSalary() {
 }
 
 async function deleteSalTx(id) {
+  if (!await confirmDialog({ text: t('confirm.delSal'), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/transactions/' + id);
   if (res && res.ok) { renderSalary(); showToast('Удалено'); }
 }
@@ -3564,7 +3626,8 @@ async function changeSalTypeSign(id, sign) {
 }
 
 async function deleteSalType(id) {
-  _salTypes = _salTypes.filter(t => t.id !== id);
+  if (!await confirmDialog({ text: t('confirm.delPayType') })) return;
+  _salTypes = _salTypes.filter(x => x.id !== id);
   await saveSalTypes();
   renderSalTypesList();
   showToast('Удалено');
@@ -3838,7 +3901,7 @@ async function kickUser(id, name) {
 }
 
 async function deleteUser(id, name) {
-  if (!confirm('Удалить пользователя "' + name + '"?\n\nЭто действие необратимо.')) return;
+  if (!await confirmDialog({ text: t('confirm.delUser').replace('{name}', name), hint: t('confirm.irreversible') })) return;
   const res = await API.del('/users/' + id);
   if (res && res.ok) { renderUsers(); showToast('Пользователь удалён'); }
   else if (res) showToast(res.error || 'Ошибка', true);
@@ -4231,6 +4294,20 @@ const I18N = {
     'sb.title': '⚠️ Сессия завершена',
     'sb.text': 'Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.',
     'sb.again': 'Войти снова',
+    // confirm dialog
+    'confirm.title': 'Подтвердите действие',
+    'confirm.text': 'Вы уверены, что хотите выполнить это действие?',
+    'confirm.hint': '',
+    'confirm.irreversible': 'Это действие нельзя отменить.',
+    'confirm.delTx': 'Удалить эту транзакцию?',
+    'confirm.delShift': 'Удалить запись смены?',
+    'confirm.delBanquet': 'Удалить этот банкет?',
+    'confirm.delPosition': 'Удалить должность «{name}»?',
+    'confirm.delEmployee': 'Удалить этого сотрудника?',
+    'confirm.delEmployeeHint': 'Все связанные транзакции и смены останутся в базе.',
+    'confirm.delSal': 'Удалить эту выплату?',
+    'confirm.delPayType': 'Удалить этот тип выплат?',
+    'confirm.delUser': 'Удалить пользователя «{name}»?',
     // detail blocks (daily/monthly)
     'detail.incomeByCat': '📈 Доходы по категориям',
     'detail.expenseByCat': '📉 Расходы по категориям',
@@ -4527,6 +4604,19 @@ const I18N = {
     'sb.title': '⚠️ Сесію завершено',
     'sb.text': 'Виконано вхід під цим логіном з іншого пристрою або браузера. Вас автоматично виведено з системи.',
     'sb.again': 'Увійти знову',
+    'confirm.title': 'Підтвердіть дію',
+    'confirm.text': 'Ви впевнені, що хочете виконати цю дію?',
+    'confirm.hint': '',
+    'confirm.irreversible': 'Цю дію не можна скасувати.',
+    'confirm.delTx': 'Видалити цю транзакцію?',
+    'confirm.delShift': 'Видалити запис зміни?',
+    'confirm.delBanquet': 'Видалити цей банкет?',
+    'confirm.delPosition': 'Видалити посаду «{name}»?',
+    'confirm.delEmployee': 'Видалити цього співробітника?',
+    'confirm.delEmployeeHint': 'Усі пов\'язані транзакції та зміни залишаться в базі.',
+    'confirm.delSal': 'Видалити цю виплату?',
+    'confirm.delPayType': 'Видалити цей тип виплат?',
+    'confirm.delUser': 'Видалити користувача «{name}»?',
     'detail.incomeByCat': '📈 Доходи по категоріях',
     'detail.expenseByCat': '📉 Витрати по категоріях',
     'detail.empAccruals': '👥 Нарахування по співробітниках',
@@ -4820,6 +4910,19 @@ const I18N = {
     'sb.title': '⚠️ Session ended',
     'sb.text': 'Someone logged in with this account from another device or browser. You have been automatically logged out.',
     'sb.again': 'Log in again',
+    'confirm.title': 'Please confirm',
+    'confirm.text': 'Are you sure you want to perform this action?',
+    'confirm.hint': '',
+    'confirm.irreversible': 'This action cannot be undone.',
+    'confirm.delTx': 'Delete this transaction?',
+    'confirm.delShift': 'Delete this shift entry?',
+    'confirm.delBanquet': 'Delete this banquet?',
+    'confirm.delPosition': 'Delete position "{name}"?',
+    'confirm.delEmployee': 'Delete this employee?',
+    'confirm.delEmployeeHint': 'All related transactions and shifts will remain in the database.',
+    'confirm.delSal': 'Delete this payout?',
+    'confirm.delPayType': 'Delete this payout type?',
+    'confirm.delUser': 'Delete user "{name}"?',
     'detail.incomeByCat': '📈 Income by category',
     'detail.expenseByCat': '📉 Expenses by category',
     'detail.empAccruals': '👥 Accruals by employee',
