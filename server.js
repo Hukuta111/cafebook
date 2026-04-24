@@ -963,37 +963,76 @@ app.get('/api/reports/salary', authMiddleware, (req, res) => {
 });
 
 // ─── EXPORT / IMPORT ───────────────────────────────────────
+// Универсальный экспорт: выгружает все строки всех таблиц с колонками
+function exportTable(name) {
+  try {
+    const rows = db.exec('SELECT * FROM ' + name);
+    return rows[0] ? rowsToObjects(rows[0]) : [];
+  } catch { return []; }
+}
+
 app.get('/api/export', authMiddleware, (req, res) => {
-  const txRows = db.exec('SELECT * FROM transactions ORDER BY date DESC');
-  const empRows = db.exec('SELECT * FROM employees ORDER BY name');
   const setRows = db.exec('SELECT key,value FROM settings');
   const settingsObj = {};
   if (setRows[0]) setRows[0].values.forEach(([k,v]) => { settingsObj[k]=v; });
   res.json({
-    transactions: txRows[0] ? rowsToObjects(txRows[0]) : [],
-    employees: empRows[0] ? rowsToObjects(empRows[0]) : [],
-    settings: settingsObj,
+    version: 2,
     exportedAt: new Date().toISOString(),
+    employees: exportTable('employees'),
+    transactions: exportTable('transactions'),
+    positions: exportTable('positions'),
+    schedule: exportTable('schedule'),
+    banquets: exportTable('banquets'),
+    banquet_items: exportTable('banquet_items'),
+    banquet_shares: exportTable('banquet_shares'),
+    reasons: exportTable('reasons'),
+    settings: settingsObj,
   });
 });
+
+// Универсальный импорт: вставляет все колонки которые есть в таблице и в данных
+function importRows(table, rows) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  // реальные колонки таблицы
+  const info = db.exec(`PRAGMA table_info(${table})`);
+  if (!info[0]) return;
+  const tableColumns = info[0].values.map(v => v[1]); // name
+  db.run('DELETE FROM ' + table);
+  rows.forEach(r => {
+    // если id пусто — генерим
+    if (tableColumns.includes('id') && !r.id) r.id = uid();
+    // маппинг старых полей на новые
+    if (r.start && !r.start_date) r.start_date = r.start;
+    if (r.empId && !r.emp_id) r.emp_id = r.empId;
+    // собираем пары колонка = значение
+    const cols = [];
+    const vals = [];
+    tableColumns.forEach(col => {
+      if (r[col] !== undefined) { cols.push(col); vals.push(r[col]); }
+    });
+    if (!cols.length) return;
+    const placeholders = cols.map(() => '?').join(',');
+    db.run(
+      `INSERT OR REPLACE INTO ${table} (${cols.join(',')}) VALUES (${placeholders})`,
+      vals
+    );
+  });
+}
+
 app.post('/api/import', authMiddleware, adminOnly, (req, res) => {
-  const { transactions, employees, settings } = req.body;
-  if (employees) {
-    db.run('DELETE FROM employees');
-    employees.forEach(e => db.run(
-      `INSERT OR REPLACE INTO employees (id,name,role,type,salary,phone,start_date,status) VALUES (?,?,?,?,?,?,?,?)`,
-      [e.id||uid(), e.name, e.role||'', e.type||'staff', e.salary||0, e.phone||'', e.start_date||e.start||'', e.status||'active']
-    ));
-  }
-  if (transactions) {
-    db.run('DELETE FROM transactions');
-    transactions.forEach(t => db.run(
-      `INSERT OR REPLACE INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)`,
-      [t.id||uid(), t.date, t.type, t.cat||'', t.empId||t.emp_id||null, parseFloat(t.amount), t.note||'']
-    ));
-  }
-  if (settings) {
-    Object.entries(settings).forEach(([k,v]) => db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [k, v]));
+  const b = req.body || {};
+  importRows('employees', b.employees);
+  importRows('transactions', b.transactions);
+  importRows('positions', b.positions);
+  importRows('schedule', b.schedule);
+  importRows('banquets', b.banquets);
+  importRows('banquet_items', b.banquet_items);
+  importRows('banquet_shares', b.banquet_shares);
+  importRows('reasons', b.reasons);
+  if (b.settings) {
+    Object.entries(b.settings).forEach(([k,v]) =>
+      db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [k, v ?? ''])
+    );
   }
   saveDb();
   res.json({ ok: true });
