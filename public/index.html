@@ -57,11 +57,11 @@
     --text2: #6e5c3e;
     --text3: #8d7a55;
   }
-  /* Размеры шрифта — масштабирование всего интерфейса через zoom */
-  body.font-small  { zoom: 0.85; }
-  body.font-medium { zoom: 1; }
-  body.font-large  { zoom: 1.15; }
-  body.font-xlarge { zoom: 1.30; }
+  /* Размеры шрифта — масштабируем только контент, сайдбар не трогаем */
+  body.font-small  .main, body.font-small  #loginScreen { zoom: 0.85; }
+  body.font-medium .main, body.font-medium #loginScreen { zoom: 1; }
+  body.font-large  .main, body.font-large  #loginScreen { zoom: 1.15; }
+  body.font-xlarge .main, body.font-xlarge #loginScreen { zoom: 1.30; }
 
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; font-size:var(--base-font); }
