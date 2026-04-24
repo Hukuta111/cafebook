@@ -110,12 +110,14 @@
   body.sidebar-collapsed .sidebar-logo h1 { font-size:0; }
   body.sidebar-collapsed .sidebar-logo h1::before { content:'☕'; font-size:22px; }
   body.sidebar-collapsed .sidebar-logo span { display:none; }
-  body.sidebar-collapsed .sidebar-logo { padding:18px 12px; text-align:center; }
-  body.sidebar-collapsed .nav-group-label { font-size:0; padding:6px 0; height:1px; background:var(--border); margin:8px 14px; }
-  body.sidebar-collapsed .nav-item { padding:12px 0; justify-content:center; gap:0; font-size:0; }
-  body.sidebar-collapsed .nav-item .icon { font-size:18px; width:auto; }
-  body.sidebar-collapsed .user-info { font-size:0; text-align:center; padding:10px 0; }
-  body.sidebar-collapsed .user-info::before { content:'⏻'; font-size:16px; color:var(--red); }
+  body.sidebar-collapsed .sidebar-logo { padding:18px 0; text-align:center; }
+  body.sidebar-collapsed .nav-group-label { font-size:0; padding:0; height:1px; background:var(--border); margin:8px 14px; }
+  body.sidebar-collapsed .nav-item { padding:12px 0; justify-content:center; gap:0; overflow:hidden; }
+  body.sidebar-collapsed .nav-item .icon { font-size:20px; width:auto; }
+  body.sidebar-collapsed .nav-item .nav-label { display:none; }
+  body.sidebar-collapsed .sidebar-bottom { padding:10px 0; text-align:center; }
+  body.sidebar-collapsed .user-info { font-size:0; padding:10px 0; justify-content:center; }
+  body.sidebar-collapsed .user-info::before { content:'⏻'; font-size:18px; color:var(--red); }
   .sidebar-logo { padding:28px 24px 20px; border-bottom:1px solid var(--border); }
   .sidebar-logo h1 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--accent); }
   .sidebar-logo span { font-size:11px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; }
@@ -3858,7 +3860,32 @@ function applyFontSize(size) {
   document.querySelectorAll('.font-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.font === size));
 }
 
+// один раз — оборачиваем тексты пунктов меню в span, чтобы можно было их скрывать
+function wrapNavLabels() {
+  document.querySelectorAll('.sidebar .nav-item').forEach(el => {
+    if (el.querySelector('.nav-label')) return;
+    const icon = el.querySelector('.icon');
+    if (!icon) return;
+    // соберём весь текст после .icon
+    let text = '';
+    let n = icon.nextSibling;
+    const toRemove = [];
+    while (n) { if (n.nodeType === Node.TEXT_NODE) text += n.textContent; toRemove.push(n); n = n.nextSibling; }
+    toRemove.forEach(x => x.remove());
+    const span = document.createElement('span');
+    span.className = 'nav-label';
+    span.textContent = text.trim();
+    el.appendChild(span);
+  });
+  // user-info: текст «👤 admin · Выйти» тоже завернуть
+  document.querySelectorAll('.user-info').forEach(el => {
+    if (el.dataset.wrapped) return;
+    el.dataset.wrapped = '1';
+  });
+}
+
 function toggleSidebarCollapse() {
+  wrapNavLabels();
   const collapsed = document.body.classList.toggle('sidebar-collapsed');
   localStorage.setItem('cb_sidebar_collapsed', collapsed ? '1' : '0');
 }
@@ -3872,6 +3899,8 @@ function toggleSidebarCollapse() {
   if (localStorage.getItem('cb_sidebar_collapsed') === '1') {
     document.body.classList.add('sidebar-collapsed');
   }
+  // обернуть тексты пунктов меню для нормальной работы свёрнутого режима
+  setTimeout(wrapNavLabels, 0);
   // обновить состояние кнопок когда DOM готов
   setTimeout(() => {
     document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.theme === theme));
