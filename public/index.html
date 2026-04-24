@@ -351,7 +351,7 @@
     <div class="login-sub">Управление кафе</div>
     <div class="form-row">
       <label>Логин</label>
-      <input type="text" id="loginUser" placeholder="логин" autocomplete="username">
+      <input type="text" id="loginUser" autocomplete="username">
     </div>
     <div class="form-row">
       <label>Пароль</label>
@@ -1071,6 +1071,7 @@ async function doLogout() {
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginPass').value = '';
+  document.getElementById('loginUser').value = '';
 }
 
 async function tryAutoLogin() {
