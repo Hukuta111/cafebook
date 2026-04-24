@@ -111,7 +111,9 @@
   body.sidebar-collapsed .sidebar-logo h1::before { content:'☕'; font-size:22px; }
   body.sidebar-collapsed .sidebar-logo span { display:none; }
   body.sidebar-collapsed .sidebar-logo { padding:18px 0; text-align:center; }
-  body.sidebar-collapsed .nav-group-label { font-size:0; padding:0; height:1px; background:var(--border); margin:8px 14px; }
+  body.sidebar-collapsed .nav-group-label {
+    text-indent:-9999px; overflow:hidden; padding:0; height:1px; background:var(--border); margin:10px 14px; line-height:1px; letter-spacing:0;
+  }
   body.sidebar-collapsed .nav-item { padding:12px 0; justify-content:center; gap:0; overflow:hidden; }
   body.sidebar-collapsed .nav-item .icon { font-size:20px; width:auto; }
   body.sidebar-collapsed .nav-item .nav-label { display:none; }
