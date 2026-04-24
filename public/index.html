@@ -57,11 +57,11 @@
     --text2: #6e5c3e;
     --text3: #8d7a55;
   }
-  /* Размеры шрифта */
-  body.font-small  { --base-font: 12px; }
-  body.font-medium { --base-font: 14px; }
-  body.font-large  { --base-font: 16px; }
-  body.font-xlarge { --base-font: 18px; }
+  /* Размеры шрифта — масштабирование всего интерфейса через zoom */
+  body.font-small  { zoom: 0.85; }
+  body.font-medium { zoom: 1; }
+  body.font-large  { zoom: 1.15; }
+  body.font-xlarge { zoom: 1.30; }
 
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; font-size:var(--base-font); }
