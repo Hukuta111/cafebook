@@ -481,7 +481,7 @@
   <!-- DASHBOARD -->
   <div class="page active" id="page-dashboard">
     <div class="page-header">
-      <div><div class="page-title">Дашборд</div><div class="page-subtitle" id="dashDate"></div></div>
+      <div><div class="page-title" data-i18n="page.dashboard">Дашборд</div><div class="page-subtitle" id="dashDate"></div></div>
       <div class="mp-wrap" id="dashMonthPicker"></div>
     </div>
     <div class="cards-row" id="dashCards"></div>
@@ -499,7 +499,7 @@
   <!-- TRANSACTIONS -->
   <div class="page" id="page-transactions">
     <div class="page-header">
-      <div><div class="page-title">Транзакции</div><div class="page-subtitle">Все финансовые операции</div></div>
+      <div><div class="page-title" data-i18n="page.transactions">Транзакции</div><div class="page-subtitle" data-i18n="page.transactions.sub">Все финансовые операции</div></div>
       <button class="btn btn-primary" data-edit-page="transactions" onclick="openTxModal()">+ Добавить</button>
     </div>
     <div class="filters">
@@ -525,7 +525,7 @@
   <!-- DAILY -->
   <div class="page" id="page-daily">
     <div class="page-header">
-      <div><div class="page-title">Дневные отчёты</div><div class="page-subtitle">Итоги по каждому дню</div></div>
+      <div><div class="page-title" data-i18n="page.daily">Дневные отчёты</div><div class="page-subtitle" data-i18n="page.daily.sub">Итоги по каждому дню</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="dailyMonthPicker"></div>
         <div class="drp-wrap" id="dailyDateRange"></div>
@@ -543,7 +543,7 @@
 
   <!-- MONTHLY -->
   <div class="page" id="page-monthly">
-    <div class="page-header"><div><div class="page-title">Месячные отчёты</div><div class="page-subtitle">Сводка по месяцам</div></div></div>
+    <div class="page-header"><div><div class="page-title" data-i18n="page.monthly">Месячные отчёты</div><div class="page-subtitle" data-i18n="page.monthly.sub">Сводка по месяцам</div></div></div>
     <div class="table-wrap">
       <table><thead><tr><th style="width:24px"></th><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
       <tbody id="monthlyTable"></tbody></table>
@@ -553,7 +553,7 @@
   <!-- POSITIONS -->
   <div class="page" id="page-positions">
     <div class="page-header">
-      <div><div class="page-title">Должности</div><div class="page-subtitle">Управление списком должностей</div></div>
+      <div><div class="page-title" data-i18n="page.positions">Должности</div><div class="page-subtitle" data-i18n="page.positions.sub">Управление списком должностей</div></div>
       <button class="btn btn-primary" data-edit-page="positions" onclick="openPosModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
@@ -565,7 +565,7 @@
   <!-- EMPLOYEES -->
   <div class="page" id="page-employees">
     <div class="page-header">
-      <div><div class="page-title">Сотрудники</div><div class="page-subtitle">Управление персоналом</div></div>
+      <div><div class="page-title" data-i18n="page.employees">Сотрудники</div><div class="page-subtitle" data-i18n="page.employees.sub">Управление персоналом</div></div>
       <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()">+ Добавить</button>
     </div>
     <div class="filters">
@@ -606,7 +606,7 @@
   <!-- SALARY -->
   <div class="page" id="page-salary">
     <div class="page-header">
-      <div><div class="page-title">Зарплата и выплаты</div><div class="page-subtitle">Начисления, авансы, штрафы, бонусы</div></div>
+      <div><div class="page-title" data-i18n="page.salary">Зарплата и выплаты</div><div class="page-subtitle" data-i18n="page.salary.sub">Начисления, авансы, штрафы, бонусы</div></div>
       <button class="btn btn-primary" data-edit-page="salary" onclick="openSalModal()">+ Начислить</button>
     </div>
     <div class="filters">
@@ -627,7 +627,7 @@
   <!-- SALARY REPORT -->
   <div class="page" id="page-salary-report">
     <div class="page-header">
-      <div><div class="page-title">Отчёт по зарплате</div><div class="page-subtitle">Итоговые расчёты за месяц</div></div>
+      <div><div class="page-title" data-i18n="page.salary-report">Отчёт по зарплате</div><div class="page-subtitle" data-i18n="page.salary-report.sub">Итоговые расчёты за месяц</div></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div class="mp-wrap" id="salReportMonthPicker"></div>
         <label class="toggle-mini no-print" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);gap:10px;align-items:center;font-size:13px;color:var(--text);">
@@ -652,8 +652,8 @@
   <div class="page" id="page-schedule">
     <div class="page-header">
       <div>
-        <div class="page-title">График работы</div>
-        <div class="page-subtitle">Клик на ячейку — добавить смену · клик на заполненную — редактировать</div>
+        <div class="page-title" data-i18n="page.schedule">График работы</div>
+        <div class="page-subtitle" data-i18n="page.schedule.sub">Клик на ячейку — добавить смену · клик на заполненную — редактировать</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
@@ -670,7 +670,7 @@
   <!-- BANQUETS -->
   <div class="page" id="page-banquets">
     <div class="page-header">
-      <div><div class="page-title">Банкеты</div><div class="page-subtitle">Распределение бонусов по работавшим в этот день</div></div>
+      <div><div class="page-title" data-i18n="page.banquets">Банкеты</div><div class="page-subtitle" data-i18n="page.banquets.sub">Распределение бонусов по работавшим в этот день</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="banquetMonthPicker"></div>
         <button class="btn btn-primary" data-edit-page="banquets" onclick="openBanquetModal()">+ Банкет</button>
@@ -683,7 +683,7 @@
   <!-- USERS -->
   <div class="page" id="page-users">
     <div class="page-header">
-      <div><div class="page-title">Пользователи</div><div class="page-subtitle">Управление доступом к системе</div></div>
+      <div><div class="page-title" data-i18n="page.users">Пользователи</div><div class="page-subtitle" data-i18n="page.users.sub">Управление доступом к системе</div></div>
       <button class="btn btn-primary" onclick="openUserModal()">+ Добавить</button>
     </div>
     <div class="table-wrap">
@@ -693,7 +693,7 @@
   </div>
 
   <div class="page" id="page-settings">
-    <div class="page-header"><div class="page-title">Настройки</div></div>
+    <div class="page-header"><div class="page-title" data-i18n="page.settings">Настройки</div></div>
     <div style="max-width:500px;">
       <div class="table-wrap" style="padding:24px;">
         <div class="table-title" style="margin-bottom:16px;">Кафе</div>
@@ -3977,6 +3977,29 @@ const I18N = {
     'login.user': 'Логин',
     'login.pass': 'Пароль',
     'login.submit': 'Войти →',
+    // page titles
+    'page.dashboard': 'Дашборд',
+    'page.transactions': 'Транзакции',
+    'page.transactions.sub': 'Все финансовые операции',
+    'page.daily': 'Дневные отчёты',
+    'page.daily.sub': 'Итоги по каждому дню',
+    'page.monthly': 'Месячные отчёты',
+    'page.monthly.sub': 'Сводка по месяцам',
+    'page.positions': 'Должности',
+    'page.positions.sub': 'Управление списком должностей',
+    'page.employees': 'Сотрудники',
+    'page.employees.sub': 'Управление персоналом',
+    'page.salary': 'Зарплата и выплаты',
+    'page.salary.sub': 'Начисления, авансы, штрафы, бонусы',
+    'page.salary-report': 'Отчёт по зарплате',
+    'page.salary-report.sub': 'Итоговые расчёты за месяц',
+    'page.schedule': 'График работы',
+    'page.schedule.sub': 'Клик на ячейку — добавить смену · клик на заполненную — редактировать',
+    'page.banquets': 'Банкеты',
+    'page.banquets.sub': 'Распределение бонусов по работавшим в этот день',
+    'page.users': 'Пользователи',
+    'page.users.sub': 'Управление доступом к системе',
+    'page.settings': 'Настройки',
   },
   uk: {
     'nav.overview': 'Огляд',
@@ -4022,6 +4045,28 @@ const I18N = {
     'login.user': 'Логін',
     'login.pass': 'Пароль',
     'login.submit': 'Увійти →',
+    'page.dashboard': 'Дашборд',
+    'page.transactions': 'Транзакції',
+    'page.transactions.sub': 'Усі фінансові операції',
+    'page.daily': 'Денні звіти',
+    'page.daily.sub': 'Підсумки по кожному дню',
+    'page.monthly': 'Місячні звіти',
+    'page.monthly.sub': 'Зведення по місяцях',
+    'page.positions': 'Посади',
+    'page.positions.sub': 'Управління списком посад',
+    'page.employees': 'Співробітники',
+    'page.employees.sub': 'Управління персоналом',
+    'page.salary': 'Зарплата і виплати',
+    'page.salary.sub': 'Нарахування, аванси, штрафи, бонуси',
+    'page.salary-report': 'Звіт по зарплаті',
+    'page.salary-report.sub': 'Підсумкові розрахунки за місяць',
+    'page.schedule': 'Графік роботи',
+    'page.schedule.sub': 'Клік по комірці — додати зміну · клік по заповненій — редагувати',
+    'page.banquets': 'Банкети',
+    'page.banquets.sub': 'Розподіл бонусів між тими хто працював у цей день',
+    'page.users': 'Користувачі',
+    'page.users.sub': 'Управління доступом до системи',
+    'page.settings': 'Налаштування',
   },
   en: {
     'nav.overview': 'Overview',
@@ -4067,6 +4112,28 @@ const I18N = {
     'login.user': 'Username',
     'login.pass': 'Password',
     'login.submit': 'Sign in →',
+    'page.dashboard': 'Dashboard',
+    'page.transactions': 'Transactions',
+    'page.transactions.sub': 'All financial operations',
+    'page.daily': 'Daily reports',
+    'page.daily.sub': 'Totals for each day',
+    'page.monthly': 'Monthly reports',
+    'page.monthly.sub': 'Summary by month',
+    'page.positions': 'Positions',
+    'page.positions.sub': 'Manage position list',
+    'page.employees': 'Employees',
+    'page.employees.sub': 'Staff management',
+    'page.salary': 'Salary & payouts',
+    'page.salary.sub': 'Accruals, advances, fines, bonuses',
+    'page.salary-report': 'Salary report',
+    'page.salary-report.sub': 'Final calculations for the month',
+    'page.schedule': 'Work schedule',
+    'page.schedule.sub': 'Click cell — add shift · click filled — edit',
+    'page.banquets': 'Banquets',
+    'page.banquets.sub': 'Bonus distribution by those who worked that day',
+    'page.users': 'Users',
+    'page.users.sub': 'System access management',
+    'page.settings': 'Settings',
   },
 };
 let _lang = 'ru';
