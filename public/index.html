@@ -437,9 +437,9 @@
 
 <!-- SESSION REPLACED BANNER -->
 <div id="sessionBanner">
-  <h2>⚠️ Сессия завершена</h2>
-  <p>Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.</p>
-  <button class="btn btn-primary" onclick="document.getElementById('sessionBanner').classList.remove('show'); doLogout();">Войти снова</button>
+  <h2 data-i18n="sb.title">⚠️ Сессия завершена</h2>
+  <p data-i18n="sb.text">Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('sessionBanner').classList.remove('show'); doLogout();" data-i18n="sb.again">Войти снова</button>
 </div>
 
 <div class="loader" id="loader"><div class="spinner"></div></div>
@@ -894,16 +894,16 @@
 <!-- PRINT SALARY REPORT MODAL -->
 <div class="modal-overlay" id="salReportPrintModal">
   <div class="modal" style="width:560px;max-width:95vw;">
-    <div class="modal-title">Печать отчёта по зарплате</div>
-    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
+    <div class="modal-title" data-i18n="srp.title">Печать отчёта по зарплате</div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="srp.hint">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)">Выбрать всех</button>
-      <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)">Снять всех</button>
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>
     </div>
     <div id="salReportPrintList" style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('salReportPrintModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="doPrintSalReport()">🖨 Напечатать</button>
+      <button class="btn" onclick="closeModal('salReportPrintModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="doPrintSalReport()" data-i18n="srp.printIt">🖨 Напечатать</button>
     </div>
   </div>
 </div>
@@ -911,18 +911,18 @@
 <!-- MONTHLY SALARY MODAL -->
 <div class="modal-overlay" id="monthlySalaryModal">
   <div class="modal" style="width:620px;max-width:95vw;">
-    <div class="modal-title">Начисление окладов <span id="monthlySalaryMonth" style="color:var(--text3);font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;"></span></div>
-    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;">Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).</div>
+    <div class="modal-title"><span data-i18n="ms.title">Начисление окладов</span> <span id="monthlySalaryMonth" style="color:var(--text3);font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;"></span></div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="ms.hint">Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <button type="button" class="btn btn-sm" onclick="msToggleAll(true)">Выбрать всех</button>
-      <button type="button" class="btn btn-sm" onclick="msToggleAll(false)">Снять всех</button>
-      <button type="button" class="btn btn-sm" onclick="msResetAmounts()">↺ Восстановить суммы</button>
+      <button type="button" class="btn btn-sm" onclick="msToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="msToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>
+      <button type="button" class="btn btn-sm" onclick="msResetAmounts()" data-i18n="ms.reset">↺ Восстановить суммы</button>
     </div>
     <div id="monthlySalaryList" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
     <div id="monthlySalaryTotal" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px;"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('monthlySalaryModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="confirmCalcMonthlySalary()">💵 Начислить выбранным</button>
+      <button class="btn" onclick="closeModal('monthlySalaryModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="confirmCalcMonthlySalary()" data-i18n="ms.confirm">💵 Начислить выбранным</button>
     </div>
   </div>
 </div>
@@ -1487,8 +1487,8 @@ function createDateRangePicker(containerId, onChange) {
       <div class="drp-weekdays">${DRP_WEEKDAYS.map(d=>'<span>'+d+'</span>').join('')}</div>
       <div class="drp-grid" id="${containerId}_grid"></div>
       <div class="drp-actions">
-        <button onclick="drpClear('${containerId}')">Сбросить</button>
-        <button class="drp-apply" onclick="drpApply('${containerId}')">Применить</button>
+        <button onclick="drpClear('${containerId}')">${t('drp.clear')}</button>
+        <button class="drp-apply" onclick="drpApply('${containerId}')">${t('drp.apply')}</button>
       </div>
     </div>`;
 
@@ -2346,13 +2346,13 @@ async function renderSchedule() {
   cols += '<col style="width:40px"><col style="width:75px"></colgroup>';
 
   // header
-  let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left">Сотрудник</th>';
+  let hdr = `<thead><tr><th class="emp-name-cell" style="text-align:left">${t('col.employee')}</th>`;
   for (let d = 1; d <= numDays; d++) {
     const dow = dayOfWeek(month, d);
     const isWeekend = dow === 0 || dow === 6;
     hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${t('wd.' + dow)}</th>`;
   }
-  hdr += '<th>Часы</th><th>Сумма</th></tr></thead>';
+  hdr += `<th>${t('sch.hours')}</th><th>${t('col.sum')}</th></tr></thead>`;
 
   // body
   let body = '<tbody>';
@@ -2392,14 +2392,14 @@ async function renderSchedule() {
   });
 
   // totals row
-  body += '<tr class="totals-row"><td class="emp-name-cell">Итого</td>';
+  body += `<tr class="totals-row"><td class="emp-name-cell">${t('sch.totalRow')}</td>`;
   for (let d = 0; d < numDays; d++) {
     body += `<td>${dayTotals[d] || ''}</td>`;
   }
   body += `<td>${grandHours || ''}</td><td></td></tr>`;
   body += '</tbody>';
 
-  table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + cols + hdr + body;
+  table.innerHTML = `<div class="sched-print-title">${t('page.schedule')} — ${monthLabel(month)}</div>` + cols + hdr + body;
 
   // итог под таблицей
   let grandEl = document.getElementById('schedGrandTotal');
@@ -2409,7 +2409,7 @@ async function renderSchedule() {
     grandEl.className = 'sched-grand-total';
     document.getElementById('scheduleWrap').after(grandEl);
   }
-  grandEl.innerHTML = grandSum ? `Итого часов: <b>${grandHours}</b> &nbsp;|&nbsp; Итого сумма: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
+  grandEl.innerHTML = grandSum ? `${t('sch.totalHours')}: <b>${grandHours}</b> &nbsp;|&nbsp; ${t('sch.totalSum')}: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
   grandEl.style.display = grandSum ? 'block' : 'none';
 
   // drag & drop строк
@@ -3837,18 +3837,18 @@ async function renderUsers() {
   tbody.innerHTML = users.map(u => {
     const isMe = u.username === myUsername;
     const onlineBadge = u.isOnline
-      ? '<span class="badge badge-online">● Онлайн</span>'
-      : '<span class="badge badge-offline">○ Офлайн</span>';
+      ? `<span class="badge badge-online">${t('status.online')}</span>`
+      : `<span class="badge badge-offline">${t('status.offline')}</span>`;
     const roleBadge = u.role === 'admin'
-      ? '<span class="badge badge-yellow">Администратор</span>'
-      : '<span class="badge badge-blue">Сотрудник</span>';
+      ? `<span class="badge badge-yellow">${t('emp.admin')}</span>`
+      : `<span class="badge badge-blue">${t('emp.staff')}</span>`;
     const lastLogin = u.lastLoginAt
       ? new Date(u.lastLoginAt).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
       : '—';
     const escapedName = (u.displayName||u.username).replace(/"/g, '&quot;');
     const safeUser = JSON.stringify(u).replace(/"/g, '&quot;');
     const actions = isMe
-      ? '<span style="color:var(--text3);font-size:12px">это вы</span>'
+      ? `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
       : '<div style="display:flex;gap:6px;">'
         + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)" title="Выбить из системы">⏏ Выбить</button>' : '')
         + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')">✎</button>'
@@ -4193,6 +4193,22 @@ const I18N = {
     'srep.combo': 'Совмещение',
     'srep.positions': 'должностей',
     'srep.ofRevenue': 'от выручки',
+    // print salary report modal
+    'srp.title': 'Печать отчёта по зарплате',
+    'srp.hint': 'Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.',
+    'srp.selAll': 'Выбрать всех',
+    'srp.deselAll': 'Снять всех',
+    'srp.printIt': '🖨 Напечатать',
+    // monthly salary modal
+    'ms.title': 'Начисление окладов',
+    'ms.hint': 'Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).',
+    'ms.reset': '↺ Восстановить суммы',
+    'ms.confirm': '💵 Начислить выбранным',
+    'drp.clear': 'Сбросить',
+    'drp.apply': 'Применить',
+    'sb.title': '⚠️ Сессия завершена',
+    'sb.text': 'Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.',
+    'sb.again': 'Войти снова',
     // detail blocks (daily/monthly)
     'detail.incomeByCat': '📈 Доходы по категориям',
     'detail.expenseByCat': '📉 Расходы по категориям',
@@ -4472,6 +4488,20 @@ const I18N = {
     'srep.combo': 'Суміщення',
     'srep.positions': 'посад',
     'srep.ofRevenue': 'від виручки',
+    'srp.title': 'Друк звіту по зарплаті',
+    'srp.hint': 'Виберіть, чиї розрахункові листи друкувати. Кожен співробітник — на окремому аркуші А4.',
+    'srp.selAll': 'Вибрати всіх',
+    'srp.deselAll': 'Зняти всіх',
+    'srp.printIt': '🖨 Надрукувати',
+    'ms.title': 'Нарахування окладів',
+    'ms.hint': 'Виберіть, кому нарахувати і перевірте суми. Можна змінити суму для конкретного співробітника (наприклад при частковій ставці).',
+    'ms.reset': '↺ Відновити суми',
+    'ms.confirm': '💵 Нарахувати вибраним',
+    'drp.clear': 'Скинути',
+    'drp.apply': 'Застосувати',
+    'sb.title': '⚠️ Сесію завершено',
+    'sb.text': 'Виконано вхід під цим логіном з іншого пристрою або браузера. Вас автоматично виведено з системи.',
+    'sb.again': 'Увійти знову',
     'detail.incomeByCat': '📈 Доходи по категоріях',
     'detail.expenseByCat': '📉 Витрати по категоріях',
     'detail.empAccruals': '👥 Нарахування по співробітниках',
@@ -4748,6 +4778,20 @@ const I18N = {
     'srep.combo': 'Combining',
     'srep.positions': 'positions',
     'srep.ofRevenue': 'of revenue',
+    'srp.title': 'Print salary report',
+    'srp.hint': 'Choose whose pay slips to print. Each employee on a separate A4 sheet.',
+    'srp.selAll': 'Select all',
+    'srp.deselAll': 'Deselect all',
+    'srp.printIt': '🖨 Print',
+    'ms.title': 'Accrue salaries',
+    'ms.hint': 'Choose who to accrue and verify amounts. You can override the amount for a specific employee (e.g. partial rate).',
+    'ms.reset': '↺ Reset amounts',
+    'ms.confirm': '💵 Accrue selected',
+    'drp.clear': 'Clear',
+    'drp.apply': 'Apply',
+    'sb.title': '⚠️ Session ended',
+    'sb.text': 'Someone logged in with this account from another device or browser. You have been automatically logged out.',
+    'sb.again': 'Log in again',
     'detail.incomeByCat': '📈 Income by category',
     'detail.expenseByCat': '📉 Expenses by category',
     'detail.empAccruals': '👥 Accruals by employee',
