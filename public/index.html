@@ -23,9 +23,48 @@
     --text3: #6b6455;
     --radius: 12px;
     --radius-sm: 8px;
+    --base-font: 14px;
   }
+  /* Светлая тема */
+  body.theme-light {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface2: #f0ece1;
+    --border: #d8d3c3;
+    --accent: #b88f1e;
+    --accent2: #d3a838;
+    --red: #c0392b;
+    --green: #2a7d4f;
+    --blue: #2f6cc4;
+    --purple: #6b4fc4;
+    --text: #1a1714;
+    --text2: #5a5043;
+    --text3: #8a8273;
+  }
+  /* Сепия */
+  body.theme-sepia {
+    --bg: #f4ecd8;
+    --surface: #faf3e0;
+    --surface2: #ebe2c8;
+    --border: #d4c8a3;
+    --accent: #8b6f1e;
+    --accent2: #b08b2e;
+    --red: #a13c2c;
+    --green: #2f6f3f;
+    --blue: #2f5e9e;
+    --purple: #5e4ba0;
+    --text: #3a2e1a;
+    --text2: #6e5c3e;
+    --text3: #8d7a55;
+  }
+  /* Размеры шрифта */
+  body.font-small  { --base-font: 12px; }
+  body.font-medium { --base-font: 14px; }
+  body.font-large  { --base-font: 16px; }
+  body.font-xlarge { --base-font: 18px; }
+
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; font-size:var(--base-font); }
 
   /* LOGIN */
   #loginScreen {
@@ -641,6 +680,27 @@
           <span class="toggle-sw"></span>
         </label>
         <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:16px;">Внешний вид</div>
+        <div class="form-row">
+          <label>Тема оформления</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn theme-btn" data-theme="dark" onclick="applyTheme('dark')">🌙 Тёмная</button>
+            <button type="button" class="btn theme-btn" data-theme="light" onclick="applyTheme('light')">☀️ Светлая</button>
+            <button type="button" class="btn theme-btn" data-theme="sepia" onclick="applyTheme('sepia')">📜 Сепия</button>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:14px;">
+          <label>Размер шрифта</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn font-btn" data-font="small" onclick="applyFontSize('small')">A−</button>
+            <button type="button" class="btn font-btn" data-font="medium" onclick="applyFontSize('medium')">A</button>
+            <button type="button" class="btn font-btn" data-font="large" onclick="applyFontSize('large')">A+</button>
+            <button type="button" class="btn font-btn" data-font="xlarge" onclick="applyFontSize('xlarge')">A++</button>
+          </div>
+        </div>
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
@@ -3751,6 +3811,38 @@ function deleteUserById(id) {
   const u = window._usersCache && window._usersCache[id];
   if (u) deleteUser(id, u.displayName || u.username);
 }
+
+// ═══════════════════════════════════════════
+// THEME & FONT SIZE
+// ═══════════════════════════════════════════
+function applyTheme(theme) {
+  document.body.classList.remove('theme-light','theme-sepia');
+  if (theme === 'light') document.body.classList.add('theme-light');
+  else if (theme === 'sepia') document.body.classList.add('theme-sepia');
+  localStorage.setItem('cb_theme', theme);
+  // подсветить активную кнопку
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.theme === theme));
+}
+
+function applyFontSize(size) {
+  document.body.classList.remove('font-small','font-medium','font-large','font-xlarge');
+  document.body.classList.add('font-' + size);
+  localStorage.setItem('cb_font', size);
+  document.querySelectorAll('.font-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.font === size));
+}
+
+// применить сохранённые настройки сразу при загрузке
+(function() {
+  const theme = localStorage.getItem('cb_theme') || 'dark';
+  const font = localStorage.getItem('cb_font') || 'medium';
+  if (theme !== 'dark') document.body.classList.add('theme-' + theme);
+  document.body.classList.add('font-' + font);
+  // обновить состояние кнопок когда DOM готов
+  setTimeout(() => {
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.theme === theme));
+    document.querySelectorAll('.font-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.font === font));
+  }, 0);
+})();
 
 // ═══════════════════════════════════════════
 // BOOT
