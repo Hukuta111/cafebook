@@ -419,16 +419,16 @@
 <div id="loginScreen" class="show">
   <div class="login-box">
     <div class="login-logo">CaféBook</div>
-    <div class="login-sub">Управление кафе</div>
+    <div class="login-sub" data-i18n="login.title">Управление кафе</div>
     <div class="form-row">
-      <label>Логин</label>
+      <label data-i18n="login.user">Логин</label>
       <input type="text" id="loginUser" autocomplete="username">
     </div>
     <div class="form-row">
-      <label>Пароль</label>
+      <label data-i18n="login.pass">Пароль</label>
       <input type="password" id="loginPass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()">Войти →</button>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()" data-i18n="login.submit">Войти →</button>
     <div class="login-error" id="loginError"></div>
   </div>
 </div>
@@ -437,9 +437,9 @@
 
 <!-- SESSION REPLACED BANNER -->
 <div id="sessionBanner">
-  <h2>⚠️ Сессия завершена</h2>
-  <p>Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.</p>
-  <button class="btn btn-primary" onclick="document.getElementById('sessionBanner').classList.remove('show'); doLogout();">Войти снова</button>
+  <h2 data-i18n="sb.title">⚠️ Сессия завершена</h2>
+  <p data-i18n="sb.text">Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('sessionBanner').classList.remove('show'); doLogout();" data-i18n="sb.again">Войти снова</button>
 </div>
 
 <div class="loader" id="loader"><div class="spinner"></div></div>
@@ -491,7 +491,7 @@
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title">Последние транзакции</span><button class="btn btn-sm" onclick="nav(document.querySelector('[data-page=transactions]'))">Все →</button></div>
-      <table><thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сотрудник</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+      <table><thead><tr><th data-i18n="col.date">Дата</th><th data-i18n="col.type">Тип</th><th data-i18n="col.category">Категория</th><th data-i18n="col.employee">Сотрудник</th><th data-i18n="col.amount">Сумма</th><th data-i18n="col.note">Комментарий</th></tr></thead>
       <tbody id="recentTx"></tbody></table>
     </div>
   </div>
@@ -500,24 +500,29 @@
   <div class="page" id="page-transactions">
     <div class="page-header">
       <div><div class="page-title" data-i18n="page.transactions">Транзакции</div><div class="page-subtitle" data-i18n="page.transactions.sub">Все финансовые операции</div></div>
-      <button class="btn btn-primary" data-edit-page="transactions" onclick="openTxModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="transactions" onclick="openTxModal()" data-i18n="btn.add">+ Добавить</button>
     </div>
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
       <div class="drp-wrap" id="txDateRange"></div>
       <select id="txFilterType" onchange="renderTransactions()">
-        <option value="">Все типы</option><option value="income">Доходы</option><option value="salary">Зарплата</option>
-        <option value="advance">Аванс</option><option value="bonus">Бонус</option><option value="fine">Штраф</option><option value="expense">Расходы</option>
+        <option value="" data-i18n="filter.allTypes">Все типы</option>
+        <option value="income" data-i18n="tx.income">Доход</option>
+        <option value="salary" data-i18n="tx.salary">Зарплата</option>
+        <option value="advance" data-i18n="tx.advance">Аванс</option>
+        <option value="bonus" data-i18n="tx.bonus">Бонус</option>
+        <option value="fine" data-i18n="tx.fine">Штраф</option>
+        <option value="expense" data-i18n="tx.expense">Расход</option>
       </select>
-      <select id="txFilterEmployee" onchange="renderTransactions()"><option value="">Все сотрудники</option></select>
+      <select id="txFilterEmployee" onchange="renderTransactions()"><option value="" data-i18n="filter.allEmployees">Все сотрудники</option></select>
       <select id="txSortOrder" onchange="renderTransactions()">
-        <option value="desc">Сначала новые</option>
-        <option value="asc">Сначала старые</option>
+        <option value="desc" data-i18n="sort.newest">Сначала новые</option>
+        <option value="asc" data-i18n="sort.oldest">Сначала старые</option>
       </select>
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title" id="txCount">Транзакции</span></div>
-      <table><thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+      <table><thead><tr><th data-i18n="col.date">Дата</th><th data-i18n="col.type">Тип</th><th data-i18n="col.category">Категория</th><th data-i18n="col.employee">Сотрудник</th><th data-i18n="col.amount">Сумма</th><th data-i18n="col.note">Комментарий</th><th></th></tr></thead>
       <tbody id="txTable"></tbody></table>
     </div>
   </div>
@@ -530,13 +535,13 @@
         <div class="mp-wrap" id="dailyMonthPicker"></div>
         <div class="drp-wrap" id="dailyDateRange"></div>
         <select id="dailySortOrder" onchange="renderDaily()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;">
-          <option value="desc">Сначала новые</option>
-          <option value="asc">Сначала старые</option>
+          <option value="desc" data-i18n="sort.newest">Сначала новые</option>
+          <option value="asc" data-i18n="sort.oldest">Сначала старые</option>
         </select>
       </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th style="width:24px"></th><th>Дата</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Штрафы</th><th>Бонусы</th><th>Авансы</th><th>Итог</th></tr></thead>
+      <table><thead><tr><th style="width:24px"></th><th data-i18n="col.date">Дата</th><th data-i18n="col.income">Доходы</th><th data-i18n="col.expense">Расходы</th><th data-i18n="col.salary">Зарплаты</th><th data-i18n="col.fines">Штрафы</th><th data-i18n="col.bonuses">Бонусы</th><th data-i18n="col.advances">Авансы</th><th data-i18n="col.result">Итог</th></tr></thead>
       <tbody id="dailyTable"></tbody></table>
     </div>
   </div>
@@ -545,7 +550,7 @@
   <div class="page" id="page-monthly">
     <div class="page-header"><div><div class="page-title" data-i18n="page.monthly">Месячные отчёты</div><div class="page-subtitle" data-i18n="page.monthly.sub">Сводка по месяцам</div></div></div>
     <div class="table-wrap">
-      <table><thead><tr><th style="width:24px"></th><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Зарплаты</th><th>Авансы</th><th>Бонусы</th><th>Штрафы</th><th>Чистая прибыль</th></tr></thead>
+      <table><thead><tr><th style="width:24px"></th><th data-i18n="col.month">Месяц</th><th data-i18n="col.income">Доходы</th><th data-i18n="col.expense">Расходы</th><th data-i18n="col.salary">Зарплаты</th><th data-i18n="col.advances">Авансы</th><th data-i18n="col.bonuses">Бонусы</th><th data-i18n="col.fines">Штрафы</th><th data-i18n="col.profit">Чистая прибыль</th></tr></thead>
       <tbody id="monthlyTable"></tbody></table>
     </div>
   </div>
@@ -554,10 +559,10 @@
   <div class="page" id="page-positions">
     <div class="page-header">
       <div><div class="page-title" data-i18n="page.positions">Должности</div><div class="page-subtitle" data-i18n="page.positions.sub">Управление списком должностей</div></div>
-      <button class="btn btn-primary" data-edit-page="positions" onclick="openPosModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="positions" onclick="openPosModal()" data-i18n="btn.add">+ Добавить</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Название</th><th></th></tr></thead>
+      <table><thead><tr><th data-i18n="col.title">Название</th><th></th></tr></thead>
       <tbody id="posTable"></tbody></table>
     </div>
   </div>
@@ -566,39 +571,39 @@
   <div class="page" id="page-employees">
     <div class="page-header">
       <div><div class="page-title" data-i18n="page.employees">Сотрудники</div><div class="page-subtitle" data-i18n="page.employees.sub">Управление персоналом</div></div>
-      <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()">+ Добавить</button>
+      <button class="btn btn-primary" data-edit-page="employees" onclick="openEmpModal()" data-i18n="btn.add">+ Добавить</button>
     </div>
     <div class="filters">
-      <input type="text" id="empFilterSearch" placeholder="🔍 Поиск по имени или табельному №" oninput="renderEmployees()" style="min-width:260px;">
+      <input type="text" id="empFilterSearch" data-i18n-placeholder="filter.search" placeholder="🔍 Поиск по имени или табельному №" oninput="renderEmployees()" style="min-width:260px;">
       <select id="empFilterPosition" onchange="renderEmployees()">
-        <option value="">Все должности</option>
+        <option value="" data-i18n="filter.allPositions">Все должности</option>
       </select>
       <select id="empFilterType" onchange="renderEmployees()">
-        <option value="">Все типы</option>
-        <option value="staff">Сотрудник</option>
-        <option value="admin">Администратор</option>
-        <option value="manager">Менеджер</option>
+        <option value="" data-i18n="filter.allTypes">Все типы</option>
+        <option value="staff" data-i18n="emp.staff">Сотрудник</option>
+        <option value="admin" data-i18n="emp.admin">Администратор</option>
+        <option value="manager" data-i18n="emp.manager">Менеджер</option>
       </select>
       <select id="empFilterStatus" onchange="renderEmployees()">
-        <option value="active">Активные</option>
-        <option value="inactive">Уволенные</option>
-        <option value="">Все</option>
+        <option value="active" data-i18n="filter.active">Активные</option>
+        <option value="inactive" data-i18n="filter.inactive">Уволенные</option>
+        <option value="" data-i18n="filter.all">Все</option>
       </select>
       <select id="empSortBy" onchange="renderEmployees()">
-        <option value="name">↕ По имени</option>
-        <option value="tab">↕ По таб. №</option>
-        <option value="role">↕ По должности</option>
-        <option value="salary">↕ По окладу</option>
-        <option value="hourly_rate">↕ По ставке</option>
-        <option value="start_date">↕ По дате старта</option>
+        <option value="name" data-i18n="sort.byName">↕ По имени</option>
+        <option value="tab" data-i18n="sort.byTab">↕ По таб. №</option>
+        <option value="role" data-i18n="sort.byRole">↕ По должности</option>
+        <option value="salary" data-i18n="sort.bySalary">↕ По окладу</option>
+        <option value="hourly_rate" data-i18n="sort.byHourly">↕ По ставке</option>
+        <option value="start_date" data-i18n="sort.byStartDate">↕ По дате старта</option>
       </select>
       <select id="empSortOrder" onchange="renderEmployees()">
-        <option value="asc">↑ По возр.</option>
-        <option value="desc">↓ По убыв.</option>
+        <option value="asc" data-i18n="sort.asc">↑ По возр.</option>
+        <option value="desc" data-i18n="sort.desc">↓ По убыв.</option>
       </select>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Таб. №</th><th>Имя</th><th>Должность</th><th>Тип</th><th>Оклад</th><th>Ставка/ч</th><th>%</th><th>Телефон</th><th>Статус</th><th></th></tr></thead>
+      <table><thead><tr><th data-i18n="col.tab">Таб. №</th><th data-i18n="col.name">Имя</th><th data-i18n="col.role">Должность</th><th data-i18n="col.type">Тип</th><th data-i18n="col.salaryAmt">Оклад</th><th data-i18n="col.hourlyRate">Ставка/ч</th><th data-i18n="col.percent">%</th><th data-i18n="col.phone">Телефон</th><th data-i18n="col.status">Статус</th><th></th></tr></thead>
       <tbody id="empTable"></tbody></table>
     </div>
   </div>
@@ -607,7 +612,7 @@
   <div class="page" id="page-salary">
     <div class="page-header">
       <div><div class="page-title" data-i18n="page.salary">Зарплата и выплаты</div><div class="page-subtitle" data-i18n="page.salary.sub">Начисления, авансы, штрафы, бонусы</div></div>
-      <button class="btn btn-primary" data-edit-page="salary" onclick="openSalModal()">+ Начислить</button>
+      <button class="btn btn-primary" data-edit-page="salary" onclick="openSalModal()" data-i18n="btn.accrue">+ Начислить</button>
     </div>
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
@@ -619,7 +624,7 @@
       </select>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Дата</th><th>Сотрудник</th><th>Тип</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+      <table><thead><tr><th data-i18n="col.date">Дата</th><th data-i18n="col.employee">Сотрудник</th><th data-i18n="col.type">Тип</th><th data-i18n="col.amount">Сумма</th><th data-i18n="col.note">Комментарий</th><th></th></tr></thead>
       <tbody id="salTable"></tbody></table>
     </div>
   </div>
@@ -631,18 +636,18 @@
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div class="mp-wrap" id="salReportMonthPicker"></div>
         <label class="toggle-mini no-print" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);gap:10px;align-items:center;font-size:13px;color:var(--text);">
-          <span>Детализация</span>
+          <span data-i18n="btn.detalisation">Детализация</span>
           <input type="checkbox" id="salReportShowDays" onchange="renderSalaryReport()">
           <span class="toggle-sw"></span>
         </label>
         <label class="toggle-mini no-print" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);gap:10px;align-items:center;font-size:13px;color:var(--text);">
-          <span>Часы и ставка</span>
+          <span data-i18n="btn.hoursRate">Часы и ставка</span>
           <input type="checkbox" id="salReportShowHours" onchange="renderSalaryReport()">
           <span class="toggle-sw"></span>
         </label>
-        <button class="btn btn-primary no-print" onclick="calcMonthlySalary()">💵 Начислить оклады</button>
-        <button class="btn btn-primary no-print" onclick="calcPercentBonus()">📊 Рассчитать % кассы</button>
-        <button class="btn no-print" onclick="openSalReportPrintModal()">🖨 Печать</button>
+        <button class="btn btn-primary no-print" onclick="calcMonthlySalary()" data-i18n="btn.calcSalary">💵 Начислить оклады</button>
+        <button class="btn btn-primary no-print" onclick="calcPercentBonus()" data-i18n="btn.calcPercent">📊 Рассчитать % кассы</button>
+        <button class="btn no-print" onclick="openSalReportPrintModal()" data-i18n="btn.print">🖨 Печать</button>
       </div>
     </div>
     <div id="salaryReportCards"></div>
@@ -657,9 +662,9 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
-        <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()">+ Смена</button>
-        <button class="btn" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none">💰 Сформировать выплаты</button>
-        <button class="btn" onclick="printSchedule()">🖨 Печать</button>
+        <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()" data-i18n="btn.addShift">+ Смена</button>
+        <button class="btn" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none" data-i18n="btn.scheduleTx">💰 Сформировать выплаты</button>
+        <button class="btn" onclick="printSchedule()" data-i18n="btn.print">🖨 Печать</button>
       </div>
     </div>
     <div class="table-wrap" id="scheduleWrap" style="overflow-x:auto;">
@@ -673,7 +678,7 @@
       <div><div class="page-title" data-i18n="page.banquets">Банкеты</div><div class="page-subtitle" data-i18n="page.banquets.sub">Распределение бонусов по работавшим в этот день</div></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="banquetMonthPicker"></div>
-        <button class="btn btn-primary" data-edit-page="banquets" onclick="openBanquetModal()">+ Банкет</button>
+        <button class="btn btn-primary" data-edit-page="banquets" onclick="openBanquetModal()" data-i18n="btn.addBanquet">+ Банкет</button>
       </div>
     </div>
     <div id="banquetsList"></div>
@@ -684,10 +689,10 @@
   <div class="page" id="page-users">
     <div class="page-header">
       <div><div class="page-title" data-i18n="page.users">Пользователи</div><div class="page-subtitle" data-i18n="page.users.sub">Управление доступом к системе</div></div>
-      <button class="btn btn-primary" onclick="openUserModal()">+ Добавить</button>
+      <button class="btn btn-primary" onclick="openUserModal()" data-i18n="btn.add">+ Добавить</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Имя</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Последний вход</th><th></th></tr></thead>
+      <table><thead><tr><th data-i18n="col.name">Имя</th><th data-i18n="col.login">Логин</th><th data-i18n="user.role">Роль</th><th data-i18n="col.status">Статус</th><th data-i18n="col.lastLogin">Последний вход</th><th></th></tr></thead>
       <tbody id="usersTable"></tbody></table>
     </div>
   </div>
@@ -696,23 +701,23 @@
     <div class="page-header"><div class="page-title" data-i18n="page.settings">Настройки</div></div>
     <div style="max-width:500px;">
       <div class="table-wrap" style="padding:24px;">
-        <div class="table-title" style="margin-bottom:16px;">Кафе</div>
-        <div class="form-row"><label>Название кафе</label><input type="text" id="settingCafeName" placeholder="Например: Кафе Уют"></div>
-        <div class="form-row"><label>Валюта</label>
-          <select id="settingCurrency"><option value="₴">₴ — Гривна</option><option value="$">$ — Доллар</option><option value="€">€ — Евро</option></select>
+        <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.cafe">Кафе</div>
+        <div class="form-row"><label data-i18n="settings.cafeName">Название кафе</label><input type="text" id="settingCafeName" data-i18n-placeholder="settings.cafeNamePh" placeholder="Например: Кафе Уют"></div>
+        <div class="form-row"><label data-i18n="settings.currency">Валюта</label>
+          <select id="settingCurrency"><option value="₴">₴ — Гривна / Hryvnia</option><option value="$">$ — Доллар / Dollar</option><option value="€">€ — Евро / Euro</option></select>
         </div>
-        <div class="form-row"><label>Порог выручки для процента сотрудников</label><input type="number" id="settingRevenueThreshold" placeholder="0" min="0" step="1">
-          <div style="color:var(--text3);font-size:11px;margin-top:4px;">Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня</div>
+        <div class="form-row"><label data-i18n="settings.threshold">Порог выручки для процента сотрудников</label><input type="number" id="settingRevenueThreshold" placeholder="0" min="0" step="1">
+          <div style="color:var(--text3);font-size:11px;margin-top:4px;" data-i18n="settings.thresholdHint">Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня</div>
         </div>
         <label class="toggle-row" style="margin-top:16px;">
           <div class="toggle-text">
-            <span class="toggle-label">Формировать транзакции из графика работы</span>
-            <span class="toggle-hint">Кнопка «Сформировать выплаты» на странице График создаёт транзакции по часам и ставке</span>
+            <span class="toggle-label" data-i18n="settings.scheduleTx">Формировать транзакции из графика работы</span>
+            <span class="toggle-hint" data-i18n="settings.scheduleTxHint">Кнопка «Сформировать выплаты» на странице График создаёт транзакции по часам и ставке</span>
           </div>
           <input type="checkbox" id="settingScheduleTx">
           <span class="toggle-sw"></span>
         </label>
-        <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+        <button class="btn btn-primary" onclick="saveSettings()" data-i18n="common.save">Сохранить</button>
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
@@ -745,35 +750,35 @@
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
-        <div class="table-title" style="margin-bottom:16px;">Безопасность</div>
-        <div class="form-row"><label>Текущий пароль</label><input type="password" id="oldPass"></div>
+        <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.security">Безопасность</div>
+        <div class="form-row"><label data-i18n="settings.oldPass">Текущий пароль</label><input type="password" id="oldPass"></div>
         <div class="form-2col">
-          <div class="form-row"><label>Новый пароль</label><input type="password" id="newPass"></div>
-          <div class="form-row"><label>Повтор пароля</label><input type="password" id="newPass2"></div>
+          <div class="form-row"><label data-i18n="settings.newPass">Новый пароль</label><input type="password" id="newPass"></div>
+          <div class="form-row"><label data-i18n="settings.repeatPass">Повтор пароля</label><input type="password" id="newPass2"></div>
         </div>
-        <button class="btn btn-primary" onclick="changePassword()">Сменить пароль</button>
+        <button class="btn btn-primary" onclick="changePassword()" data-i18n="settings.changePass">Сменить пароль</button>
       </div>
 
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
-        <div class="table-title" style="margin-bottom:16px;">Типы выплат</div>
-        <div style="color:var(--text3);font-size:12px;margin-bottom:12px;">Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.</div>
+        <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.payTypes">Типы выплат</div>
+        <div style="color:var(--text3);font-size:12px;margin-bottom:12px;" data-i18n="settings.payTypesHint">Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.</div>
         <div id="salTypesList" style="margin-bottom:12px;"></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" id="newSalTypeName" placeholder="Название" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addSalType()">
+          <input type="text" id="newSalTypeName" data-i18n-placeholder="settings.newPayType" placeholder="Название" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addSalType()">
           <select id="newSalTypeSign" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 8px;color:var(--text);font-size:13px;outline:none;">
-            <option value="-">− расход</option>
-            <option value="+">+ доход</option>
+            <option value="-" data-i18n="settings.signExpense">− расход</option>
+            <option value="+" data-i18n="settings.signIncome">+ доход</option>
           </select>
-          <button class="btn btn-primary btn-sm" onclick="addSalType()">Добавить</button>
+          <button class="btn btn-primary btn-sm" onclick="addSalType()" data-i18n="common.add">Добавить</button>
         </div>
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
-        <div class="table-title" style="margin-bottom:16px;">Данные</div>
+        <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.data">Данные</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn" onclick="exportData()">📤 Экспорт JSON</button>
-          <button class="btn" onclick="document.getElementById('importFile').click()">📥 Импорт JSON</button>
+          <button class="btn" onclick="exportData()" data-i18n="settings.export">📤 Экспорт JSON</button>
+          <button class="btn" onclick="document.getElementById('importFile').click()" data-i18n="settings.import">📥 Импорт JSON</button>
           <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
         </div>
       </div>
@@ -785,28 +790,28 @@
 <!-- MODALS -->
 <div class="modal-overlay" id="txModal">
   <div class="modal">
-    <div class="modal-title">Транзакция</div>
+    <div class="modal-title" id="txModalTitle" data-i18n="tx.modalTitle">Транзакция</div>
     <div class="form-2col">
-      <div class="form-row"><label>Дата</label><input type="date" id="txDate"></div>
-      <div class="form-row"><label>Тип</label>
+      <div class="form-row"><label data-i18n="col.date">Дата</label><input type="date" id="txDate"></div>
+      <div class="form-row"><label data-i18n="col.type">Тип</label>
         <select id="txType" onchange="updateTxCats()">
-          <option value="income">Доход</option><option value="expense">Расход</option>
-          <option value="salary">Зарплата</option><option value="advance">Аванс</option>
-          <option value="bonus">Бонус</option><option value="fine">Штраф</option>
+          <option value="income" data-i18n="tx.income">Доход</option><option value="expense" data-i18n="tx.expense">Расход</option>
+          <option value="salary" data-i18n="tx.salary">Зарплата</option><option value="advance" data-i18n="tx.advance">Аванс</option>
+          <option value="bonus" data-i18n="tx.bonus">Бонус</option><option value="fine" data-i18n="tx.fine">Штраф</option>
         </select>
       </div>
     </div>
-    <div class="form-row"><label>Категория</label><select id="txCat"></select></div>
-    <div class="form-row"><label>Сотрудник (если применимо)</label><select id="txEmployee"><option value="">— не указан —</option></select></div>
+    <div class="form-row"><label data-i18n="col.category">Категория</label><select id="txCat"></select></div>
+    <div class="form-row"><label data-i18n="tx.empOpt">Сотрудник (если применимо)</label><select id="txEmployee"><option value="" data-i18n="emp.notProvided">— не указан —</option></select></div>
     <div class="form-2col">
-      <div class="form-row"><label>Сумма</label><input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"></div>
-      <div class="form-row"><label>Комментарий</label><input type="text" id="txNote" placeholder="Примечание"></div>
+      <div class="form-row"><label data-i18n="col.amount">Сумма</label><input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="form-row"><label data-i18n="col.note">Комментарий</label><input type="text" id="txNote" data-i18n-placeholder="ph.note" placeholder="Примечание"></div>
     </div>
     <input type="hidden" id="txEditId">
     <div class="modal-footer">
-      <button class="btn btn-danger" id="txDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTxFromModal()">Удалить</button>
-      <button class="btn" onclick="closeModal('txModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveTx()">Сохранить</button>
+      <button class="btn btn-danger" id="txDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTxFromModal()" data-i18n="common.delete">Удалить</button>
+      <button class="btn" onclick="closeModal('txModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTx()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
@@ -815,70 +820,70 @@
   <div class="modal">
     <div class="modal-title" id="empModalTitle">Сотрудник</div>
     <div class="form-2col">
-      <div class="form-row"><label>Имя</label><input type="text" id="empName" placeholder="Полное имя"></div>
-      <div class="form-row"><label>Должность</label><select id="empRole"><option value="">— не указана —</option></select></div>
+      <div class="form-row"><label data-i18n="emp.fullName">Имя</label><input type="text" id="empName" data-i18n-placeholder="emp.fullName" placeholder="Полное имя"></div>
+      <div class="form-row"><label data-i18n="emp.role">Должность</label><select id="empRole"><option value="" data-i18n="emp.notSpecified">— не указана —</option></select></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Тип персонала</label>
-        <select id="empType"><option value="staff">Сотрудник</option><option value="admin">Администратор</option><option value="manager">Менеджер</option></select>
+      <div class="form-row"><label data-i18n="emp.type">Тип персонала</label>
+        <select id="empType"><option value="staff" data-i18n="emp.staff">Сотрудник</option><option value="admin" data-i18n="emp.admin">Администратор</option><option value="manager" data-i18n="emp.manager">Менеджер</option></select>
       </div>
-      <div class="form-row"><label>Оклад</label><input type="number" id="empSalary" placeholder="0" min="0"></div>
+      <div class="form-row"><label data-i18n="emp.salary">Оклад</label><input type="number" id="empSalary" placeholder="0" min="0"></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Ставка/час</label><input type="number" id="empHourlyRate" placeholder="0" min="0" step="0.01"></div>
-      <div class="form-row"><label>Табельный №</label><input type="text" id="empTabNumber" placeholder="например: 001"></div>
+      <div class="form-row"><label data-i18n="emp.hourly">Ставка/час</label><input type="number" id="empHourlyRate" placeholder="0" min="0" step="0.01"></div>
+      <div class="form-row"><label data-i18n="emp.tab">Табельный №</label><input type="text" id="empTabNumber" data-i18n-placeholder="emp.tabPh" placeholder="например: 001"></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Процент от выручки (%)</label><input type="number" id="empPercent" placeholder="0" min="0" max="100" step="0.1"></div>
-      <div class="form-row"><label>Телефон</label><input type="text" id="empPhone"></div>
-      <div class="form-row"><label>Дата начала</label><input type="date" id="empStart"></div>
+      <div class="form-row"><label data-i18n="emp.percent">Процент от выручки (%)</label><input type="number" id="empPercent" placeholder="0" min="0" max="100" step="0.1"></div>
+      <div class="form-row"><label data-i18n="emp.phone">Телефон</label><input type="text" id="empPhone"></div>
+      <div class="form-row"><label data-i18n="emp.startDate">Дата начала</label><input type="date" id="empStart"></div>
     </div>
-    <div class="form-row"><label>Статус</label>
-      <select id="empStatus"><option value="active">Активный</option><option value="inactive">Уволен</option></select>
+    <div class="form-row"><label data-i18n="emp.status">Статус</label>
+      <select id="empStatus"><option value="active" data-i18n="status.active">Активный</option><option value="inactive" data-i18n="status.inactive">Уволен</option></select>
     </div>
     <label class="toggle-row">
       <div class="toggle-text">
-        <span class="toggle-label">Скрывать в графике работы</span>
-        <span class="toggle-hint">Для тех, кому не нужно отмечать часы (закупщик, админ и т.п.)</span>
+        <span class="toggle-label" data-i18n="emp.hideSchedule">Скрывать в графике работы</span>
+        <span class="toggle-hint" data-i18n="emp.hideScheduleHint">Для тех, кому не нужно отмечать часы (закупщик, админ и т.п.)</span>
       </div>
       <input type="checkbox" id="empHiddenInSchedule">
       <span class="toggle-sw"></span>
     </label>
     <label class="toggle-row" style="margin-top:8px;">
       <div class="toggle-text">
-        <span class="toggle-label">Скрывать в месячных отчётах</span>
-        <span class="toggle-hint">Сотрудник не будет отображаться в разделе «По сотрудникам»</span>
+        <span class="toggle-label" data-i18n="emp.hideMonthly">Скрывать в месячных отчётах</span>
+        <span class="toggle-hint" data-i18n="emp.hideMonthlyHint">Сотрудник не будет отображаться в разделе «По сотрудникам»</span>
       </div>
       <input type="checkbox" id="empHiddenInMonthly">
       <span class="toggle-sw"></span>
     </label>
     <input type="hidden" id="empEditId">
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('empModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveEmployee()">Сохранить</button>
+      <button class="btn" onclick="closeModal('empModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEmployee()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="salModal">
   <div class="modal">
-    <div class="modal-title">Начисление выплаты</div>
+    <div class="modal-title" id="salModalTitle" data-i18n="sal.new">Начисление выплаты</div>
     <div class="form-2col">
-      <div class="form-row"><label>Дата</label><input type="date" id="salDate"></div>
-      <div class="form-row"><label>Сотрудник</label><select id="salEmployee"></select></div>
+      <div class="form-row"><label data-i18n="col.date">Дата</label><input type="date" id="salDate"></div>
+      <div class="form-row"><label data-i18n="col.employee">Сотрудник</label><select id="salEmployee"></select></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Тип</label>
+      <div class="form-row"><label data-i18n="col.type">Тип</label>
         <select id="salType"></select>
       </div>
-      <div class="form-row"><label>Сумма</label><input type="number" id="salAmount" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="form-row"><label data-i18n="col.amount">Сумма</label><input type="number" id="salAmount" placeholder="0.00" min="0" step="0.01"></div>
     </div>
-    <div class="form-row"><label>Комментарий</label><input type="text" id="salNote" placeholder="Примечание"></div>
+    <div class="form-row"><label data-i18n="col.note">Комментарий</label><input type="text" id="salNote" data-i18n-placeholder="ph.note" placeholder="Примечание"></div>
     <input type="hidden" id="salEditId">
     <div class="modal-footer">
-      <button class="btn btn-danger" id="salDeleteBtn" style="display:none;margin-right:auto" onclick="deleteSalFromModal()">Удалить</button>
-      <button class="btn" onclick="closeModal('salModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveSalaryEntry()">Сохранить</button>
+      <button class="btn btn-danger" id="salDeleteBtn" style="display:none;margin-right:auto" onclick="deleteSalFromModal()" data-i18n="common.delete">Удалить</button>
+      <button class="btn" onclick="closeModal('salModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSalaryEntry()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
@@ -889,16 +894,16 @@
 <!-- PRINT SALARY REPORT MODAL -->
 <div class="modal-overlay" id="salReportPrintModal">
   <div class="modal" style="width:560px;max-width:95vw;">
-    <div class="modal-title">Печать отчёта по зарплате</div>
-    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
+    <div class="modal-title" data-i18n="srp.title">Печать отчёта по зарплате</div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="srp.hint">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)">Выбрать всех</button>
-      <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)">Снять всех</button>
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>
     </div>
     <div id="salReportPrintList" style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('salReportPrintModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="doPrintSalReport()">🖨 Напечатать</button>
+      <button class="btn" onclick="closeModal('salReportPrintModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="doPrintSalReport()" data-i18n="srp.printIt">🖨 Напечатать</button>
     </div>
   </div>
 </div>
@@ -906,72 +911,72 @@
 <!-- MONTHLY SALARY MODAL -->
 <div class="modal-overlay" id="monthlySalaryModal">
   <div class="modal" style="width:620px;max-width:95vw;">
-    <div class="modal-title">Начисление окладов <span id="monthlySalaryMonth" style="color:var(--text3);font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;"></span></div>
-    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;">Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).</div>
+    <div class="modal-title"><span data-i18n="ms.title">Начисление окладов</span> <span id="monthlySalaryMonth" style="color:var(--text3);font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;"></span></div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="ms.hint">Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <button type="button" class="btn btn-sm" onclick="msToggleAll(true)">Выбрать всех</button>
-      <button type="button" class="btn btn-sm" onclick="msToggleAll(false)">Снять всех</button>
-      <button type="button" class="btn btn-sm" onclick="msResetAmounts()">↺ Восстановить суммы</button>
+      <button type="button" class="btn btn-sm" onclick="msToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="msToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>
+      <button type="button" class="btn btn-sm" onclick="msResetAmounts()" data-i18n="ms.reset">↺ Восстановить суммы</button>
     </div>
     <div id="monthlySalaryList" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
     <div id="monthlySalaryTotal" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px;"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('monthlySalaryModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="confirmCalcMonthlySalary()">💵 Начислить выбранным</button>
+      <button class="btn" onclick="closeModal('monthlySalaryModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="confirmCalcMonthlySalary()" data-i18n="ms.confirm">💵 Начислить выбранным</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="banquetModal">
   <div class="modal" style="width:640px;max-width:95vw;">
-    <div class="modal-title" id="banquetModalTitle">Новый банкет</div>
+    <div class="modal-title" id="banquetModalTitle" data-i18n="banquet.new">Новый банкет</div>
     <div class="form-2col">
-      <div class="form-row"><label>Дата</label><div class="drp-wrap" id="banquetDatePicker"></div></div>
-      <div class="form-row"><label>Сумма банкета</label><input type="number" id="banquetTotal" placeholder="0" min="0" step="0.01"></div>
+      <div class="form-row"><label data-i18n="col.date">Дата</label><div class="drp-wrap" id="banquetDatePicker"></div></div>
+      <div class="form-row"><label data-i18n="banquet.amount">Сумма банкета</label><input type="number" id="banquetTotal" placeholder="0" min="0" step="0.01"></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Процент (%)</label><input type="number" id="banquetPercent" value="10" min="0" max="100" step="0.1"></div>
-      <div class="form-row"><label>Комментарий</label><input type="text" id="banquetNote" placeholder="Например: Юбилей"></div>
+      <div class="form-row"><label data-i18n="banquet.percent">Процент (%)</label><input type="number" id="banquetPercent" value="10" min="0" max="100" step="0.1"></div>
+      <div class="form-row"><label data-i18n="banquet.note">Комментарий</label><input type="text" id="banquetNote" data-i18n-placeholder="banquet.notePh" placeholder="Например: Юбилей"></div>
     </div>
     <div class="form-row" style="margin-top:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <label style="margin:0;">Дополнительные статьи (доходы/расходы)</label>
+        <label style="margin:0;" data-i18n="banquet.extra">Дополнительные статьи (доходы/расходы)</label>
         <div style="display:flex;gap:6px;">
-          <button type="button" class="btn btn-sm" onclick="addBanquetItem('income')" style="border-color:var(--green);color:var(--green);padding:3px 10px;">+ Доход</button>
-          <button type="button" class="btn btn-sm" onclick="addBanquetItem('expense')" style="border-color:var(--red);color:var(--red);padding:3px 10px;">+ Расход</button>
+          <button type="button" class="btn btn-sm" onclick="addBanquetItem('income')" style="border-color:var(--green);color:var(--green);padding:3px 10px;" data-i18n="btn.income">+ Доход</button>
+          <button type="button" class="btn btn-sm" onclick="addBanquetItem('expense')" style="border-color:var(--red);color:var(--red);padding:3px 10px;" data-i18n="btn.expense">+ Расход</button>
         </div>
       </div>
       <div id="banquetItemsList" style="display:flex;flex-direction:column;gap:6px;"></div>
       <div id="banquetSummary" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);"></div>
     </div>
-    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--text3);">
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--text3);" data-i18n="banquet.hint">
       Сумма бонуса автоматически поделится между всеми, кто работал в указанный день (по графику). Потом можно вручную изменить доли.
     </div>
     <input type="hidden" id="banquetEditId">
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('banquetModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveBanquet()">Сохранить</button>
+      <button class="btn" onclick="closeModal('banquetModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveBanquet()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="schedModal">
   <div class="modal">
-    <div class="modal-title" id="schedModalTitle">Добавить смену</div>
+    <div class="modal-title" id="schedModalTitle" data-i18n="sch.new">Добавить смену</div>
     <div class="form-2col">
-      <div class="form-row"><label>Дата</label><input type="date" id="schedDate"></div>
-      <div class="form-row"><label>Сотрудник</label><select id="schedEmployee"></select></div>
+      <div class="form-row"><label data-i18n="col.date">Дата</label><input type="date" id="schedDate"></div>
+      <div class="form-row"><label data-i18n="col.employee">Сотрудник</label><select id="schedEmployee"></select></div>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label>Часы</label><input type="number" id="schedHours" placeholder="8" min="0.5" max="24" step="0.5"></div>
-      <div class="form-row"><label>Ставка/час (пусто = из профиля)</label><input type="number" id="schedRate" placeholder="из профиля" min="0" step="0.01"></div>
+      <div class="form-row"><label data-i18n="sch.hours">Часы</label><input type="number" id="schedHours" placeholder="8" min="0.5" max="24" step="0.5"></div>
+      <div class="form-row"><label data-i18n="sch.rate">Ставка/час (пусто = из профиля)</label><input type="number" id="schedRate" data-i18n-placeholder="sch.ratePh" placeholder="из профиля" min="0" step="0.01"></div>
     </div>
-    <div class="form-row"><label>Комментарий</label><input type="text" id="schedNote" placeholder="Примечание"></div>
+    <div class="form-row"><label data-i18n="col.note">Комментарий</label><input type="text" id="schedNote" data-i18n-placeholder="ph.note" placeholder="Примечание"></div>
     <input type="hidden" id="schedEditId">
     <div class="modal-footer">
-      <button class="btn btn-danger" id="schedDeleteBtn" style="display:none;margin-right:auto" onclick="deleteScheduleFromModal()">Удалить</button>
-      <button class="btn" onclick="closeModal('schedModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveScheduleEntry()">Сохранить</button>
+      <button class="btn btn-danger" id="schedDeleteBtn" style="display:none;margin-right:auto" onclick="deleteScheduleFromModal()" data-i18n="common.delete">Удалить</button>
+      <button class="btn" onclick="closeModal('schedModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveScheduleEntry()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
@@ -980,19 +985,19 @@
 <div class="modal-overlay" id="posModal">
   <div class="modal">
     <div class="modal-title" id="posModalTitle">Должность</div>
-    <div class="form-row"><label>Название</label><input type="text" id="posName" placeholder="Например: Бариста"></div>
+    <div class="form-row"><label data-i18n="col.title">Название</label><input type="text" id="posName" data-i18n-placeholder="pos.namePh" placeholder="Например: Бариста"></div>
     <label class="toggle-row">
       <div class="toggle-text">
-        <span class="toggle-label">Скрывать в графике работы</span>
-        <span class="toggle-hint">Должности, которым не нужно отмечать часы</span>
+        <span class="toggle-label" data-i18n="pos.hideSchedule">Скрывать в графике работы</span>
+        <span class="toggle-hint" data-i18n="pos.hideHint">Должности, которым не нужно отмечать часы</span>
       </div>
       <input type="checkbox" id="posHiddenInSchedule">
       <span class="toggle-sw"></span>
     </label>
     <input type="hidden" id="posEditId">
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('posModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="savePosition()">Сохранить</button>
+      <button class="btn" onclick="closeModal('posModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="savePosition()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
@@ -1000,34 +1005,34 @@
 <!-- USER MODAL -->
 <div class="modal-overlay" id="userModal">
   <div class="modal">
-    <div class="modal-title" id="userModalTitle">Новый пользователь</div>
+    <div class="modal-title" id="userModalTitle" data-i18n="user.new">Новый пользователь</div>
     <div class="form-2col">
-      <div class="form-row"><label>Логин (a-z, 0-9, _)</label><input type="text" id="uUsername" placeholder="ivan" autocomplete="off"></div>
-      <div class="form-row"><label>Отображаемое имя</label><input type="text" id="uDisplayName" placeholder="Иван Иванов"></div>
+      <div class="form-row"><label data-i18n="user.username">Логин (a-z, 0-9, _)</label><input type="text" id="uUsername" data-i18n-placeholder="user.usernamePh" placeholder="ivan" autocomplete="off"></div>
+      <div class="form-row"><label data-i18n="user.displayName">Отображаемое имя</label><input type="text" id="uDisplayName" data-i18n-placeholder="user.displayNamePh" placeholder="Иван Иванов"></div>
     </div>
-    <div class="form-row"><label>Роль</label>
+    <div class="form-row"><label data-i18n="user.role">Роль</label>
       <select id="uRole" onchange="toggleUserPermsUI()">
-        <option value="user">Сотрудник — с ограниченными правами</option>
-        <option value="admin">Администратор — полный доступ</option>
+        <option value="user" data-i18n="user.roleUser">Сотрудник — с ограниченными правами</option>
+        <option value="admin" data-i18n="user.roleAdmin">Администратор — полный доступ</option>
       </select>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label id="uPassLabel">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" placeholder="мин. 4 символа"></div>
-      <div class="form-row"><label>Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" placeholder="повторите пароль"></div>
+      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа"></div>
+      <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль"></div>
     </div>
     <div id="uPermsBlock" class="form-row">
-      <label>Права доступа к страницам</label>
+      <label data-i18n="user.perms">Права доступа к страницам</label>
       <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface2);max-height:280px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:1fr 160px;gap:10px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;">
-          <span>Страница</span><span>Уровень доступа</span>
+          <span data-i18n="col.page">Страница</span><span data-i18n="col.permLevel">Уровень доступа</span>
         </div>
         <div id="uPermsList"></div>
       </div>
     </div>
     <input type="hidden" id="uEditId">
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('userModal')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveUser()">Сохранить</button>
+      <button class="btn" onclick="closeModal('userModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="saveUser()" data-i18n="common.save">Сохранить</button>
     </div>
   </div>
 </div>
@@ -1078,12 +1083,13 @@ const TX_CATS = {
   income: ['Выручка кассы','Доставка','Кейтеринг','Прочий доход'],
   expense: ['Продукты','Напитки','Аренда','Коммунальные','Упаковка','Реклама','Оборудование','Прочий расход'],
   salary: ['Основная з/п'], advance: ['Аванс'],
-  bonus: ['Бонус за план','Праздничный бонус','Прочой бонус'],
+  bonus: ['Бонус за план','Праздничный бонус','Прочий бонус'],
   fine: ['Нарушение','Недостача','Опоздание','Прочее'],
 };
-const TYPE_LABELS = { income:'Доход', expense:'Расход', salary:'Зарплата', advance:'Аванс', bonus:'Бонус', fine:'Штраф' };
+// Динамические лейблы — обращаются к словарю
 const TYPE_BADGES = { income:'badge-green', expense:'badge-red', salary:'badge-yellow', advance:'badge-blue', bonus:'badge-purple', fine:'badge-red' };
-const EMP_TYPE_LABELS = { staff:'Сотрудник', admin:'Администратор', manager:'Менеджер' };
+const TYPE_LABELS = new Proxy({}, { get: (_, k) => t('tx.' + k) });
+const EMP_TYPE_LABELS = new Proxy({}, { get: (_, k) => t('emp.' + k) });
 
 // ═══════════════════════════════════════════
 // UTILS
@@ -1098,15 +1104,13 @@ function fmt(n) { return (n||0).toLocaleString('ru-RU', {minimumFractionDigits:2
 function today() { return new Date().toISOString().slice(0,10); }
 function monthOf(d) { return d ? d.slice(0,7) : ''; }
 function dateLabel(d) {
-  const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   const dt = new Date(d + 'T00:00:00');
-  return dt.getDate() + ' ' + months[dt.getMonth()];
+  return dt.getDate() + ' ' + t('mon.short.' + dt.getMonth()).toLowerCase();
 }
 function monthLabel(m) {
   if (!m) return '';
   const [y,mo] = m.split('-');
-  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  return months[+mo-1] + ' ' + y;
+  return t('mon.full.' + (+mo-1)) + ' ' + y;
 }
 function showToast(msg, isErr) {
   const t = document.getElementById('toast');
@@ -1256,7 +1260,21 @@ async function loadInitialData() {
 // ═══════════════════════════════════════════
 // MONTH PICKER
 // ═══════════════════════════════════════════
-const MONTH_NAMES_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+function MONTH_NAMES_SHORT_ARR() {
+  const a = []; for (let i=0;i<12;i++) a.push(t('mon.short.' + i)); return a;
+}
+const MONTH_NAMES_SHORT = new Proxy([], {
+  get(_, k) {
+    if (k === 'length') return 12;
+    if (k === 'map' || k === 'forEach' || k === 'filter') {
+      const a = MONTH_NAMES_SHORT_ARR();
+      return a[k].bind(a);
+    }
+    const idx = +k;
+    if (Number.isFinite(idx)) return t('mon.short.' + idx);
+    return undefined;
+  }
+});
 const _monthPickers = {};
 
 function createMonthPicker(containerId, onChange) {
@@ -1446,8 +1464,11 @@ function dpUpdateLabel(id) {
 // DATE RANGE PICKER
 // ═══════════════════════════════════════════
 const _dateRangePickers = {};
-const DRP_MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-const DRP_WEEKDAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const DRP_MONTHS = new Proxy([], { get: (_, i) => i === 'length' ? 12 : t('mon.full.' + i) });
+const DRP_WEEKDAYS = ['1','2','3','4','5','6','0'].map(i => null); // используется только для итерации
+Object.defineProperty(DRP_WEEKDAYS, 'map', { value: function(fn) {
+  const order = [1,2,3,4,5,6,0]; return order.map((dow, i) => fn(t('wd.' + dow), i, this));
+}});
 
 function createDateRangePicker(containerId, onChange) {
   const container = document.getElementById(containerId);
@@ -1466,8 +1487,8 @@ function createDateRangePicker(containerId, onChange) {
       <div class="drp-weekdays">${DRP_WEEKDAYS.map(d=>'<span>'+d+'</span>').join('')}</div>
       <div class="drp-grid" id="${containerId}_grid"></div>
       <div class="drp-actions">
-        <button onclick="drpClear('${containerId}')">Сбросить</button>
-        <button class="drp-apply" onclick="drpApply('${containerId}')">Применить</button>
+        <button onclick="drpClear('${containerId}')">${t('drp.clear')}</button>
+        <button class="drp-apply" onclick="drpApply('${containerId}')">${t('drp.apply')}</button>
       </div>
     </div>`;
 
@@ -1766,21 +1787,21 @@ async function renderDashboard() {
     else if (t.type==='bonus') bonus+=t.amount;
     else if (t.type==='fine') fine+=t.amount;
   });
-  const profit = income + bonus - expense - salary - advance - fine;
+  const profit = income - expense - salary - advance - bonus + fine;
 
   document.getElementById('dashCards').innerHTML = `
-    <div class="stat-card green"><div class="stat-label">Доходы</div><div class="stat-value green">${fmt(income)} ${_currency}</div><div class="stat-sub">за месяц</div></div>
-    <div class="stat-card red"><div class="stat-label">Расходы</div><div class="stat-value red">${fmt(expense)} ${_currency}</div><div class="stat-sub">операционные</div></div>
-    <div class="stat-card yellow"><div class="stat-label">З/П выплачено</div><div class="stat-value yellow">${fmt(salary+advance)} ${_currency}</div><div class="stat-sub">зп + авансы</div></div>
-    <div class="stat-card purple"><div class="stat-label">Бонусы / Штрафы</div><div class="stat-value purple">${fmt(bonus)} / <span style="color:var(--red)">${fmt(fine)}</span></div></div>
-    <div class="stat-card ${profit>=0?'green':'red'}"><div class="stat-label">Чистая прибыль</div><div class="stat-value ${profit>=0?'green':'red'}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</div></div>
+    <div class="stat-card green"><div class="stat-label">${t('dash.income')}</div><div class="stat-value green">${fmt(income)} ${_currency}</div><div class="stat-sub">${t('dash.forMonth')}</div></div>
+    <div class="stat-card red"><div class="stat-label">${t('dash.expense')}</div><div class="stat-value red">${fmt(expense)} ${_currency}</div><div class="stat-sub">${t('dash.operational')}</div></div>
+    <div class="stat-card yellow"><div class="stat-label">${t('dash.salaryPaid')}</div><div class="stat-value yellow">${fmt(salary+advance)} ${_currency}</div><div class="stat-sub">${t('dash.salaryAdvance')}</div></div>
+    <div class="stat-card purple"><div class="stat-label">${t('dash.bonusFine')}</div><div class="stat-value purple">${fmt(bonus)} / <span style="color:var(--red)">${fmt(fine)}</span></div></div>
+    <div class="stat-card ${profit>=0?'green':'red'}"><div class="stat-label">${t('dash.profit')}</div><div class="stat-value ${profit>=0?'green':'red'}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</div></div>
   `;
 
   // bar chart
   const byDay = {};
   txs.forEach(t => {
     if (!byDay[t.date]) byDay[t.date] = { income:0, expense:0 };
-    if (t.type==='income'||t.type==='bonus') byDay[t.date].income += +t.amount;
+    if (t.type==='income') byDay[t.date].income += +t.amount;
     else byDay[t.date].expense += +t.amount;
   });
   const days = Object.keys(byDay).sort().slice(-14);
@@ -1816,8 +1837,8 @@ async function renderDashboard() {
   const recent = allTx.slice(0,8);
   document.getElementById('recentTx').innerHTML = recent.length
     ? recent.map(t=>{
-        const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
-        const sign = ['income','bonus'].includes(t.type)?'+':'-';
+        const col = ['income','fine'].includes(t.type)?'var(--green)':'var(--red)';
+        const sign = ['income','fine'].includes(t.type)?'+':'-';
         return `<tr>
           <td>${dateLabel(t.date)}</td>
           <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
@@ -1850,7 +1871,7 @@ function openTxModal(tx) {
   document.getElementById('txAmount').value = tx ? tx.amount : '';
   document.getElementById('txNote').value = tx ? tx.note||'' : '';
   document.getElementById('txDeleteBtn').style.display = tx ? '' : 'none';
-  document.querySelector('#txModal .modal-title').textContent = tx ? 'Редактировать транзакцию' : 'Транзакция';
+  document.querySelector('#txModal .modal-title').textContent = tx ? t('tx.edit') : t('tx.modalTitle');
   openModal('txModal');
 }
 
@@ -1905,8 +1926,8 @@ async function renderTransactions() {
   const tbody = document.getElementById('txTable');
   if (!txs.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`; return; }
   tbody.innerHTML = txs.map(t => {
-    const col = ['income','bonus'].includes(t.type)?'var(--green)':'var(--red)';
-    const sign = ['income','bonus'].includes(t.type)?'+':'-';
+    const col = ['income','fine'].includes(t.type)?'var(--green)':'var(--red)';
+    const sign = ['income','fine'].includes(t.type)?'+':'-';
     return `<tr>
       <td>${dateLabel(t.date)}</td>
       <td><span class="badge ${TYPE_BADGES[t.type]}">${TYPE_LABELS[t.type]}</span></td>
@@ -1939,7 +1960,7 @@ async function renderDaily() {
   const tbody = document.getElementById('dailyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">📅</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
-    const total = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const total = +r.income - +r.expense - +r.salary - +r.advance - +r.bonus + +r.fine;
     const col = total>=0?'var(--green)':'var(--red)';
     const open = _dailyDetailOpen.has(r.date);
     return `<tr style="cursor:pointer;" onclick="toggleDailyDetail('${r.date}')">
@@ -2074,13 +2095,13 @@ async function loadDailyDetail(date) {
         ${renderCats('expense','var(--red)')}
       </div>
       <div>
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">👥 Начисления по сотрудникам</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('detail.empAccruals')}</div>
         <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 100px;gap:8px;padding:0 10px 4px;font-size:10px;color:var(--text3);text-transform:uppercase;">
-          <span>Сотрудник</span><span style="text-align:right">З/П</span><span style="text-align:right">Аванс</span><span style="text-align:right">Бонус</span><span style="text-align:right">Штраф</span><span style="text-align:right">К выплате</span>
+          <span>${t('col.employee')}</span><span style="text-align:right">${t('col.salaryShort')}</span><span style="text-align:right">${t('col.advanceShort')}</span><span style="text-align:right">${t('col.bonusShort')}</span><span style="text-align:right">${t('col.fineShort')}</span><span style="text-align:right">${t('col.payoutShort')}</span>
         </div>
         ${empHtml}
 
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">📋 Все операции дня</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">${t('detail.allOps')}</div>
         ${opsHtml}
       </div>
     </div>`;
@@ -2093,7 +2114,7 @@ async function renderMonthly() {
   const tbody = document.getElementById('monthlyTable');
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">📆</div><p>Нет данных</p></div></td></tr>`; return; }
   tbody.innerHTML = rows.map(r => {
-    const profit = +r.income + +r.bonus - +r.expense - +r.salary - +r.advance - +r.fine;
+    const profit = +r.income - +r.expense - +r.salary - +r.advance - +r.bonus + +r.fine;
     const col = profit>=0?'var(--green)':'var(--red)';
     const open = _monthlyDetailOpen.has(r.month);
     return `<tr style="cursor:pointer;" onclick="toggleMonthlyDetail('${r.month}')">
@@ -2234,21 +2255,21 @@ async function loadMonthlyDetail(month) {
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <div>
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">📈 Доходы по категориям</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('detail.incomeByCat')}</div>
         ${renderCats('income','var(--green)')}
 
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">📉 Расходы по категориям</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">${t('detail.expenseByCat')}</div>
         ${renderCats('expense','var(--red)')}
       </div>
       <div>
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">👥 По сотрудникам</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('detail.byEmployees')}</div>
         <div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:8px;padding:0 10px 4px;font-size:10px;color:var(--text3);text-transform:uppercase;">
-          <span>Сотрудник</span><span style="text-align:right">З/П</span><span style="text-align:right">Аванс</span><span style="text-align:right">Бонус</span><span style="text-align:right">Штраф</span><span style="text-align:right">К выплате</span>
+          <span>${t('col.employee')}</span><span style="text-align:right">${t('col.salaryShort')}</span><span style="text-align:right">${t('col.advanceShort')}</span><span style="text-align:right">${t('col.bonusShort')}</span><span style="text-align:right">${t('col.fineShort')}</span><span style="text-align:right">${t('col.payoutShort')}</span>
         </div>
         ${empHtml}
 
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">📅 Топ дней</div>
-        ${topDays || '<div style="color:var(--text3);font-size:12px;">Нет данных</div>'}
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">${t('detail.topDays')}</div>
+        ${topDays || `<div style="color:var(--text3);font-size:12px;">${t('detail.noData')}</div>`}
       </div>
     </div>`;
 }
@@ -2325,13 +2346,13 @@ async function renderSchedule() {
   cols += '<col style="width:40px"><col style="width:75px"></colgroup>';
 
   // header
-  let hdr = '<thead><tr><th class="emp-name-cell" style="text-align:left">Сотрудник</th>';
+  let hdr = `<thead><tr><th class="emp-name-cell" style="text-align:left">${t('col.employee')}</th>`;
   for (let d = 1; d <= numDays; d++) {
     const dow = dayOfWeek(month, d);
     const isWeekend = dow === 0 || dow === 6;
-    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${SHORT_DAYS[dow]}</th>`;
+    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${t('wd.' + dow)}</th>`;
   }
-  hdr += '<th>Часы</th><th>Сумма</th></tr></thead>';
+  hdr += `<th>${t('sch.hours')}</th><th>${t('col.sum')}</th></tr></thead>`;
 
   // body
   let body = '<tbody>';
@@ -2371,14 +2392,14 @@ async function renderSchedule() {
   });
 
   // totals row
-  body += '<tr class="totals-row"><td class="emp-name-cell">Итого</td>';
+  body += `<tr class="totals-row"><td class="emp-name-cell">${t('sch.totalRow')}</td>`;
   for (let d = 0; d < numDays; d++) {
     body += `<td>${dayTotals[d] || ''}</td>`;
   }
   body += `<td>${grandHours || ''}</td><td></td></tr>`;
   body += '</tbody>';
 
-  table.innerHTML = `<div class="sched-print-title">График работы — ${monthLabel(month)}</div>` + cols + hdr + body;
+  table.innerHTML = `<div class="sched-print-title">${t('page.schedule')} — ${monthLabel(month)}</div>` + cols + hdr + body;
 
   // итог под таблицей
   let grandEl = document.getElementById('schedGrandTotal');
@@ -2388,7 +2409,7 @@ async function renderSchedule() {
     grandEl.className = 'sched-grand-total';
     document.getElementById('scheduleWrap').after(grandEl);
   }
-  grandEl.innerHTML = grandSum ? `Итого часов: <b>${grandHours}</b> &nbsp;|&nbsp; Итого сумма: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
+  grandEl.innerHTML = grandSum ? `${t('sch.totalHours')}: <b>${grandHours}</b> &nbsp;|&nbsp; ${t('sch.totalSum')}: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
   grandEl.style.display = grandSum ? 'block' : 'none';
 
   // drag & drop строк
@@ -2456,7 +2477,7 @@ function openSchedModal(entry, dateStr, empId) {
   });
   empSel.innerHTML = opts;
 
-  document.getElementById('schedModalTitle').textContent = entry ? 'Редактировать смену' : 'Добавить смену';
+  document.getElementById('schedModalTitle').textContent = entry ? t('sch.edit') : t('sch.new');
   document.getElementById('schedEditId').value = entry ? entry.id : '';
   document.getElementById('schedDate').value = entry ? entry.work_date : (dateStr || today());
   empSel.value = entry ? entry.emp_id : (empId || '');
@@ -2615,7 +2636,7 @@ async function renderBanquets() {
 let _banquetItems = []; // локальный буфер в модалке: [{id?, type, name, qty, price}]
 
 function openBanquetModal(b) {
-  document.getElementById('banquetModalTitle').textContent = b ? 'Редактировать банкет' : 'Новый банкет';
+  document.getElementById('banquetModalTitle').textContent = b ? t('banquet.edit') : t('banquet.new');
   document.getElementById('banquetEditId').value = b ? b.id : '';
   if (!_dayPickers['banquetDatePicker']) createDayPicker('banquetDatePicker');
   dpSetValue('banquetDatePicker', b ? b.date : today());
@@ -2802,7 +2823,7 @@ async function renderPositions() {
 }
 
 function openPosModal(pos) {
-  document.getElementById('posModalTitle').textContent = pos ? 'Редактировать должность' : 'Новая должность';
+  document.getElementById('posModalTitle').textContent = pos ? t('pos.edit') : t('pos.new');
   document.getElementById('posEditId').value = pos ? pos.id : '';
   document.getElementById('posName').value = pos ? pos.name : '';
   document.getElementById('posHiddenInSchedule').checked = !!(pos && pos.hidden_in_schedule);
@@ -2839,7 +2860,7 @@ async function deletePosition(id, name) {
 // ═══════════════════════════════════════════
 function openEmpModal(emp) {
   populatePositionSelects();
-  document.getElementById('empModalTitle').textContent = emp ? 'Редактировать сотрудника' : 'Новый сотрудник';
+  document.getElementById('empModalTitle').textContent = emp ? t('emp.edit') : t('emp.new');
   document.getElementById('empEditId').value = emp ? emp.id : '';
   document.getElementById('empName').value = emp ? emp.name : '';
   document.getElementById('empRole').value = emp ? emp.role||'' : '';
@@ -2946,7 +2967,7 @@ function renderEmployees() {
     <td>${e.hourly_rate ? fmt(e.hourly_rate)+' '+_currency : '—'}</td>
     <td>${e.percent ? e.percent+'%' : '—'}</td>
     <td>${e.phone||'—'}</td>
-    <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?'Активный':'Уволен'}</span></td>
+    <td><span class="badge ${e.status==='active'?'badge-green':'badge-red'}">${e.status==='active'?t('status.active'):t('status.inactive')}</span></td>
     <td style="display:flex;gap:6px;">
       ${canEdit('employees') ? `<button class="btn btn-sm" onclick="openEmpModal(${JSON.stringify(e).replace(/"/g,"&quot;")})">✎</button>
       <button class="btn btn-sm btn-danger" onclick="deleteEmployee('${e.id}')">✕</button>` : ''}
@@ -2967,7 +2988,7 @@ function openSalModal(tx) {
   document.getElementById('salAmount').value = tx ? tx.amount : '';
   document.getElementById('salNote').value = tx ? tx.note||'' : '';
   document.getElementById('salDeleteBtn').style.display = tx ? '' : 'none';
-  document.querySelector('#salModal .modal-title').textContent = tx ? 'Редактировать выплату' : 'Начисление выплаты';
+  document.querySelector('#salModal .modal-title').textContent = tx ? t('sal.edit') : t('sal.new');
   openModal('salModal');
 }
 
@@ -3259,11 +3280,11 @@ async function renderSalaryReport() {
   const totalNet = totals.salary+totals.bonus-totals.advance-totals.fine;
 
   let html = `<div class="cards-row" style="margin-bottom:28px;">
-    <div class="stat-card yellow"><div class="stat-label">З/П начислено</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
-    <div class="stat-card blue"><div class="stat-label">Авансы</div><div class="stat-value blue">${fmt(totals.advance)} ${_currency}</div></div>
-    <div class="stat-card purple"><div class="stat-label">Бонусы</div><div class="stat-value purple">${fmt(totals.bonus)} ${_currency}</div></div>
-    <div class="stat-card red"><div class="stat-label">Штрафы</div><div class="stat-value red">${fmt(totals.fine)} ${_currency}</div></div>
-    <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">К выплате итого</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
+    <div class="stat-card yellow"><div class="stat-label">${t('srep.salaryAcc')}</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
+    <div class="stat-card blue"><div class="stat-label">${t('srep.advances')}</div><div class="stat-value blue">${fmt(totals.advance)} ${_currency}</div></div>
+    <div class="stat-card purple"><div class="stat-label">${t('srep.bonuses')}</div><div class="stat-value purple">${fmt(totals.bonus)} ${_currency}</div></div>
+    <div class="stat-card red"><div class="stat-label">${t('srep.fines')}</div><div class="stat-value red">${fmt(totals.fine)} ${_currency}</div></div>
+    <div class="stat-card ${totalNet>=0?'green':'red'}"><div class="stat-label">${t('srep.payoutTotal')}</div><div class="stat-value ${totalNet>=0?'green':'red'}">${fmt(totalNet)} ${_currency}</div></div>
   </div>`;
 
   // группировка по табельному номеру (если есть)
@@ -3422,8 +3443,8 @@ async function renderSalaryReport() {
     }
 
     const headerRole = multi
-      ? `<span style="color:var(--text3)">Совмещение ${g.items.length} должност${g.items.length===2?'ей':'ей'}</span>`
-      : `${first?(first.role||''):''}${first?' · ':''}<span class="badge badge-blue">${first?(EMP_TYPE_LABELS[first.type]||''):''}</span>${first&&first.percent ? ' · <span style="color:var(--accent)">'+first.percent+'% от выручки</span>' : ''}`;
+      ? `<span style="color:var(--text3)">${t('srep.combo')} ${g.items.length} ${t('srep.positions')}</span>`
+      : `${first?(first.role||''):''}${first?' · ':''}<span class="badge badge-blue">${first?(EMP_TYPE_LABELS[first.type]||''):''}</span>${first&&first.percent ? ' · <span style="color:var(--accent)">'+first.percent+'% '+t('srep.ofRevenue')+'</span>' : ''}`;
 
     html += `<div class="salary-card" data-group-key="${g.key}" data-emp-name="${displayName.replace(/"/g,'&quot;')}">
       <div class="salary-card-header">
@@ -3695,7 +3716,7 @@ async function handleWsMessage(msg) {
 // USER MANAGEMENT
 // ═══════════════════════════════════════════
 function openUserModal(user) {
-  document.getElementById('userModalTitle').textContent = user ? 'Редактировать пользователя' : 'Новый пользователь';
+  document.getElementById('userModalTitle').textContent = user ? t('user.edit') : t('user.new');
   document.getElementById('uEditId').value = user ? user.id : '';
   document.getElementById('uUsername').value = user ? user.username : '';
   document.getElementById('uUsername').disabled = !!user;
@@ -3812,69 +3833,36 @@ async function renderUsers() {
     tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">🔐</div><p>Нет пользователей</p></div></td></tr>';
     return;
   }
-
-  // Сохраняем данные юзеров в Map — кнопки обращаются по id, без inline JSON
-  window._usersCache = {};
-  users.forEach(u => { window._usersCache[u.id] = u; });
-
   const myUsername = sessionStorage.getItem('cb_user');
-
   tbody.innerHTML = users.map(u => {
     const isMe = u.username === myUsername;
-
     const onlineBadge = u.isOnline
-      ? '<span class="badge badge-online">● Онлайн</span>'
-      : '<span class="badge badge-offline">○ Офлайн</span>';
-
+      ? `<span class="badge badge-online">${t('status.online')}</span>`
+      : `<span class="badge badge-offline">${t('status.offline')}</span>`;
     const roleBadge = u.role === 'admin'
-      ? '<span class="badge badge-yellow">Администратор</span>'
-      : '<span class="badge badge-blue">Сотрудник</span>';
-
+      ? `<span class="badge badge-yellow">${t('emp.admin')}</span>`
+      : `<span class="badge badge-blue">${t('emp.staff')}</span>`;
     const lastLogin = u.lastLoginAt
-      ? new Date(u.lastLoginAt).toLocaleString('ru-RU', {
-          day: '2-digit', month: '2-digit', year: 'numeric',
-          hour: '2-digit', minute: '2-digit'
-        })
+      ? new Date(u.lastLoginAt).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
       : '—';
-
-    // Все кнопки передают только id — данные берутся из _usersCache
-    const kickBtn = u.isOnline
-      ? `<button class="btn btn-sm btn-danger" onclick="kickUserById('${u.id}')" title="Выбить из системы">⏏ Выбить</button>`
-      : '';
-
+    const escapedName = (u.displayName||u.username).replace(/"/g, '&quot;');
+    const safeUser = JSON.stringify(u).replace(/"/g, '&quot;');
     const actions = isMe
-      ? '<span style="color:var(--text3);font-size:12px">это вы</span>'
-      : `<div style="display:flex;gap:6px;">
-           ${kickBtn}
-           <button class="btn btn-sm" onclick="editUserById('${u.id}')">✎</button>
-           <button class="btn btn-sm btn-danger" onclick="deleteUserById('${u.id}')">✕</button>
-         </div>`;
-
-    const meLabel = isMe ? ' <span style="color:var(--text3);font-size:11px">(вы)</span>' : '';
-
-    return `<tr>
-      <td><b>${u.displayName || u.username}</b>${meLabel}</td>
-      <td style="color:var(--text3);font-family:monospace">${u.username}</td>
-      <td>${roleBadge}</td>
-      <td>${onlineBadge}</td>
-      <td style="color:var(--text3)">${lastLogin}</td>
-      <td>${actions}</td>
-    </tr>`;
+      ? `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
+      : '<div style="display:flex;gap:6px;">'
+        + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)" title="Выбить из системы">⏏ Выбить</button>' : '')
+        + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')">✎</button>'
+        + '<button class="btn btn-sm btn-danger" onclick="deleteUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)">✕</button>'
+        + '</div>';
+    return '<tr>'
+      + '<td><b>' + (u.displayName||u.username) + '</b>' + (isMe ? ' <span style="color:var(--text3);font-size:11px">(вы)</span>' : '') + '</td>'
+      + '<td style="color:var(--text3);font-family:monospace">' + u.username + '</td>'
+      + '<td>' + roleBadge + '</td>'
+      + '<td>' + onlineBadge + '</td>'
+      + '<td style="color:var(--text3)">' + lastLogin + '</td>'
+      + '<td>' + actions + '</td>'
+      + '</tr>';
   }).join('');
-}
-
-// Обёртки — берут данные из кэша по id, не из inline-строк
-function editUserById(id) {
-  const u = window._usersCache && window._usersCache[id];
-  if (u) openUserModal(u);
-}
-function kickUserById(id) {
-  const u = window._usersCache && window._usersCache[id];
-  if (u) kickUser(id, u.displayName || u.username);
-}
-function deleteUserById(id) {
-  const u = window._usersCache && window._usersCache[id];
-  if (u) deleteUser(id, u.displayName || u.username);
 }
 
 // ═══════════════════════════════════════════
@@ -4000,6 +3988,250 @@ const I18N = {
     'page.users': 'Пользователи',
     'page.users.sub': 'Управление доступом к системе',
     'page.settings': 'Настройки',
+    // common buttons & UI
+    'btn.add': '+ Добавить',
+    'btn.addShift': '+ Смена',
+    'btn.addBanquet': '+ Банкет',
+    'btn.accrue': '+ Начислить',
+    'btn.print': '🖨 Печать',
+    'btn.income': '+ Доход',
+    'btn.expense': '+ Расход',
+    'btn.kick': '⏏ Выбить',
+    'btn.calcSalary': '💵 Начислить оклады',
+    'btn.calcPercent': '📊 Рассчитать % кассы',
+    'btn.scheduleTx': '💰 Сформировать выплаты',
+    'btn.detalisation': 'Детализация',
+    'btn.hoursRate': 'Часы и ставка',
+    // filters & sort
+    'filter.allDates': 'Все даты',
+    'filter.allTypes': 'Все типы',
+    'filter.allEmployees': 'Все сотрудники',
+    'filter.allPositions': 'Все должности',
+    'filter.active': 'Активные',
+    'filter.inactive': 'Уволенные',
+    'filter.all': 'Все',
+    'filter.search': '🔍 Поиск по имени или табельному №',
+    'sort.newest': 'Сначала новые',
+    'sort.oldest': 'Сначала старые',
+    'sort.byName': '↕ По имени',
+    'sort.byTab': '↕ По таб. №',
+    'sort.byRole': '↕ По должности',
+    'sort.bySalary': '↕ По окладу',
+    'sort.byHourly': '↕ По ставке',
+    'sort.byStartDate': '↕ По дате старта',
+    'sort.asc': '↑ По возр.',
+    'sort.desc': '↓ По убыв.',
+    // table columns
+    'col.date': 'Дата',
+    'col.type': 'Тип',
+    'col.category': 'Категория',
+    'col.employee': 'Сотрудник',
+    'col.amount': 'Сумма',
+    'col.note': 'Комментарий',
+    'col.month': 'Месяц',
+    'col.income': 'Доходы',
+    'col.expense': 'Расходы',
+    'col.salary': 'Зарплаты',
+    'col.advance': 'Авансы',
+    'col.bonus': 'Бонусы',
+    'col.fine': 'Штрафы',
+    'col.profit': 'Чистая прибыль',
+    'col.fines': 'Штрафы',
+    'col.bonuses': 'Бонусы',
+    'col.advances': 'Авансы',
+    'col.result': 'Итог',
+    'col.tab': 'Таб. №',
+    'col.name': 'Имя',
+    'col.role': 'Должность',
+    'col.salaryAmt': 'Оклад',
+    'col.hourlyRate': 'Ставка/ч',
+    'col.percent': '%',
+    'col.phone': 'Телефон',
+    'col.status': 'Статус',
+    'col.title': 'Название',
+    'col.hours': 'Часы',
+    'col.sum': 'Сумма',
+    'col.payout': 'К выплате',
+    'col.login': 'Логин',
+    'col.lastLogin': 'Последний вход',
+    'col.page': 'Страница',
+    'col.permLevel': 'Уровень доступа',
+    // tx types
+    'tx.income': 'Доход',
+    'tx.expense': 'Расход',
+    'tx.salary': 'Зарплата',
+    'tx.advance': 'Аванс',
+    'tx.bonus': 'Бонус',
+    'tx.fine': 'Штраф',
+    // employee types
+    'emp.staff': 'Сотрудник',
+    'emp.admin': 'Администратор',
+    'emp.manager': 'Менеджер',
+    // status
+    'status.active': 'Активный',
+    'status.inactive': 'Уволен',
+    'status.online': '● Онлайн',
+    'status.offline': '○ Офлайн',
+    'status.you': '(вы)',
+    'status.it_is_you': 'это вы',
+    // dashboard cards
+    'dash.income': 'Доходы',
+    'dash.expense': 'Расходы',
+    'dash.salaryPaid': 'З/П выплачено',
+    'dash.bonusFine': 'Бонусы / Штрафы',
+    'dash.profit': 'Чистая прибыль',
+    'dash.forMonth': 'за месяц',
+    'dash.operational': 'операционные',
+    'dash.salaryAdvance': 'зп + авансы',
+    'dash.chartIE': 'Доходы / Расходы по дням',
+    'dash.expenseStruct': 'Структура расходов',
+    'dash.noExpense': 'Нет расходов за период',
+    'dash.lastTx': 'Последние транзакции',
+    'dash.noTx': 'Нет транзакций',
+    'dash.allArrow': 'Все →',
+    // settings sections
+    'settings.cafe': 'Кафе',
+    'settings.security': 'Безопасность',
+    'settings.data': 'Данные',
+    'settings.payTypes': 'Типы выплат',
+    'settings.cafeName': 'Название кафе',
+    'settings.cafeNamePh': 'Например: Кафе Уют',
+    'settings.currency': 'Валюта',
+    'settings.threshold': 'Порог выручки для процента сотрудников',
+    'settings.thresholdHint': 'Если дневная выручка превышает эту сумму — сотрудникам с процентом начисляется бонус от всей выручки дня',
+    'settings.scheduleTx': 'Формировать транзакции из графика работы',
+    'settings.scheduleTxHint': 'Кнопка «Сформировать выплаты» на странице График — создаёт транзакции зарплаты по отработанным часам и ставке каждого сотрудника',
+    'settings.export': '📤 Экспорт JSON',
+    'settings.import': '📥 Импорт JSON',
+    'settings.payTypesHint': 'Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.',
+    'settings.newPayType': 'Название',
+    'settings.signExpense': '− расход',
+    'settings.signIncome': '+ доход',
+    // banquet
+    'banquet.new': 'Новый банкет',
+    'banquet.edit': 'Редактировать банкет',
+    'banquet.amount': 'Сумма банкета',
+    'banquet.percent': 'Процент (%)',
+    'banquet.note': 'Комментарий',
+    'banquet.notePh': 'Например: Юбилей',
+    'banquet.extra': 'Дополнительные статьи (доходы/расходы)',
+    'banquet.empty': 'Статей нет. Можно добавить: «Открытие бутылок», «Аренда посуды», «Чаевые» и т.п.',
+    'banquet.hint': 'Сумма бонуса автоматически поделится между всеми, кто работал в указанный день (по графику). Потом можно вручную изменить доли.',
+    'banquet.title': 'Название',
+    'banquet.qty': 'Кол-во',
+    'banquet.price': 'Цена/шт',
+    'banquet.itemTotal': 'Итого',
+    'banquet.noFor': 'Нет банкетов за',
+    // user modal
+    'user.new': 'Новый пользователь',
+    'user.edit': 'Редактировать пользователя',
+    'user.username': 'Логин (a-z, 0-9, _)',
+    'user.displayName': 'Отображаемое имя',
+    'user.usernamePh': 'ivan',
+    'user.displayNamePh': 'Иван Иванов',
+    'user.role': 'Роль',
+    'user.roleUser': 'Сотрудник — с ограниченными правами',
+    'user.roleAdmin': 'Администратор — полный доступ',
+    'user.password': 'Пароль',
+    'user.repeat': 'Повтор пароля',
+    'user.passPh': 'мин. 4 символа',
+    'user.repeatPh': 'повторите пароль',
+    'user.perms': 'Права доступа к страницам',
+    'user.permNone': '🚫 Нет доступа',
+    'user.permView': '👁 Только просмотр',
+    'user.permEdit': '✎ Полный доступ',
+    // emp modal
+    'emp.new': 'Новый сотрудник',
+    'emp.edit': 'Редактировать сотрудника',
+    'emp.fullName': 'Полное имя',
+    'emp.role': 'Должность',
+    'emp.type': 'Тип персонала',
+    'emp.salary': 'Оклад',
+    'emp.hourly': 'Ставка/час',
+    'emp.tab': 'Табельный №',
+    'emp.tabPh': 'например: 001',
+    'emp.percent': 'Процент от выручки (%)',
+    'emp.phone': 'Телефон',
+    'emp.startDate': 'Дата начала',
+    'emp.status': 'Статус',
+    'emp.hideSchedule': 'Скрывать в графике работы',
+    'emp.hideMonthly': 'Скрывать в месячных отчётах',
+    'emp.notSpecified': '— не указана —',
+    'emp.notProvided': '— не указан —',
+    'emp.hideScheduleHint': 'Для тех, кому не нужно отмечать часы (закупщик, админ и т.п.)',
+    'emp.hideMonthlyHint': 'Сотрудник не будет отображаться в разделе «По сотрудникам»',
+    'ph.note': 'Примечание',
+    'tx.modalTitle': 'Транзакция',
+    'tx.edit': 'Редактировать транзакцию',
+    'tx.empOpt': 'Сотрудник (если применимо)',
+    // position modal
+    'pos.new': 'Новая должность',
+    'pos.edit': 'Редактировать должность',
+    'pos.namePh': 'Например: Бариста',
+    'pos.hideSchedule': 'Скрывать в графике работы',
+    'pos.hideHint': 'Должности, которым не нужно отмечать часы',
+    'pos.hiddenBadge': 'Скрыт в графике',
+    // salary entry modal
+    'sal.new': 'Начисление выплаты',
+    'sal.edit': 'Редактировать выплату',
+    // schedule modal
+    'sch.new': 'Добавить смену',
+    'sch.edit': 'Редактировать смену',
+    'sch.hours': 'Часы',
+    'sch.rate': 'Ставка/час (пусто = из профиля)',
+    'sch.ratePh': 'из профиля',
+    // schedule table
+    'sch.totalRow': 'Итого',
+    'sch.totalHours': 'Итого часов',
+    'sch.totalSum': 'Итого сумма',
+    // salary report
+    'srep.salaryAcc': 'З/П начислено',
+    'srep.advances': 'Авансы',
+    'srep.bonuses': 'Бонусы',
+    'srep.fines': 'Штрафы',
+    'srep.payoutTotal': 'К выплате итого',
+    'srep.combo': 'Совмещение',
+    'srep.positions': 'должностей',
+    'srep.ofRevenue': 'от выручки',
+    // print salary report modal
+    'srp.title': 'Печать отчёта по зарплате',
+    'srp.hint': 'Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.',
+    'srp.selAll': 'Выбрать всех',
+    'srp.deselAll': 'Снять всех',
+    'srp.printIt': '🖨 Напечатать',
+    // monthly salary modal
+    'ms.title': 'Начисление окладов',
+    'ms.hint': 'Выберите кому начислить и проверьте суммы. Можно изменить сумму для конкретного сотрудника (например при частичной ставке).',
+    'ms.reset': '↺ Восстановить суммы',
+    'ms.confirm': '💵 Начислить выбранным',
+    'drp.clear': 'Сбросить',
+    'drp.apply': 'Применить',
+    'sb.title': '⚠️ Сессия завершена',
+    'sb.text': 'Выполнен вход под этим логином с другого устройства или браузера. Вы были автоматически выведены из системы.',
+    'sb.again': 'Войти снова',
+    // detail blocks (daily/monthly)
+    'detail.incomeByCat': '📈 Доходы по категориям',
+    'detail.expenseByCat': '📉 Расходы по категориям',
+    'detail.empAccruals': '👥 Начисления по сотрудникам',
+    'detail.byEmployees': '👥 По сотрудникам',
+    'detail.allOps': '📋 Все операции дня',
+    'detail.topDays': '📅 Топ дней',
+    'detail.noData': 'Нет данных',
+    'col.salaryShort': 'З/П',
+    'col.advanceShort': 'Аванс',
+    'col.bonusShort': 'Бонус',
+    'col.fineShort': 'Штраф',
+    'col.payoutShort': 'К выплате',
+    // groups (months in date range picker)
+    'mon.short.0':'Янв','mon.short.1':'Фев','mon.short.2':'Мар','mon.short.3':'Апр',
+    'mon.short.4':'Май','mon.short.5':'Июн','mon.short.6':'Июл','mon.short.7':'Авг',
+    'mon.short.8':'Сен','mon.short.9':'Окт','mon.short.10':'Ноя','mon.short.11':'Дек',
+    'mon.full.0':'Январь','mon.full.1':'Февраль','mon.full.2':'Март','mon.full.3':'Апрель',
+    'mon.full.4':'Май','mon.full.5':'Июнь','mon.full.6':'Июль','mon.full.7':'Август',
+    'mon.full.8':'Сентябрь','mon.full.9':'Октябрь','mon.full.10':'Ноябрь','mon.full.11':'Декабрь',
+    'wd.0':'Вс','wd.1':'Пн','wd.2':'Вт','wd.3':'Ср','wd.4':'Чт','wd.5':'Пт','wd.6':'Сб',
+    // misc
+    'misc.allDates': '📅 Все даты',
   },
   uk: {
     'nav.overview': 'Огляд',
@@ -4067,6 +4299,229 @@ const I18N = {
     'page.users': 'Користувачі',
     'page.users.sub': 'Управління доступом до системи',
     'page.settings': 'Налаштування',
+    'btn.add': '+ Додати',
+    'btn.addShift': '+ Зміна',
+    'btn.addBanquet': '+ Банкет',
+    'btn.accrue': '+ Нарахувати',
+    'btn.print': '🖨 Друк',
+    'btn.income': '+ Дохід',
+    'btn.expense': '+ Витрата',
+    'btn.kick': '⏏ Вибити',
+    'btn.calcSalary': '💵 Нарахувати оклади',
+    'btn.calcPercent': '📊 Розрахувати % каси',
+    'btn.scheduleTx': '💰 Сформувати виплати',
+    'btn.detalisation': 'Деталізація',
+    'btn.hoursRate': 'Години та ставка',
+    'filter.allDates': 'Усі дати',
+    'filter.allTypes': 'Усі типи',
+    'filter.allEmployees': 'Усі співробітники',
+    'filter.allPositions': 'Усі посади',
+    'filter.active': 'Активні',
+    'filter.inactive': 'Звільнені',
+    'filter.all': 'Усі',
+    'filter.search': '🔍 Пошук за іменем або таб. №',
+    'sort.newest': 'Спочатку нові',
+    'sort.oldest': 'Спочатку старі',
+    'sort.byName': '↕ За іменем',
+    'sort.byTab': '↕ За таб. №',
+    'sort.byRole': '↕ За посадою',
+    'sort.bySalary': '↕ За окладом',
+    'sort.byHourly': '↕ За ставкою',
+    'sort.byStartDate': '↕ За датою старту',
+    'sort.asc': '↑ За зрост.',
+    'sort.desc': '↓ За спад.',
+    'col.date': 'Дата',
+    'col.type': 'Тип',
+    'col.category': 'Категорія',
+    'col.employee': 'Співробітник',
+    'col.amount': 'Сума',
+    'col.note': 'Коментар',
+    'col.month': 'Місяць',
+    'col.income': 'Доходи',
+    'col.expense': 'Витрати',
+    'col.salary': 'Зарплати',
+    'col.advance': 'Аванси',
+    'col.bonus': 'Бонуси',
+    'col.fine': 'Штрафи',
+    'col.profit': 'Чистий прибуток',
+    'col.fines': 'Штрафи',
+    'col.bonuses': 'Бонуси',
+    'col.advances': 'Аванси',
+    'col.result': 'Підсумок',
+    'col.tab': 'Таб. №',
+    'col.name': 'Імʼя',
+    'col.role': 'Посада',
+    'col.salaryAmt': 'Оклад',
+    'col.hourlyRate': 'Ставка/год',
+    'col.percent': '%',
+    'col.phone': 'Телефон',
+    'col.status': 'Статус',
+    'col.title': 'Назва',
+    'col.hours': 'Години',
+    'col.sum': 'Сума',
+    'col.payout': 'До виплати',
+    'col.login': 'Логін',
+    'col.lastLogin': 'Останній вхід',
+    'col.page': 'Сторінка',
+    'col.permLevel': 'Рівень доступу',
+    'tx.income': 'Дохід',
+    'tx.expense': 'Витрата',
+    'tx.salary': 'Зарплата',
+    'tx.advance': 'Аванс',
+    'tx.bonus': 'Бонус',
+    'tx.fine': 'Штраф',
+    'emp.staff': 'Співробітник',
+    'emp.admin': 'Адміністратор',
+    'emp.manager': 'Менеджер',
+    'status.active': 'Активний',
+    'status.inactive': 'Звільнений',
+    'status.online': '● Онлайн',
+    'status.offline': '○ Офлайн',
+    'status.you': '(ви)',
+    'status.it_is_you': 'це ви',
+    'dash.income': 'Доходи',
+    'dash.expense': 'Витрати',
+    'dash.salaryPaid': 'З/П виплачено',
+    'dash.bonusFine': 'Бонуси / Штрафи',
+    'dash.profit': 'Чистий прибуток',
+    'dash.forMonth': 'за місяць',
+    'dash.operational': 'операційні',
+    'dash.salaryAdvance': 'зп + аванси',
+    'dash.chartIE': 'Доходи / Витрати по днях',
+    'dash.expenseStruct': 'Структура витрат',
+    'dash.noExpense': 'Немає витрат за період',
+    'dash.lastTx': 'Останні транзакції',
+    'dash.noTx': 'Немає транзакцій',
+    'dash.allArrow': 'Усі →',
+    'settings.cafe': 'Кафе',
+    'settings.security': 'Безпека',
+    'settings.data': 'Дані',
+    'settings.payTypes': 'Типи виплат',
+    'settings.cafeName': 'Назва кафе',
+    'settings.cafeNamePh': 'Наприклад: Кафе Затишок',
+    'settings.currency': 'Валюта',
+    'settings.threshold': 'Поріг виручки для відсотка співробітників',
+    'settings.thresholdHint': 'Якщо денна виручка перевищує цю суму — співробітникам з відсотком нараховується бонус від усієї виручки дня',
+    'settings.scheduleTx': 'Формувати транзакції з графіка роботи',
+    'settings.scheduleTxHint': 'Кнопка «Сформувати виплати» на сторінці Графік — створює транзакції зарплати за відпрацьованими годинами та ставкою',
+    'settings.export': '📤 Експорт JSON',
+    'settings.import': '📥 Імпорт JSON',
+    'settings.payTypesHint': 'Ці типи відображаються при нарахуванні виплат. Стандартні видалити неможливо.',
+    'settings.newPayType': 'Назва',
+    'settings.signExpense': '− витрата',
+    'settings.signIncome': '+ дохід',
+    'banquet.new': 'Новий банкет',
+    'banquet.edit': 'Редагувати банкет',
+    'banquet.amount': 'Сума банкету',
+    'banquet.percent': 'Відсоток (%)',
+    'banquet.note': 'Коментар',
+    'banquet.notePh': 'Наприклад: Ювілей',
+    'banquet.extra': 'Додаткові статті (доходи/витрати)',
+    'banquet.empty': 'Статей немає. Можна додати: «Відкриття пляшок», «Оренда посуду», «Чайові» тощо.',
+    'banquet.hint': 'Сума бонусу автоматично поділиться між усіма, хто працював у вказаний день (за графіком). Потім можна вручну змінити частки.',
+    'banquet.title': 'Назва',
+    'banquet.qty': 'К-сть',
+    'banquet.price': 'Ціна/шт',
+    'banquet.itemTotal': 'Підсумок',
+    'banquet.noFor': 'Немає банкетів за',
+    'user.new': 'Новий користувач',
+    'user.edit': 'Редагувати користувача',
+    'user.username': 'Логін (a-z, 0-9, _)',
+    'user.displayName': 'Відображуване імʼя',
+    'user.usernamePh': 'ivan',
+    'user.displayNamePh': 'Іван Іванов',
+    'user.role': 'Роль',
+    'user.roleUser': 'Співробітник — з обмеженими правами',
+    'user.roleAdmin': 'Адміністратор — повний доступ',
+    'user.password': 'Пароль',
+    'user.repeat': 'Повтор пароля',
+    'user.passPh': 'мін. 4 символи',
+    'user.repeatPh': 'повторіть пароль',
+    'user.perms': 'Права доступу до сторінок',
+    'user.permNone': '🚫 Немає доступу',
+    'user.permView': '👁 Тільки перегляд',
+    'user.permEdit': '✎ Повний доступ',
+    'emp.new': 'Новий співробітник',
+    'emp.edit': 'Редагувати співробітника',
+    'emp.fullName': 'Повне імʼя',
+    'emp.role': 'Посада',
+    'emp.type': 'Тип персоналу',
+    'emp.salary': 'Оклад',
+    'emp.hourly': 'Ставка/год',
+    'emp.tab': 'Табельний №',
+    'emp.tabPh': 'наприклад: 001',
+    'emp.percent': 'Відсоток від виручки (%)',
+    'emp.phone': 'Телефон',
+    'emp.startDate': 'Дата початку',
+    'emp.status': 'Статус',
+    'emp.hideSchedule': 'Приховувати в графіку роботи',
+    'emp.hideMonthly': 'Приховувати в місячних звітах',
+    'emp.notSpecified': '— не вказана —',
+    'emp.notProvided': '— не вказаний —',
+    'emp.hideScheduleHint': 'Для тих, кому не потрібно відмічати години (закупівельник, адмін тощо)',
+    'emp.hideMonthlyHint': 'Співробітник не відображатиметься в розділі «По співробітниках»',
+    'ph.note': 'Примітка',
+    'tx.modalTitle': 'Транзакція',
+    'tx.edit': 'Редагувати транзакцію',
+    'tx.empOpt': 'Співробітник (якщо застосовно)',
+    'pos.new': 'Нова посада',
+    'pos.edit': 'Редагувати посаду',
+    'pos.namePh': 'Наприклад: Бариста',
+    'pos.hideSchedule': 'Приховувати в графіку роботи',
+    'pos.hideHint': 'Посади, яким не потрібно відмічати години',
+    'pos.hiddenBadge': 'Прихована в графіку',
+    'sal.new': 'Нарахування виплати',
+    'sal.edit': 'Редагувати виплату',
+    'sch.new': 'Додати зміну',
+    'sch.edit': 'Редагувати зміну',
+    'sch.hours': 'Години',
+    'sch.rate': 'Ставка/год (пусто = з профілю)',
+    'sch.ratePh': 'з профілю',
+    'sch.totalRow': 'Усього',
+    'sch.totalHours': 'Усього годин',
+    'sch.totalSum': 'Усього сума',
+    'srep.salaryAcc': 'З/П нараховано',
+    'srep.advances': 'Аванси',
+    'srep.bonuses': 'Бонуси',
+    'srep.fines': 'Штрафи',
+    'srep.payoutTotal': 'До виплати разом',
+    'srep.combo': 'Суміщення',
+    'srep.positions': 'посад',
+    'srep.ofRevenue': 'від виручки',
+    'srp.title': 'Друк звіту по зарплаті',
+    'srp.hint': 'Виберіть, чиї розрахункові листи друкувати. Кожен співробітник — на окремому аркуші А4.',
+    'srp.selAll': 'Вибрати всіх',
+    'srp.deselAll': 'Зняти всіх',
+    'srp.printIt': '🖨 Надрукувати',
+    'ms.title': 'Нарахування окладів',
+    'ms.hint': 'Виберіть, кому нарахувати і перевірте суми. Можна змінити суму для конкретного співробітника (наприклад при частковій ставці).',
+    'ms.reset': '↺ Відновити суми',
+    'ms.confirm': '💵 Нарахувати вибраним',
+    'drp.clear': 'Скинути',
+    'drp.apply': 'Застосувати',
+    'sb.title': '⚠️ Сесію завершено',
+    'sb.text': 'Виконано вхід під цим логіном з іншого пристрою або браузера. Вас автоматично виведено з системи.',
+    'sb.again': 'Увійти знову',
+    'detail.incomeByCat': '📈 Доходи по категоріях',
+    'detail.expenseByCat': '📉 Витрати по категоріях',
+    'detail.empAccruals': '👥 Нарахування по співробітниках',
+    'detail.byEmployees': '👥 По співробітниках',
+    'detail.allOps': '📋 Усі операції дня',
+    'detail.topDays': '📅 Топ днів',
+    'detail.noData': 'Немає даних',
+    'col.salaryShort': 'З/П',
+    'col.advanceShort': 'Аванс',
+    'col.bonusShort': 'Бонус',
+    'col.fineShort': 'Штраф',
+    'col.payoutShort': 'До виплати',
+    'mon.short.0':'Січ','mon.short.1':'Лют','mon.short.2':'Бер','mon.short.3':'Кві',
+    'mon.short.4':'Тра','mon.short.5':'Чер','mon.short.6':'Лип','mon.short.7':'Сер',
+    'mon.short.8':'Вер','mon.short.9':'Жов','mon.short.10':'Лис','mon.short.11':'Гру',
+    'mon.full.0':'Січень','mon.full.1':'Лютий','mon.full.2':'Березень','mon.full.3':'Квітень',
+    'mon.full.4':'Травень','mon.full.5':'Червень','mon.full.6':'Липень','mon.full.7':'Серпень',
+    'mon.full.8':'Вересень','mon.full.9':'Жовтень','mon.full.10':'Листопад','mon.full.11':'Грудень',
+    'wd.0':'Нд','wd.1':'Пн','wd.2':'Вт','wd.3':'Ср','wd.4':'Чт','wd.5':'Пт','wd.6':'Сб',
+    'misc.allDates': '📅 Усі дати',
   },
   en: {
     'nav.overview': 'Overview',
@@ -4134,6 +4589,229 @@ const I18N = {
     'page.users': 'Users',
     'page.users.sub': 'System access management',
     'page.settings': 'Settings',
+    'btn.add': '+ Add',
+    'btn.addShift': '+ Shift',
+    'btn.addBanquet': '+ Banquet',
+    'btn.accrue': '+ Accrue',
+    'btn.print': '🖨 Print',
+    'btn.income': '+ Income',
+    'btn.expense': '+ Expense',
+    'btn.kick': '⏏ Kick',
+    'btn.calcSalary': '💵 Accrue salaries',
+    'btn.calcPercent': '📊 Calculate cash %',
+    'btn.scheduleTx': '💰 Generate payouts',
+    'btn.detalisation': 'Details',
+    'btn.hoursRate': 'Hours & rate',
+    'filter.allDates': 'All dates',
+    'filter.allTypes': 'All types',
+    'filter.allEmployees': 'All employees',
+    'filter.allPositions': 'All positions',
+    'filter.active': 'Active',
+    'filter.inactive': 'Inactive',
+    'filter.all': 'All',
+    'filter.search': '🔍 Search by name or staff number',
+    'sort.newest': 'Newest first',
+    'sort.oldest': 'Oldest first',
+    'sort.byName': '↕ By name',
+    'sort.byTab': '↕ By staff #',
+    'sort.byRole': '↕ By role',
+    'sort.bySalary': '↕ By salary',
+    'sort.byHourly': '↕ By rate',
+    'sort.byStartDate': '↕ By start date',
+    'sort.asc': '↑ Asc',
+    'sort.desc': '↓ Desc',
+    'col.date': 'Date',
+    'col.type': 'Type',
+    'col.category': 'Category',
+    'col.employee': 'Employee',
+    'col.amount': 'Amount',
+    'col.note': 'Note',
+    'col.month': 'Month',
+    'col.income': 'Income',
+    'col.expense': 'Expense',
+    'col.salary': 'Salaries',
+    'col.advance': 'Advances',
+    'col.bonus': 'Bonuses',
+    'col.fine': 'Fines',
+    'col.profit': 'Net profit',
+    'col.fines': 'Fines',
+    'col.bonuses': 'Bonuses',
+    'col.advances': 'Advances',
+    'col.result': 'Total',
+    'col.tab': 'Staff #',
+    'col.name': 'Name',
+    'col.role': 'Role',
+    'col.salaryAmt': 'Salary',
+    'col.hourlyRate': 'Rate/h',
+    'col.percent': '%',
+    'col.phone': 'Phone',
+    'col.status': 'Status',
+    'col.title': 'Title',
+    'col.hours': 'Hours',
+    'col.sum': 'Sum',
+    'col.payout': 'Payout',
+    'col.login': 'Login',
+    'col.lastLogin': 'Last login',
+    'col.page': 'Page',
+    'col.permLevel': 'Access level',
+    'tx.income': 'Income',
+    'tx.expense': 'Expense',
+    'tx.salary': 'Salary',
+    'tx.advance': 'Advance',
+    'tx.bonus': 'Bonus',
+    'tx.fine': 'Fine',
+    'emp.staff': 'Staff',
+    'emp.admin': 'Admin',
+    'emp.manager': 'Manager',
+    'status.active': 'Active',
+    'status.inactive': 'Dismissed',
+    'status.online': '● Online',
+    'status.offline': '○ Offline',
+    'status.you': '(you)',
+    'status.it_is_you': "it's you",
+    'dash.income': 'Income',
+    'dash.expense': 'Expenses',
+    'dash.salaryPaid': 'Salaries paid',
+    'dash.bonusFine': 'Bonuses / Fines',
+    'dash.profit': 'Net profit',
+    'dash.forMonth': 'for the month',
+    'dash.operational': 'operational',
+    'dash.salaryAdvance': 'salary + advances',
+    'dash.chartIE': 'Income / Expenses by day',
+    'dash.expenseStruct': 'Expense structure',
+    'dash.noExpense': 'No expenses for the period',
+    'dash.lastTx': 'Recent transactions',
+    'dash.noTx': 'No transactions',
+    'dash.allArrow': 'All →',
+    'settings.cafe': 'Café',
+    'settings.security': 'Security',
+    'settings.data': 'Data',
+    'settings.payTypes': 'Payment types',
+    'settings.cafeName': 'Café name',
+    'settings.cafeNamePh': 'e.g.: Cozy Café',
+    'settings.currency': 'Currency',
+    'settings.threshold': 'Revenue threshold for staff %',
+    'settings.thresholdHint': 'If daily revenue exceeds this — staff with % get bonus from total daily revenue',
+    'settings.scheduleTx': 'Generate transactions from work schedule',
+    'settings.scheduleTxHint': 'Button "Generate payouts" on Schedule page creates salary transactions by hours and rate',
+    'settings.export': '📤 Export JSON',
+    'settings.import': '📥 Import JSON',
+    'settings.payTypesHint': 'These types appear when accruing payouts. Default ones cannot be deleted.',
+    'settings.newPayType': 'Title',
+    'settings.signExpense': '− expense',
+    'settings.signIncome': '+ income',
+    'banquet.new': 'New banquet',
+    'banquet.edit': 'Edit banquet',
+    'banquet.amount': 'Banquet amount',
+    'banquet.percent': 'Percent (%)',
+    'banquet.note': 'Note',
+    'banquet.notePh': 'e.g.: Anniversary',
+    'banquet.extra': 'Extra items (income/expense)',
+    'banquet.empty': 'No items. You can add: "Bottle opening", "Tableware rent", "Tips" etc.',
+    'banquet.hint': 'Bonus is split among everyone who worked that day (by schedule). Shares can be edited manually.',
+    'banquet.title': 'Title',
+    'banquet.qty': 'Qty',
+    'banquet.price': 'Price/ea',
+    'banquet.itemTotal': 'Total',
+    'banquet.noFor': 'No banquets for',
+    'user.new': 'New user',
+    'user.edit': 'Edit user',
+    'user.username': 'Login (a-z, 0-9, _)',
+    'user.displayName': 'Display name',
+    'user.usernamePh': 'ivan',
+    'user.displayNamePh': 'John Doe',
+    'user.role': 'Role',
+    'user.roleUser': 'Staff — limited rights',
+    'user.roleAdmin': 'Admin — full access',
+    'user.password': 'Password',
+    'user.repeat': 'Repeat password',
+    'user.passPh': 'min 4 chars',
+    'user.repeatPh': 'repeat password',
+    'user.perms': 'Page access rights',
+    'user.permNone': '🚫 No access',
+    'user.permView': '👁 View only',
+    'user.permEdit': '✎ Full access',
+    'emp.new': 'New employee',
+    'emp.edit': 'Edit employee',
+    'emp.fullName': 'Full name',
+    'emp.role': 'Position',
+    'emp.type': 'Staff type',
+    'emp.salary': 'Salary',
+    'emp.hourly': 'Rate/hour',
+    'emp.tab': 'Staff #',
+    'emp.tabPh': 'e.g.: 001',
+    'emp.percent': 'Revenue percent (%)',
+    'emp.phone': 'Phone',
+    'emp.startDate': 'Start date',
+    'emp.status': 'Status',
+    'emp.hideSchedule': 'Hide in work schedule',
+    'emp.hideMonthly': 'Hide in monthly reports',
+    'emp.notSpecified': '— not specified —',
+    'emp.notProvided': '— not specified —',
+    'emp.hideScheduleHint': 'For staff who don\'t need to log hours (purchaser, admin, etc.)',
+    'emp.hideMonthlyHint': 'Employee will not appear in the "By Employee" section',
+    'ph.note': 'Note',
+    'tx.modalTitle': 'Transaction',
+    'tx.edit': 'Edit transaction',
+    'tx.empOpt': 'Employee (if applicable)',
+    'pos.new': 'New position',
+    'pos.edit': 'Edit position',
+    'pos.namePh': 'e.g.: Barista',
+    'pos.hideSchedule': 'Hide in work schedule',
+    'pos.hideHint': 'Positions that don\'t need to log hours',
+    'pos.hiddenBadge': 'Hidden in schedule',
+    'sal.new': 'Accrue payout',
+    'sal.edit': 'Edit payout',
+    'sch.new': 'Add shift',
+    'sch.edit': 'Edit shift',
+    'sch.hours': 'Hours',
+    'sch.rate': 'Rate/hour (empty = from profile)',
+    'sch.ratePh': 'from profile',
+    'sch.totalRow': 'Total',
+    'sch.totalHours': 'Total hours',
+    'sch.totalSum': 'Total sum',
+    'srep.salaryAcc': 'Salary accrued',
+    'srep.advances': 'Advances',
+    'srep.bonuses': 'Bonuses',
+    'srep.fines': 'Fines',
+    'srep.payoutTotal': 'Payout total',
+    'srep.combo': 'Combining',
+    'srep.positions': 'positions',
+    'srep.ofRevenue': 'of revenue',
+    'srp.title': 'Print salary report',
+    'srp.hint': 'Choose whose pay slips to print. Each employee on a separate A4 sheet.',
+    'srp.selAll': 'Select all',
+    'srp.deselAll': 'Deselect all',
+    'srp.printIt': '🖨 Print',
+    'ms.title': 'Accrue salaries',
+    'ms.hint': 'Choose who to accrue and verify amounts. You can override the amount for a specific employee (e.g. partial rate).',
+    'ms.reset': '↺ Reset amounts',
+    'ms.confirm': '💵 Accrue selected',
+    'drp.clear': 'Clear',
+    'drp.apply': 'Apply',
+    'sb.title': '⚠️ Session ended',
+    'sb.text': 'Someone logged in with this account from another device or browser. You have been automatically logged out.',
+    'sb.again': 'Log in again',
+    'detail.incomeByCat': '📈 Income by category',
+    'detail.expenseByCat': '📉 Expenses by category',
+    'detail.empAccruals': '👥 Accruals by employee',
+    'detail.byEmployees': '👥 By employees',
+    'detail.allOps': '📋 All operations of the day',
+    'detail.topDays': '📅 Top days',
+    'detail.noData': 'No data',
+    'col.salaryShort': 'Salary',
+    'col.advanceShort': 'Advance',
+    'col.bonusShort': 'Bonus',
+    'col.fineShort': 'Fine',
+    'col.payoutShort': 'Payout',
+    'mon.short.0':'Jan','mon.short.1':'Feb','mon.short.2':'Mar','mon.short.3':'Apr',
+    'mon.short.4':'May','mon.short.5':'Jun','mon.short.6':'Jul','mon.short.7':'Aug',
+    'mon.short.8':'Sep','mon.short.9':'Oct','mon.short.10':'Nov','mon.short.11':'Dec',
+    'mon.full.0':'January','mon.full.1':'February','mon.full.2':'March','mon.full.3':'April',
+    'mon.full.4':'May','mon.full.5':'June','mon.full.6':'July','mon.full.7':'August',
+    'mon.full.8':'September','mon.full.9':'October','mon.full.10':'November','mon.full.11':'December',
+    'wd.0':'Sun','wd.1':'Mon','wd.2':'Tue','wd.3':'Wed','wd.4':'Thu','wd.5':'Fri','wd.6':'Sat',
+    'misc.allDates': '📅 All dates',
   },
 };
 let _lang = 'ru';
@@ -4147,15 +4825,34 @@ function applyLanguage(lang) {
   _lang = lang;
   localStorage.setItem('cb_lang', lang);
   document.documentElement.setAttribute('lang', lang);
-  // применить ко всем data-i18n
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.dataset.i18n;
-    el.textContent = t(key);
+    el.textContent = t(el.dataset.i18n);
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.dataset.i18nTitle);
+  });
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.lang === lang));
+  // перерендерить активную страницу — обновятся динамические тексты
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const id = activePage.id.replace('page-', '');
+    try {
+      if (id === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
+      else if (id === 'transactions' && typeof renderTransactions === 'function') renderTransactions();
+      else if (id === 'daily' && typeof renderDaily === 'function') renderDaily();
+      else if (id === 'monthly' && typeof renderMonthly === 'function') renderMonthly();
+      else if (id === 'positions' && typeof renderPositions === 'function') renderPositions();
+      else if (id === 'employees' && typeof renderEmployees === 'function') renderEmployees();
+      else if (id === 'salary' && typeof renderSalary === 'function') renderSalary();
+      else if (id === 'salary-report' && typeof renderSalaryReport === 'function') renderSalaryReport();
+      else if (id === 'schedule' && typeof renderSchedule === 'function') renderSchedule();
+      else if (id === 'banquets' && typeof renderBanquets === 'function') renderBanquets();
+      else if (id === 'users' && typeof renderUsers === 'function') renderUsers();
+    } catch {}
+  }
 }
 
 function toggleSidebarCollapse() {
