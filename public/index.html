@@ -454,20 +454,21 @@
     <span id="cafeNameSub" data-i18n="login.title">Управление кафе</span>
   </div>
   <nav class="sidebar-nav">
-    <div class="nav-group-label">Обзор</div>
+    <div class="nav-group-label" data-i18n="nav.overview">Обзор</div>
     <div class="nav-item active" data-page="dashboard" onclick="nav(this)"><span class="icon">📊</span> Дашборд</div>
-    <div class="nav-group-label">Финансы</div>
+    <div class="nav-group-label" data-i18n="nav.finance">Финансы</div>
     <div class="nav-item" data-page="transactions" onclick="nav(this)"><span class="icon">💳</span> Транзакции</div>
+    <div class="nav-item" data-page="banquets" onclick="nav(this)"><span class="icon">🎉</span> Банкеты</div>
+    <div class="nav-group-label" data-i18n="nav.reports">Отчёты</div>
     <div class="nav-item" data-page="daily" onclick="nav(this)"><span class="icon">📅</span> Дневные отчёты</div>
     <div class="nav-item" data-page="monthly" onclick="nav(this)"><span class="icon">📆</span> Месячные отчёты</div>
-    <div class="nav-group-label">Персонал</div>
+    <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
+    <div class="nav-group-label" data-i18n="nav.staff">Персонал</div>
     <div class="nav-item" data-page="positions" onclick="nav(this)"><span class="icon">📌</span> Должности</div>
     <div class="nav-item" data-page="employees" onclick="nav(this)"><span class="icon">👥</span> Сотрудники</div>
-    <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
-    <div class="nav-item" data-page="salary-report" onclick="nav(this)"><span class="icon">📋</span> Отчёт по з/п</div>
     <div class="nav-item" data-page="schedule" onclick="nav(this)"><span class="icon">🗓</span> График</div>
-    <div class="nav-item" data-page="banquets" onclick="nav(this)"><span class="icon">🎉</span> Банкеты</div>
-    <div class="nav-group-label">Система</div>
+    <div class="nav-item" data-page="salary" onclick="nav(this)"><span class="icon">💰</span> Зарплата</div>
+    <div class="nav-group-label" data-i18n="nav.system">Система</div>
     <div class="nav-item admin-only" data-page="users" onclick="nav(this)"><span class="icon">🔐</span> Пользователи</div>
     <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
   </nav>
@@ -4403,6 +4404,7 @@ const I18N = {
     // sidebar groups
     'nav.overview': 'Обзор',
     'nav.finance': 'Финансы',
+    'nav.reports': 'Отчёты',
     'nav.staff': 'Персонал',
     'nav.system': 'Система',
     // nav items
@@ -4774,6 +4776,7 @@ const I18N = {
   uk: {
     'nav.overview': 'Огляд',
     'nav.finance': 'Фінанси',
+    'nav.reports': 'Звіти',
     'nav.staff': 'Персонал',
     'nav.system': 'Система',
     'nav.dashboard': 'Дашборд',
@@ -5117,6 +5120,7 @@ const I18N = {
   en: {
     'nav.overview': 'Overview',
     'nav.finance': 'Finance',
+    'nav.reports': 'Reports',
     'nav.staff': 'Staff',
     'nav.system': 'System',
     'nav.dashboard': 'Dashboard',
