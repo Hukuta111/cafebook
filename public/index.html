@@ -796,6 +796,19 @@
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
+        <div class="table-title" style="margin-bottom:6px;" data-i18n="settings.txCats">Категории транзакций</div>
+        <div style="color:var(--text3);font-size:12px;margin-bottom:14px;" data-i18n="settings.txCatsHint">
+          Категории, доступные при создании транзакции. Стандартные нельзя удалить.
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="txCatTypeTabs"></div>
+        <div id="txCatsList"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+          <input type="text" id="newTxCatName" data-i18n-placeholder="settings.newTxCat" placeholder="Название категории" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')addTxCat()">
+          <button class="btn btn-primary btn-sm" onclick="addTxCat()" data-i18n="common.add">Добавить</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.data">Данные</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="exportData()" data-i18n="settings.export">📤 Экспорт JSON</button>
@@ -1117,13 +1130,44 @@ const API = {
 // ═══════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════
-const TX_CATS = {
+const BUILTIN_TX_CATS = {
   income: ['Выручка кассы','Доставка','Кейтеринг','Прочий доход'],
   expense: ['Продукты','Напитки','Аренда','Коммунальные','Упаковка','Реклама','Оборудование','Прочий расход'],
-  salary: ['Основная з/п'], advance: ['Аванс'],
+  salary: ['Основная з/п'],
+  advance: ['Аванс'],
   bonus: ['Бонус за план','Праздничный бонус','Прочий бонус'],
   fine: ['Нарушение','Недостача','Опоздание','Прочее'],
 };
+// Кастомные пользовательские категории (грузятся из settings.txCategories)
+let _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] };
+
+// Полный список названий категорий для типа (built-in + кастомные)
+function getCategoriesForType(type) {
+  const builtin = BUILTIN_TX_CATS[type] || [];
+  const custom = (_txCats[type] || []).map(c => c.label);
+  // убираем возможные дубликаты по имени, сохраняя порядок (built-in приоритет)
+  const seen = new Set();
+  const out = [];
+  builtin.concat(custom).forEach(name => { if (!seen.has(name)) { seen.add(name); out.push(name); } });
+  return out;
+}
+
+async function loadTxCats() {
+  const s = await API.get('/settings') || {};
+  let parsed = {};
+  try { parsed = JSON.parse(s.txCategories || '{}'); } catch { parsed = {}; }
+  _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] };
+  Object.keys(_txCats).forEach(k => {
+    if (Array.isArray(parsed[k])) _txCats[k] = parsed[k].filter(c => c && c.label);
+  });
+}
+
+async function saveTxCats() {
+  await API.post('/settings', { txCategories: JSON.stringify(_txCats) });
+}
+
+// удобный геттер для совместимости со старым кодом
+const TX_CATS = new Proxy({}, { get: (_, k) => getCategoriesForType(k) });
 // Динамические лейблы — обращаются к словарю
 const TYPE_BADGES = { income:'badge-green', expense:'badge-red', salary:'badge-yellow', advance:'badge-blue', bonus:'badge-purple', fine:'badge-red' };
 const TYPE_LABELS = new Proxy({}, { get: (_, k) => t('tx.' + k) });
@@ -1318,6 +1362,11 @@ async function loadInitialData() {
     _employees = emps || [];
     _positions = positions || [];
     try { _salTypes = JSON.parse((settings && settings.salTypes) || '[]'); } catch { _salTypes = []; }
+    try {
+      const parsed = JSON.parse((settings && settings.txCategories) || '{}');
+      _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] };
+      Object.keys(_txCats).forEach(k => { if (Array.isArray(parsed[k])) _txCats[k] = parsed[k].filter(c=>c&&c.label); });
+    } catch { _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] }; }
     if (settings && settings.cafeName) {
       const sub = document.getElementById('cafeNameSub');
       sub.textContent = settings.cafeName;
@@ -3568,6 +3617,9 @@ async function renderSettings() {
   document.getElementById('settingScheduleTx').checked = s.scheduleTx === 'true';
   await loadSalTypes();
   renderSalTypesList();
+  await loadTxCats();
+  renderTxCatTabs();
+  renderTxCatsList();
   await loadMasterPasswordCard();
 }
 
@@ -3657,6 +3709,97 @@ async function deleteSalType(id) {
   await saveSalTypes();
   renderSalTypesList();
   showToast('Удалено');
+}
+
+// ─── TRANSACTION CATEGORIES (settings) ───────────────────────
+let _txCatActiveType = 'income';
+const TX_CAT_TYPE_ORDER = ['income','expense','salary','advance','bonus','fine'];
+
+function renderTxCatTabs() {
+  const cont = document.getElementById('txCatTypeTabs');
+  if (!cont) return;
+  cont.innerHTML = TX_CAT_TYPE_ORDER.map(type => {
+    const isActive = type === _txCatActiveType;
+    const cls = 'btn btn-sm' + (isActive ? ' btn-primary' : '');
+    return `<button class="${cls}" onclick="selectTxCatType('${type}')">${t('tx.'+type)}</button>`;
+  }).join('');
+}
+
+function selectTxCatType(type) {
+  _txCatActiveType = type;
+  renderTxCatTabs();
+  renderTxCatsList();
+}
+
+function renderTxCatsList() {
+  const list = document.getElementById('txCatsList');
+  if (!list) return;
+  const type = _txCatActiveType;
+  const builtin = BUILTIN_TX_CATS[type] || [];
+  const custom  = _txCats[type] || [];
+
+  const builtinHtml = builtin.map(name => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="flex:1;font-size:13px;color:var(--text)">${name}</span>
+      <span class="badge badge-blue" style="font-size:11px" data-i18n="settings.builtin">встроенная</span>
+      <span style="color:var(--text3);font-size:11px;width:28px;text-align:center">—</span>
+    </div>`).join('');
+
+  const customHtml = custom.map(c => {
+    const safe = (c.label || '').replace(/"/g, '&quot;');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <input type="text" value="${safe}"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text);font-size:13px;outline:none;"
+        onchange="renameTxCat('${c.id}', this.value)">
+      <button class="btn btn-sm btn-danger" onclick="deleteTxCat('${c.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = builtinHtml + customHtml ||
+    `<div style="color:var(--text3);font-size:12px;padding:8px 0;">${t('settings.noTxCats')}</div>`;
+  // обновим placeholder при смене вкладки
+  const ph = document.getElementById('newTxCatName');
+  if (ph) ph.placeholder = t('settings.newTxCat');
+}
+
+async function addTxCat() {
+  const input = document.getElementById('newTxCatName');
+  const name = (input.value || '').trim();
+  if (!name) { showToast(t('settings.txCatEmpty'), true); return; }
+  // запрет на дубликат с built-in или существующим custom
+  const existing = getCategoriesForType(_txCatActiveType);
+  if (existing.some(x => x.toLowerCase() === name.toLowerCase())) {
+    showToast(t('settings.txCatDup'), true); return;
+  }
+  if (!_txCats[_txCatActiveType]) _txCats[_txCatActiveType] = [];
+  _txCats[_txCatActiveType].push({ id: uid(), label: name });
+  await saveTxCats();
+  input.value = '';
+  renderTxCatsList();
+  showToast(t('settings.txCatAdded'));
+}
+
+async function renameTxCat(id, newName) {
+  newName = (newName || '').trim();
+  if (!newName) { showToast(t('settings.txCatEmpty'), true); renderTxCatsList(); return; }
+  // не разрешаем превратить кастомную в дубликат built-in
+  const builtin = BUILTIN_TX_CATS[_txCatActiveType] || [];
+  if (builtin.some(b => b.toLowerCase() === newName.toLowerCase())) {
+    showToast(t('settings.txCatDup'), true); renderTxCatsList(); return;
+  }
+  const cat = (_txCats[_txCatActiveType] || []).find(c => c.id === id);
+  if (!cat) return;
+  cat.label = newName;
+  await saveTxCats();
+  showToast(t('settings.saved'));
+}
+
+async function deleteTxCat(id) {
+  if (!await confirmDialog({ text: t('confirm.delTxCat') })) return;
+  _txCats[_txCatActiveType] = (_txCats[_txCatActiveType] || []).filter(c => c.id !== id);
+  await saveTxCats();
+  renderTxCatsList();
+  showToast(t('settings.deleted'));
 }
 
 async function saveSettings() {
@@ -4430,6 +4573,18 @@ const I18N = {
     'mp.requiredLabel': '🔐 Мастер-пароль (для смены пароля чужому пользователю)',
     'mp.placeholder': 'введите мастер-пароль',
     'mp.required': 'Введите мастер-пароль для подтверждения',
+    // tx categories management
+    'settings.txCats': 'Категории транзакций',
+    'settings.txCatsHint': 'Категории, доступные при создании транзакции. Стандартные нельзя удалить.',
+    'settings.builtin': 'встроенная',
+    'settings.newTxCat': 'Название категории',
+    'settings.txCatEmpty': 'Введите название категории',
+    'settings.txCatDup': 'Такая категория уже есть',
+    'settings.txCatAdded': 'Категория добавлена ✓',
+    'settings.noTxCats': 'Категорий нет',
+    'settings.saved': 'Сохранено ✓',
+    'settings.deleted': 'Удалено',
+    'confirm.delTxCat': 'Удалить эту категорию?',
     // detail blocks (daily/monthly)
     'detail.incomeByCat': '📈 Доходы по категориям',
     'detail.expenseByCat': '📉 Расходы по категориям',
@@ -4756,6 +4911,17 @@ const I18N = {
     'mp.requiredLabel': '🔐 Майстер-пароль (для зміни пароля чужому користувачу)',
     'mp.placeholder': 'введіть майстер-пароль',
     'mp.required': 'Введіть майстер-пароль для підтвердження',
+    'settings.txCats': 'Категорії транзакцій',
+    'settings.txCatsHint': 'Категорії, доступні при створенні транзакції. Стандартні видалити не можна.',
+    'settings.builtin': 'вбудована',
+    'settings.newTxCat': 'Назва категорії',
+    'settings.txCatEmpty': 'Введіть назву категорії',
+    'settings.txCatDup': 'Така категорія вже існує',
+    'settings.txCatAdded': 'Категорію додано ✓',
+    'settings.noTxCats': 'Категорій немає',
+    'settings.saved': 'Збережено ✓',
+    'settings.deleted': 'Видалено',
+    'confirm.delTxCat': 'Видалити цю категорію?',
     'detail.incomeByCat': '📈 Доходи по категоріях',
     'detail.expenseByCat': '📉 Витрати по категоріях',
     'detail.empAccruals': '👥 Нарахування по співробітниках',
@@ -5079,6 +5245,17 @@ const I18N = {
     'mp.requiredLabel': '🔐 Master password (required to change another user\'s password)',
     'mp.placeholder': 'enter master password',
     'mp.required': 'Enter master password to confirm',
+    'settings.txCats': 'Transaction categories',
+    'settings.txCatsHint': 'Categories shown when creating a transaction. Built-in ones cannot be deleted.',
+    'settings.builtin': 'built-in',
+    'settings.newTxCat': 'Category name',
+    'settings.txCatEmpty': 'Enter category name',
+    'settings.txCatDup': 'This category already exists',
+    'settings.txCatAdded': 'Category added ✓',
+    'settings.noTxCats': 'No categories',
+    'settings.saved': 'Saved ✓',
+    'settings.deleted': 'Deleted',
+    'confirm.delTxCat': 'Delete this category?',
     'detail.incomeByCat': '📈 Income by category',
     'detail.expenseByCat': '📉 Expenses by category',
     'detail.empAccruals': '👥 Accruals by employee',
