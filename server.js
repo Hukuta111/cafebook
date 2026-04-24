@@ -352,7 +352,7 @@ app.post('/api/users', authMiddleware, adminOnly, (req, res) => {
 });
 
 app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
-  const { displayName, role, newPassword, permissions } = req.body;
+  const { displayName, role, newPassword, permissions, masterPassword } = req.body;
   const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
@@ -371,6 +371,13 @@ app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
   if (patch.role === 'admin') patch.permissions = null;
   if (newPassword) {
     if (newPassword.length < 4) return res.status(400).json({ error: 'Пароль слишком короткий' });
+    // защита: если меняем пароль ЧУЖОМУ — требуем мастер-пароль (если он настроен)
+    const isOtherUser = String(user.id) !== String(req.user.id);
+    if (isOtherUser && getMasterPasswordHash()) {
+      if (!verifyMasterPassword(masterPassword)) {
+        return res.status(403).json({ error: 'Неверный мастер-пароль', needMaster: true });
+      }
+    }
     patch.password_hash = bcrypt.hashSync(newPassword, 10);
     patch.session_id = null;
   }
@@ -600,17 +607,66 @@ app.delete('/api/transactions/:id', authMiddleware, (req, res) => {
 });
 
 // ─── SETTINGS ──────────────────────────────────────────────
+// настройки которые НЕ должны попадать в клиент
+const PROTECTED_SETTING_KEYS = new Set(['masterPasswordHash']);
+
 app.get('/api/settings', authMiddleware, (req, res) => {
   const rows = db.exec('SELECT key, value FROM settings');
   const obj = {};
-  if (rows[0]) rows[0].values.forEach(([k, v]) => { obj[k] = v; });
+  if (rows[0]) rows[0].values.forEach(([k, v]) => {
+    if (!PROTECTED_SETTING_KEYS.has(k)) obj[k] = v;
+  });
   res.json(obj);
 });
 app.post('/api/settings', authMiddleware, (req, res) => {
   const body = req.body;
   Object.entries(body).forEach(([key, value]) => {
+    if (PROTECTED_SETTING_KEYS.has(key)) return; // не позволяем перезаписать через общий endpoint
     db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [key, value ?? '']);
   });
+  saveDb();
+  res.json({ ok: true });
+});
+
+// ─── MASTER PASSWORD ───────────────────────────────────────
+function getMasterPasswordHash() {
+  const r = db.exec('SELECT value FROM settings WHERE key=?', ['masterPasswordHash']);
+  return (r[0] && r[0].values[0] && r[0].values[0][0]) || '';
+}
+
+function verifyMasterPassword(plain) {
+  const hash = getMasterPasswordHash();
+  if (!hash) return false;
+  try { return bcrypt.compareSync(String(plain || ''), hash); } catch { return false; }
+}
+
+// статус: установлен ли мастер-пароль (для UI)
+app.get('/api/master-password/status', authMiddleware, adminOnly, (req, res) => {
+  res.json({ isSet: !!getMasterPasswordHash() });
+});
+
+// установить или сменить мастер-пароль
+// если уже установлен — нужен currentMaster
+// также требуется текущий пароль самого админа (adminPassword) — защита от чужого устройства
+app.post('/api/master-password/set', authMiddleware, adminOnly, (req, res) => {
+  const { currentMaster, newMaster, adminPassword } = req.body || {};
+  if (!newMaster || String(newMaster).length < 4) {
+    return res.status(400).json({ error: 'Мастер-пароль должен быть не короче 4 символов' });
+  }
+  // подтверждение паролем самого админа
+  const me = dbGetUserById(req.user.id);
+  if (!me) return res.status(401).json({ error: 'Сессия недействительна' });
+  if (!adminPassword || !bcrypt.compareSync(String(adminPassword), me.password_hash)) {
+    return res.status(403).json({ error: 'Неверный пароль администратора' });
+  }
+  // если уже установлен — проверить старый
+  if (getMasterPasswordHash()) {
+    if (!verifyMasterPassword(currentMaster)) {
+      return res.status(403).json({ error: 'Неверный текущий мастер-пароль' });
+    }
+  }
+  db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)',
+    ['masterPasswordHash', bcrypt.hashSync(String(newMaster), 10)]);
   saveDb();
   res.json({ ok: true });
 });

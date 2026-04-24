@@ -759,6 +759,27 @@
         <button class="btn btn-primary" onclick="changePassword()" data-i18n="settings.changePass">Сменить пароль</button>
       </div>
 
+      <div class="table-wrap" id="masterPasswordCard" style="padding:24px;margin-top:16px;display:none;">
+        <div class="table-title" style="margin-bottom:6px;" data-i18n="mp.title">🔐 Мастер-пароль</div>
+        <div style="color:var(--text3);font-size:12px;margin-bottom:14px;" data-i18n="mp.hint">
+          Требуется при смене пароля другому пользователю. Знают только доверенные администраторы.
+        </div>
+        <div id="mpStatus" style="font-size:12px;margin-bottom:10px;"></div>
+        <div id="mpCurrentRow" class="form-row" style="display:none;">
+          <label data-i18n="mp.current">Текущий мастер-пароль</label>
+          <input type="password" id="mpCurrent" autocomplete="off">
+        </div>
+        <div class="form-2col">
+          <div class="form-row"><label data-i18n="mp.new">Новый мастер-пароль</label><input type="password" id="mpNew" autocomplete="new-password"></div>
+          <div class="form-row"><label data-i18n="mp.repeat">Повтор</label><input type="password" id="mpNew2" autocomplete="new-password"></div>
+        </div>
+        <div class="form-row">
+          <label data-i18n="mp.adminPass">Подтвердите своим текущим паролем</label>
+          <input type="password" id="mpAdminPass" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" onclick="saveMasterPassword()" data-i18n="mp.save">Сохранить мастер-пароль</button>
+      </div>
+
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.payTypes">Типы выплат</div>
@@ -1017,8 +1038,12 @@
       </select>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа"></div>
+      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа" oninput="updateMasterPassRow()"></div>
       <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль"></div>
+    </div>
+    <div class="form-row" id="uMasterRow" style="display:none;background:rgba(231,158,72,0.06);border:1px solid rgba(231,158,72,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
+      <label style="color:var(--accent);" data-i18n="mp.requiredLabel">🔐 Мастер-пароль (для смены пароля чужому пользователю)</label>
+      <input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль">
     </div>
     <div id="uPermsBlock" class="form-row">
       <label data-i18n="user.perms">Права доступа к страницам</label>
@@ -3543,6 +3568,7 @@ async function renderSettings() {
   document.getElementById('settingScheduleTx').checked = s.scheduleTx === 'true';
   await loadSalTypes();
   renderSalTypesList();
+  await loadMasterPasswordCard();
 }
 
 // ═══════════════════════════════════════════
@@ -3806,12 +3832,16 @@ function openUserModal(user) {
   document.getElementById('uRole').value = user ? user.role : 'user';
   document.getElementById('uPassword').value = '';
   document.getElementById('uPassword2').value = '';
+  document.getElementById('uMasterPassword').value = '';
+  document.getElementById('uMasterRow').style.display = 'none';
   document.getElementById('uPassLabel').textContent = user
-    ? 'Новый пароль (оставьте пустым, чтобы не менять)'
-    : 'Пароль';
+    ? t('user.passwordEdit')
+    : t('user.password');
 
   renderPermissionsUI(user ? (user.permissions || defaultPermissions()) : defaultPermissions());
   toggleUserPermsUI();
+  // подгрузим статус мастер-пароля для подсказки
+  refreshMasterPasswordStatus();
   openModal('userModal');
 }
 
@@ -3864,6 +3894,28 @@ function toggleUserPermsUI() {
   document.getElementById('uPermsBlock').style.display = role === 'admin' ? 'none' : '';
 }
 
+// показать/скрыть поле мастер-пароля в модалке: только если редактируем
+// чужого пользователя, ввели пароль и мастер-пароль настроен на сервере
+let _masterPasswordIsSet = false;
+function updateMasterPassRow() {
+  const editId = document.getElementById('uEditId').value;
+  const password = document.getElementById('uPassword').value;
+  const myUsername = sessionStorage.getItem('cb_user') || '';
+  const editingUsername = document.getElementById('uUsername').value;
+  const isEditingOther = !!editId && editingUsername && editingUsername !== myUsername;
+  const need = isEditingOther && !!password && _masterPasswordIsSet;
+  document.getElementById('uMasterRow').style.display = need ? '' : 'none';
+  if (!need) document.getElementById('uMasterPassword').value = '';
+}
+
+async function refreshMasterPasswordStatus() {
+  if (_userRole !== 'admin') return;
+  try {
+    const r = await API.get('/master-password/status');
+    _masterPasswordIsSet = !!(r && r.isSet);
+  } catch { _masterPasswordIsSet = false; }
+}
+
 async function saveUser() {
   const editId = document.getElementById('uEditId').value;
   const username = document.getElementById('uUsername').value.trim();
@@ -3871,16 +3923,25 @@ async function saveUser() {
   const role = document.getElementById('uRole').value;
   const password = document.getElementById('uPassword').value;
   const password2 = document.getElementById('uPassword2').value;
+  const masterPassword = document.getElementById('uMasterPassword').value;
   const permissions = role === 'admin' ? null : collectPermissionsFromUI();
 
   if (!editId && !username) { showToast('Введите логин', true); return; }
   if (!editId && !password) { showToast('Введите пароль', true); return; }
   if (password && password !== password2) { showToast('Пароли не совпадают', true); return; }
 
+  // если поле мастер-пароля видно — оно обязательно
+  const masterRowVisible = document.getElementById('uMasterRow').style.display !== 'none';
+  if (masterRowVisible && !masterPassword) {
+    showToast(t('mp.required'), true);
+    return;
+  }
+
   let res;
   if (editId) {
     const body = { displayName, role, permissions };
     if (password) body.newPassword = password;
+    if (masterPassword) body.masterPassword = masterPassword;
     res = await API.put('/users/' + editId, body);
   } else {
     res = await API.post('/users', { username, displayName, password, role, permissions });
@@ -3890,6 +3951,49 @@ async function saveUser() {
     closeModal('userModal');
     renderUsers();
     showToast(editId ? 'Пользователь обновлён ✓' : 'Пользователь создан ✓');
+  } else if (res) {
+    if (res.needMaster) {
+      // сервер сказал что нужен/неверен мастер-пароль — обновим статус и покажем поле
+      _masterPasswordIsSet = true;
+      updateMasterPassRow();
+    }
+    showToast(res.error || 'Ошибка', true);
+  }
+}
+
+// настройка мастер-пароля
+async function loadMasterPasswordCard() {
+  if (_userRole !== 'admin') {
+    document.getElementById('masterPasswordCard').style.display = 'none';
+    return;
+  }
+  document.getElementById('masterPasswordCard').style.display = '';
+  await refreshMasterPasswordStatus();
+  const status = document.getElementById('mpStatus');
+  document.getElementById('mpCurrentRow').style.display = _masterPasswordIsSet ? '' : 'none';
+  if (_masterPasswordIsSet) {
+    status.innerHTML = '<span style="color:var(--green)">● ' + t('mp.statusSet') + '</span>';
+  } else {
+    status.innerHTML = '<span style="color:var(--text3)">○ ' + t('mp.statusNotSet') + '</span>';
+  }
+}
+
+async function saveMasterPassword() {
+  const currentMaster = document.getElementById('mpCurrent').value;
+  const newMaster = document.getElementById('mpNew').value;
+  const newMaster2 = document.getElementById('mpNew2').value;
+  const adminPassword = document.getElementById('mpAdminPass').value;
+  if (!newMaster || newMaster.length < 4) { showToast(t('mp.tooShort'), true); return; }
+  if (newMaster !== newMaster2) { showToast(t('mp.mismatch'), true); return; }
+  if (!adminPassword) { showToast(t('mp.adminPassRequired'), true); return; }
+  const res = await API.post('/master-password/set', { currentMaster, newMaster, adminPassword });
+  if (res && res.ok) {
+    document.getElementById('mpCurrent').value = '';
+    document.getElementById('mpNew').value = '';
+    document.getElementById('mpNew2').value = '';
+    document.getElementById('mpAdminPass').value = '';
+    await loadMasterPasswordCard();
+    showToast(t('mp.saved'));
   } else if (res) {
     showToast(res.error || 'Ошибка', true);
   }
@@ -4308,6 +4412,24 @@ const I18N = {
     'confirm.delSal': 'Удалить эту выплату?',
     'confirm.delPayType': 'Удалить этот тип выплат?',
     'confirm.delUser': 'Удалить пользователя «{name}»?',
+    'user.passwordEdit': 'Новый пароль (оставьте пустым, чтобы не менять)',
+    // master password
+    'mp.title': '🔐 Мастер-пароль',
+    'mp.hint': 'Требуется при смене пароля другому пользователю. Знают только доверенные администраторы.',
+    'mp.statusSet': 'Мастер-пароль установлен',
+    'mp.statusNotSet': 'Мастер-пароль не задан',
+    'mp.current': 'Текущий мастер-пароль',
+    'mp.new': 'Новый мастер-пароль',
+    'mp.repeat': 'Повтор',
+    'mp.adminPass': 'Подтвердите своим текущим паролем',
+    'mp.save': 'Сохранить мастер-пароль',
+    'mp.tooShort': 'Мастер-пароль должен быть не короче 4 символов',
+    'mp.mismatch': 'Мастер-пароли не совпадают',
+    'mp.adminPassRequired': 'Введите свой текущий пароль',
+    'mp.saved': 'Мастер-пароль сохранён ✓',
+    'mp.requiredLabel': '🔐 Мастер-пароль (для смены пароля чужому пользователю)',
+    'mp.placeholder': 'введите мастер-пароль',
+    'mp.required': 'Введите мастер-пароль для подтверждения',
     // detail blocks (daily/monthly)
     'detail.incomeByCat': '📈 Доходы по категориям',
     'detail.expenseByCat': '📉 Расходы по категориям',
@@ -4617,6 +4739,23 @@ const I18N = {
     'confirm.delSal': 'Видалити цю виплату?',
     'confirm.delPayType': 'Видалити цей тип виплат?',
     'confirm.delUser': 'Видалити користувача «{name}»?',
+    'user.passwordEdit': 'Новий пароль (залиште порожнім, щоб не змінювати)',
+    'mp.title': '🔐 Майстер-пароль',
+    'mp.hint': 'Потрібен при зміні пароля іншому користувачу. Знають тільки довірені адміністратори.',
+    'mp.statusSet': 'Майстер-пароль встановлено',
+    'mp.statusNotSet': 'Майстер-пароль не задано',
+    'mp.current': 'Поточний майстер-пароль',
+    'mp.new': 'Новий майстер-пароль',
+    'mp.repeat': 'Повтор',
+    'mp.adminPass': 'Підтвердьте своїм поточним паролем',
+    'mp.save': 'Зберегти майстер-пароль',
+    'mp.tooShort': 'Майстер-пароль має бути не коротшим за 4 символи',
+    'mp.mismatch': 'Майстер-паролі не збігаються',
+    'mp.adminPassRequired': 'Введіть свій поточний пароль',
+    'mp.saved': 'Майстер-пароль збережено ✓',
+    'mp.requiredLabel': '🔐 Майстер-пароль (для зміни пароля чужому користувачу)',
+    'mp.placeholder': 'введіть майстер-пароль',
+    'mp.required': 'Введіть майстер-пароль для підтвердження',
     'detail.incomeByCat': '📈 Доходи по категоріях',
     'detail.expenseByCat': '📉 Витрати по категоріях',
     'detail.empAccruals': '👥 Нарахування по співробітниках',
@@ -4923,6 +5062,23 @@ const I18N = {
     'confirm.delSal': 'Delete this payout?',
     'confirm.delPayType': 'Delete this payout type?',
     'confirm.delUser': 'Delete user "{name}"?',
+    'user.passwordEdit': 'New password (leave empty to keep current)',
+    'mp.title': '🔐 Master password',
+    'mp.hint': 'Required when changing another user\'s password. Known only to trusted administrators.',
+    'mp.statusSet': 'Master password is set',
+    'mp.statusNotSet': 'Master password is not set',
+    'mp.current': 'Current master password',
+    'mp.new': 'New master password',
+    'mp.repeat': 'Repeat',
+    'mp.adminPass': 'Confirm with your current password',
+    'mp.save': 'Save master password',
+    'mp.tooShort': 'Master password must be at least 4 characters',
+    'mp.mismatch': 'Master passwords do not match',
+    'mp.adminPassRequired': 'Enter your current password',
+    'mp.saved': 'Master password saved ✓',
+    'mp.requiredLabel': '🔐 Master password (required to change another user\'s password)',
+    'mp.placeholder': 'enter master password',
+    'mp.required': 'Enter master password to confirm',
     'detail.incomeByCat': '📈 Income by category',
     'detail.expenseByCat': '📉 Expenses by category',
     'detail.empAccruals': '👥 Accruals by employee',
