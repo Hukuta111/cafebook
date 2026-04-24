@@ -3347,14 +3347,14 @@ async function renderSalaryReport() {
             const pay = +s.hours * rate;
             return `<div style="display:grid;grid-template-columns:80px 60px 80px 1fr;gap:8px;align-items:center;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;">
               <span>${dateLabel(s.work_date)}</span>
-              <span style="color:var(--text2)">${s.hours}ч</span>
+              <span style="color:var(--text2)">${s.hours}${t('srep.hourSuffix')}</span>
               <span style="color:var(--text3);font-size:11.5px;">× ${fmt(rate)}</span>
               <span style="color:var(--green);font-weight:600;text-align:right;">= ${fmt(pay)} ${_currency}</span>
             </div>`;
           }).join('');
           shiftsHtml += `<div style="display:grid;grid-template-columns:80px 60px 80px 1fr;gap:8px;font-size:11px;color:var(--text3);padding:4px 10px;border-top:1px dashed var(--border);margin-top:2px;">
-            <span>Смены итого</span>
-            <span>${totalH}ч</span>
+            <span>${t('srep.shiftsTotal')}</span>
+            <span>${totalH}${t('srep.hourSuffix')}</span>
             <span></span>
             <span style="text-align:right">${fmt(totalP)} ${_currency}</span>
           </div>`;
@@ -3365,23 +3365,24 @@ async function renderSalaryReport() {
         if (bonusFineTxs.length) {
           const sorted = bonusFineTxs.slice().sort((a,b) => a.date.localeCompare(b.date));
           bfHtml = '<div style="margin-top:8px;">'
-            + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:4px 10px;">✨ Бонусы / ⚠️ Штрафы</div>'
-            + sorted.map(t => {
-              const isBonus = t.type === 'bonus';
+            + `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:4px 10px;">✨ ${t('srep.bonuses')} / ⚠️ ${t('srep.fines')}</div>`
+            + sorted.map(tx => {
+              const isBonus = tx.type === 'bonus';
               const icon = isBonus ? '✨' : '⚠️';
               const color = isBonus ? 'var(--purple)' : 'var(--red)';
               const sign = isBonus ? '+' : '−';
-              const descr = `${icon} ${isBonus?'Бонус':'Штраф'}${t.cat && t.cat !== (isBonus?'Бонус':'Штраф') ? ' · '+t.cat : ''}${t.note ? ' — '+t.note : ''}`;
+              const baseLabel = isBonus ? t('tx.bonus') : t('tx.fine');
+              const descr = `${icon} ${baseLabel}${tx.cat && tx.cat !== baseLabel ? ' · '+tx.cat : ''}${tx.note ? ' — '+tx.note : ''}`;
               return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;margin-bottom:2px;">
-                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dateLabel(t.date)} · ${descr}</span>
-                <span style="color:${color};font-weight:600;white-space:nowrap;">${sign}${fmt(+t.amount)} ${_currency}</span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dateLabel(tx.date)} · ${descr}</span>
+                <span style="color:${color};font-weight:600;white-space:nowrap;">${sign}${fmt(+tx.amount)} ${_currency}</span>
               </div>`;
             }).join('')
             + '</div>';
         }
 
         return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-          ${shiftsHtml || '<div style="color:var(--text3);font-size:12px;padding:4px 10px;">Нет смен за месяц</div>'}
+          ${shiftsHtml || `<div style="color:var(--text3);font-size:12px;padding:4px 10px;">${t('srep.noShifts')}</div>`}
           ${bfHtml}
         </div>`;
       }
@@ -3435,7 +3436,7 @@ async function renderSalaryReport() {
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <div>
                 <span style="font-weight:600">${role}</span>
-                <span style="color:var(--text3);font-size:12px;margin-left:8px">з/п ${fmt(r.salary)} · аванс ${fmt(r.advance)} · бонус ${fmt(r.bonus)} · штраф ${fmt(r.fine)}</span>
+                <span style="color:var(--text3);font-size:12px;margin-left:8px">${t('col.salaryShort').toLowerCase()} ${fmt(r.salary)} · ${t('col.advanceShort').toLowerCase()} ${fmt(r.advance)} · ${t('col.bonusShort').toLowerCase()} ${fmt(r.bonus)} · ${t('col.fineShort').toLowerCase()} ${fmt(r.fine)}</span>
               </div>
               <div style="font-weight:700;color:${itemNet>=0?'var(--green)':'var(--red)'}">${fmt(itemNet)} ${_currency}</div>
             </div>
@@ -3458,10 +3459,10 @@ async function renderSalaryReport() {
       </div>
       ${rolesBreakdown}
       <div class="salary-breakdown">
-        <div class="salary-item"><div class="salary-item-label">Зарплата</div><div class="salary-item-value" style="color:var(--accent)">${fmt(sum.salary)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Авансы</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(sum.advance)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Бонусы</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(sum.bonus)}</div></div>
-        <div class="salary-item"><div class="salary-item-label">Штрафы</div><div class="salary-item-value" style="color:var(--red)">-${fmt(sum.fine)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">${t('tx.salary')}</div><div class="salary-item-value" style="color:var(--accent)">${fmt(sum.salary)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">${t('srep.advances')}</div><div class="salary-item-value" style="color:var(--blue)">-${fmt(sum.advance)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">${t('srep.bonuses')}</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(sum.bonus)}</div></div>
+        <div class="salary-item"><div class="salary-item-label">${t('srep.fines')}</div><div class="salary-item-value" style="color:var(--red)">-${fmt(sum.fine)}</div></div>
       </div>
     </div>`;
   });
@@ -4197,6 +4198,9 @@ const I18N = {
     'srep.combo': 'Совмещение',
     'srep.positions': 'должностей',
     'srep.ofRevenue': 'от выручки',
+    'srep.noShifts': 'Нет смен за месяц',
+    'srep.shiftsTotal': 'Смены итого',
+    'srep.hourSuffix': 'ч',
     // print salary report modal
     'srp.title': 'Печать отчёта по зарплате',
     'srp.hint': 'Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.',
@@ -4492,6 +4496,9 @@ const I18N = {
     'srep.combo': 'Суміщення',
     'srep.positions': 'посад',
     'srep.ofRevenue': 'від виручки',
+    'srep.noShifts': 'Немає змін за місяць',
+    'srep.shiftsTotal': 'Зміни разом',
+    'srep.hourSuffix': 'г',
     'srp.title': 'Друк звіту по зарплаті',
     'srp.hint': 'Виберіть, чиї розрахункові листи друкувати. Кожен співробітник — на окремому аркуші А4.',
     'srp.selAll': 'Вибрати всіх',
@@ -4782,6 +4789,9 @@ const I18N = {
     'srep.combo': 'Combining',
     'srep.positions': 'positions',
     'srep.ofRevenue': 'of revenue',
+    'srep.noShifts': 'No shifts this month',
+    'srep.shiftsTotal': 'Shifts total',
+    'srep.hourSuffix': 'h',
     'srp.title': 'Print salary report',
     'srp.hint': 'Choose whose pay slips to print. Each employee on a separate A4 sheet.',
     'srp.selAll': 'Select all',
