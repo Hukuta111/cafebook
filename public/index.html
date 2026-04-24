@@ -472,7 +472,7 @@
     <div class="nav-item" data-page="settings" onclick="nav(this)"><span class="icon">⚙️</span> Настройки</div>
   </nav>
   <div class="sidebar-bottom">
-    <div class="user-info" id="userInfo" onclick="doLogout()">👤 <span id="userNameDisplay">—</span> · Выйти</div>
+    <div class="user-info" id="userInfo" onclick="doLogout()">👤 <span id="userNameDisplay">—</span> · <span data-i18n="common.logout">Выйти</span></div>
   </div>
 </aside>
 
@@ -716,17 +716,25 @@
       </div>
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
-        <div class="table-title" style="margin-bottom:16px;">Внешний вид</div>
+        <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.appearance">Внешний вид</div>
         <div class="form-row">
-          <label>Тема оформления</label>
+          <label data-i18n="settings.language">Язык интерфейса</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="btn theme-btn" data-theme="dark" onclick="applyTheme('dark')">🌙 Тёмная</button>
-            <button type="button" class="btn theme-btn" data-theme="light" onclick="applyTheme('light')">☀️ Светлая</button>
-            <button type="button" class="btn theme-btn" data-theme="sepia" onclick="applyTheme('sepia')">📜 Сепия</button>
+            <button type="button" class="btn lang-btn" data-lang="uk" onclick="applyLanguage('uk')">🇺🇦 Українська</button>
+            <button type="button" class="btn lang-btn" data-lang="ru" onclick="applyLanguage('ru')">🇷🇺 Русский</button>
+            <button type="button" class="btn lang-btn" data-lang="en" onclick="applyLanguage('en')">🇬🇧 English</button>
           </div>
         </div>
         <div class="form-row" style="margin-top:14px;">
-          <label>Размер шрифта</label>
+          <label data-i18n="settings.theme">Тема оформления</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn theme-btn" data-theme="dark" onclick="applyTheme('dark')" data-i18n="settings.themeDark">🌙 Тёмная</button>
+            <button type="button" class="btn theme-btn" data-theme="light" onclick="applyTheme('light')" data-i18n="settings.themeLight">☀️ Светлая</button>
+            <button type="button" class="btn theme-btn" data-theme="sepia" onclick="applyTheme('sepia')" data-i18n="settings.themeSepia">📜 Сепия</button>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:14px;">
+          <label data-i18n="settings.fontSize">Размер шрифта</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" class="btn font-btn" data-font="small" onclick="applyFontSize('small')">A−</button>
             <button type="button" class="btn font-btn" data-font="medium" onclick="applyFontSize('medium')">A</button>
@@ -3888,13 +3896,12 @@ function applyFontSize(size) {
   document.querySelectorAll('.font-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.font === size));
 }
 
-// один раз — оборачиваем тексты пунктов меню в span, чтобы можно было их скрывать
+// один раз — оборачиваем тексты пунктов меню в span, чтобы можно было их скрывать и переводить
 function wrapNavLabels() {
   document.querySelectorAll('.sidebar .nav-item').forEach(el => {
     if (el.querySelector('.nav-label')) return;
     const icon = el.querySelector('.icon');
     if (!icon) return;
-    // соберём весь текст после .icon
     let text = '';
     let n = icon.nextSibling;
     const toRemove = [];
@@ -3902,14 +3909,186 @@ function wrapNavLabels() {
     toRemove.forEach(x => x.remove());
     const span = document.createElement('span');
     span.className = 'nav-label';
+    if (el.dataset.page) span.setAttribute('data-i18n', 'nav.' + el.dataset.page);
     span.textContent = text.trim();
     el.appendChild(span);
   });
-  // user-info: текст «👤 admin · Выйти» тоже завернуть
-  document.querySelectorAll('.user-info').forEach(el => {
-    if (el.dataset.wrapped) return;
-    el.dataset.wrapped = '1';
+  // group labels — добавим data-i18n
+  const groupKeys = ['overview','finance','staff','staff','staff','staff','staff','system'];
+  let gi = 0;
+  document.querySelectorAll('.sidebar .nav-group-label').forEach((el, idx) => {
+    if (el.dataset.i18n) return;
+    const txt = (el.textContent || '').trim().toLowerCase();
+    const map = {'обзор':'overview','финансы':'finance','персонал':'staff','система':'system'};
+    if (map[txt]) el.setAttribute('data-i18n', 'nav.' + map[txt]);
   });
+}
+
+// ═══════════════════════════════════════════
+// ЯЗЫК / I18N
+// ═══════════════════════════════════════════
+const I18N = {
+  ru: {
+    // sidebar groups
+    'nav.overview': 'Обзор',
+    'nav.finance': 'Финансы',
+    'nav.staff': 'Персонал',
+    'nav.system': 'Система',
+    // nav items
+    'nav.dashboard': 'Дашборд',
+    'nav.transactions': 'Транзакции',
+    'nav.daily': 'Дневные отчёты',
+    'nav.monthly': 'Месячные отчёты',
+    'nav.positions': 'Должности',
+    'nav.employees': 'Сотрудники',
+    'nav.salary': 'Зарплата',
+    'nav.salary-report': 'Отчёт по з/п',
+    'nav.schedule': 'График',
+    'nav.banquets': 'Банкеты',
+    'nav.users': 'Пользователи',
+    'nav.settings': 'Настройки',
+    // common
+    'common.logout': 'Выйти',
+    'common.save': 'Сохранить',
+    'common.cancel': 'Отмена',
+    'common.add': '+ Добавить',
+    'common.delete': 'Удалить',
+    'common.edit': 'Редактировать',
+    'common.print': '🖨 Печать',
+    // settings
+    'settings.theme': 'Тема оформления',
+    'settings.fontSize': 'Размер шрифта',
+    'settings.language': 'Язык интерфейса',
+    'settings.appearance': 'Внешний вид',
+    'settings.cafe': 'Кафе',
+    'settings.security': 'Безопасность',
+    'settings.data': 'Данные',
+    'settings.themeDark': '🌙 Тёмная',
+    'settings.themeLight': '☀️ Светлая',
+    'settings.themeSepia': '📜 Сепия',
+    'settings.cafeName': 'Название кафе',
+    'settings.currency': 'Валюта',
+    'settings.oldPass': 'Текущий пароль',
+    'settings.newPass': 'Новый пароль',
+    'settings.repeatPass': 'Повтор пароля',
+    'settings.changePass': 'Сменить пароль',
+    // login
+    'login.title': 'Управление кафе',
+    'login.user': 'Логин',
+    'login.pass': 'Пароль',
+    'login.submit': 'Войти →',
+  },
+  uk: {
+    'nav.overview': 'Огляд',
+    'nav.finance': 'Фінанси',
+    'nav.staff': 'Персонал',
+    'nav.system': 'Система',
+    'nav.dashboard': 'Дашборд',
+    'nav.transactions': 'Транзакції',
+    'nav.daily': 'Денні звіти',
+    'nav.monthly': 'Місячні звіти',
+    'nav.positions': 'Посади',
+    'nav.employees': 'Співробітники',
+    'nav.salary': 'Зарплата',
+    'nav.salary-report': 'Звіт по з/п',
+    'nav.schedule': 'Графік',
+    'nav.banquets': 'Банкети',
+    'nav.users': 'Користувачі',
+    'nav.settings': 'Налаштування',
+    'common.logout': 'Вийти',
+    'common.save': 'Зберегти',
+    'common.cancel': 'Скасувати',
+    'common.add': '+ Додати',
+    'common.delete': 'Видалити',
+    'common.edit': 'Редагувати',
+    'common.print': '🖨 Друк',
+    'settings.theme': 'Тема оформлення',
+    'settings.fontSize': 'Розмір шрифту',
+    'settings.language': 'Мова інтерфейсу',
+    'settings.appearance': 'Зовнішній вигляд',
+    'settings.cafe': 'Кафе',
+    'settings.security': 'Безпека',
+    'settings.data': 'Дані',
+    'settings.themeDark': '🌙 Темна',
+    'settings.themeLight': '☀️ Світла',
+    'settings.themeSepia': '📜 Сепія',
+    'settings.cafeName': 'Назва кафе',
+    'settings.currency': 'Валюта',
+    'settings.oldPass': 'Поточний пароль',
+    'settings.newPass': 'Новий пароль',
+    'settings.repeatPass': 'Повтор пароля',
+    'settings.changePass': 'Змінити пароль',
+    'login.title': 'Управління кафе',
+    'login.user': 'Логін',
+    'login.pass': 'Пароль',
+    'login.submit': 'Увійти →',
+  },
+  en: {
+    'nav.overview': 'Overview',
+    'nav.finance': 'Finance',
+    'nav.staff': 'Staff',
+    'nav.system': 'System',
+    'nav.dashboard': 'Dashboard',
+    'nav.transactions': 'Transactions',
+    'nav.daily': 'Daily reports',
+    'nav.monthly': 'Monthly reports',
+    'nav.positions': 'Positions',
+    'nav.employees': 'Employees',
+    'nav.salary': 'Salary',
+    'nav.salary-report': 'Salary report',
+    'nav.schedule': 'Schedule',
+    'nav.banquets': 'Banquets',
+    'nav.users': 'Users',
+    'nav.settings': 'Settings',
+    'common.logout': 'Logout',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.add': '+ Add',
+    'common.delete': 'Delete',
+    'common.edit': 'Edit',
+    'common.print': '🖨 Print',
+    'settings.theme': 'Theme',
+    'settings.fontSize': 'Font size',
+    'settings.language': 'Language',
+    'settings.appearance': 'Appearance',
+    'settings.cafe': 'Café',
+    'settings.security': 'Security',
+    'settings.data': 'Data',
+    'settings.themeDark': '🌙 Dark',
+    'settings.themeLight': '☀️ Light',
+    'settings.themeSepia': '📜 Sepia',
+    'settings.cafeName': 'Café name',
+    'settings.currency': 'Currency',
+    'settings.oldPass': 'Current password',
+    'settings.newPass': 'New password',
+    'settings.repeatPass': 'Repeat password',
+    'settings.changePass': 'Change password',
+    'login.title': 'Café management',
+    'login.user': 'Username',
+    'login.pass': 'Password',
+    'login.submit': 'Sign in →',
+  },
+};
+let _lang = 'ru';
+
+function t(key) {
+  return (I18N[_lang] && I18N[_lang][key]) || I18N.ru[key] || key;
+}
+
+function applyLanguage(lang) {
+  if (!I18N[lang]) lang = 'ru';
+  _lang = lang;
+  localStorage.setItem('cb_lang', lang);
+  document.documentElement.setAttribute('lang', lang);
+  // применить ко всем data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    el.textContent = t(key);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.lang === lang));
 }
 
 function toggleSidebarCollapse() {
@@ -3927,8 +4106,11 @@ function toggleSidebarCollapse() {
   if (localStorage.getItem('cb_sidebar_collapsed') === '1') {
     document.body.classList.add('sidebar-collapsed');
   }
+  // язык
+  _lang = localStorage.getItem('cb_lang') || 'ru';
+  document.documentElement.setAttribute('lang', _lang);
   // обернуть тексты пунктов меню для нормальной работы свёрнутого режима
-  setTimeout(wrapNavLabels, 0);
+  setTimeout(() => { wrapNavLabels(); applyLanguage(_lang); }, 0);
   // обновить состояние кнопок когда DOM готов
   setTimeout(() => {
     document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.theme === theme));
