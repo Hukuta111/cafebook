@@ -4839,6 +4839,21 @@ function applyLanguage(lang) {
     el.title = t(el.dataset.i18nTitle);
   });
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('btn-primary', b.dataset.lang === lang));
+  // обновить все month picker'ы (метки и сетки месяцев)
+  if (typeof _monthPickers === 'object') {
+    Object.keys(_monthPickers).forEach(id => {
+      const p = _monthPickers[id];
+      const lbl = document.getElementById(id + '_label');
+      if (lbl) lbl.textContent = monthLabel(p.value);
+      try { mpRenderGrid(id); } catch {}
+    });
+  }
+  // обновить все date range picker'ы (если они хранятся)
+  if (typeof _dateRangePickers === 'object') {
+    Object.keys(_dateRangePickers).forEach(id => {
+      try { drpUpdateLabel(id); } catch {}
+    });
+  }
   // перерендерить активную страницу — обновятся динамические тексты
   const activePage = document.querySelector('.page.active');
   if (activePage) {
