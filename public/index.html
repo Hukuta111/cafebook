@@ -451,7 +451,7 @@
   <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Свернуть/развернуть меню">‹</button>
   <div class="sidebar-logo">
     <h1>CaféBook</h1>
-    <span id="cafeNameSub">Управление кафе</span>
+    <span id="cafeNameSub" data-i18n="login.title">Управление кафе</span>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group-label">Обзор</div>
@@ -486,8 +486,8 @@
     </div>
     <div class="cards-row" id="dashCards"></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Доходы / Расходы по дням</h3><div class="bar-chart" id="barChart"></div></div>
-      <div class="chart-card"><h3>Структура расходов</h3><div id="expenseBreakdown"></div></div>
+      <div class="chart-card"><h3 data-i18n="dash.chartIE">Доходы / Расходы по дням</h3><div class="bar-chart" id="barChart"></div></div>
+      <div class="chart-card"><h3 data-i18n="dash.expenseStruct">Структура расходов</h3><div id="expenseBreakdown"></div></div>
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title">Последние транзакции</span><button class="btn btn-sm" onclick="nav(document.querySelector('[data-page=transactions]'))">Все →</button></div>
@@ -617,7 +617,7 @@
     <div class="filters">
       <div class="mp-wrap" id="salMonthPicker"></div>
       <div class="drp-wrap" id="salDateRange"></div>
-      <select id="salFilterEmployee" onchange="renderSalary()"><option value="">Все сотрудники</option></select>
+      <select id="salFilterEmployee" onchange="renderSalary()"><option value="" data-i18n="filter.allEmployees">Все сотрудники</option></select>
       <select id="salSortOrder" onchange="renderSalary()">
         <option value="desc">Сначала новые</option>
         <option value="asc">Сначала старые</option>
@@ -1238,7 +1238,9 @@ async function loadInitialData() {
     _positions = positions || [];
     try { _salTypes = JSON.parse((settings && settings.salTypes) || '[]'); } catch { _salTypes = []; }
     if (settings && settings.cafeName) {
-      document.getElementById('cafeNameSub').textContent = settings.cafeName;
+      const sub = document.getElementById('cafeNameSub');
+      sub.textContent = settings.cafeName;
+      sub.removeAttribute('data-i18n');
       document.title = settings.cafeName + ' — CaféBook';
     }
   } catch(e) {
@@ -1477,7 +1479,7 @@ function createDateRangePicker(containerId, onChange) {
   const drp = { from: '', to: '', tempFrom: '', tempTo: '', viewYear: now.getFullYear(), viewMonth: now.getMonth(), onChange, containerId };
 
   container.innerHTML = `
-    <div class="drp-trigger" id="${containerId}_trigger">📅 <span id="${containerId}_label">Все даты</span></div>
+    <div class="drp-trigger" id="${containerId}_trigger">📅 <span id="${containerId}_label">${t('filter.allDates')}</span></div>
     <div class="drp-popup" id="${containerId}_popup">
       <div class="drp-header">
         <button onclick="drpNav('${containerId}',-1)">◀</button>
@@ -1600,7 +1602,7 @@ function drpClear(id) {
 function drpUpdateLabel(id) {
   const d = _dateRangePickers[id];
   const label = document.getElementById(id+'_label');
-  if (!d.from) { label.textContent = 'Все даты'; label.className = ''; return; }
+  if (!d.from) { label.textContent = t('filter.allDates'); label.className = ''; return; }
   const f = dateLabel(d.from);
   const t = d.to && d.to !== d.from ? ' — ' + dateLabel(d.to) : '';
   label.innerHTML = '<span class="drp-dates">' + f + t + '</span>';
@@ -1746,7 +1748,7 @@ function populateEmpSelects() {
 
   // простые опции для фильтров (без дублей)
   const simpleOpts = active.map(e => `<option value="${e.id}">${e.name}${e.role ? ' ('+e.role+')' : ''}</option>`).join('');
-  const allSimple = `<option value="">Все сотрудники</option>` + simpleOpts;
+  const allSimple = `<option value="">${t('filter.allEmployees')}</option>` + simpleOpts;
 
   const txFilter = document.getElementById('txFilterEmployee');
   const salFilter = document.getElementById('salFilterEmployee');
@@ -1831,7 +1833,7 @@ async function renderDashboard() {
         <div style="height:6px;background:var(--border);border-radius:3px;">
           <div style="height:100%;width:${Math.round(val/totE*100)}%;background:${colors[i]};border-radius:3px;transition:width .5s"></div>
         </div></div>`).join('')
-    : `<div style="color:var(--text3);font-size:13px;padding:20px 0">Нет расходов за период</div>`;
+    : `<div style="color:var(--text3);font-size:13px;padding:20px 0">${t('dash.noExpense')}</div>`;
 
   // recent txs
   const recent = allTx.slice(0,8);
@@ -1922,7 +1924,7 @@ async function renderTransactions() {
   if (txTo) txs = txs.filter(t => t.date <= txTo);
   const txSort = document.getElementById('txSortOrder').value;
   txs.sort((a,b) => txSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
-  document.getElementById('txCount').textContent = `Транзакции (${txs.length})`;
+  document.getElementById('txCount').textContent = `${t('page.transactions')} (${txs.length})`;
   const tbody = document.getElementById('txTable');
   if (!txs.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`; return; }
   tbody.innerHTML = txs.map(t => {
@@ -3575,7 +3577,9 @@ async function saveSettings() {
   const res = await API.post('/settings', { cafeName, currency, revenueThreshold, scheduleTx });
   if (res && res.ok) {
     _currency = currency;
-    document.getElementById('cafeNameSub').textContent = cafeName||'Управление кафе';
+    const sub = document.getElementById('cafeNameSub');
+    if (cafeName) { sub.textContent = cafeName; sub.removeAttribute('data-i18n'); }
+    else { sub.setAttribute('data-i18n', 'login.title'); sub.textContent = t('login.title'); }
     if (cafeName) document.title = cafeName + ' — CaféBook';
     showToast('Настройки сохранены ✓');
   }
