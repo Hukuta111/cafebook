@@ -57,11 +57,17 @@
     --text2: #6e5c3e;
     --text3: #8d7a55;
   }
-  /* Размеры шрифта — масштабируем только контент, сайдбар не трогаем */
+  /* Размеры шрифта — масштабируем контент через zoom */
   body.font-small  .main, body.font-small  #loginScreen { zoom: 0.85; }
   body.font-medium .main, body.font-medium #loginScreen { zoom: 1; }
   body.font-large  .main, body.font-large  #loginScreen { zoom: 1.15; }
   body.font-xlarge .main, body.font-xlarge #loginScreen { zoom: 1.30; }
+  /* Пункты сайдбара тоже подгоняем по размеру (но компактнее, чтобы все помещались) */
+  body.font-small  .sidebar-nav .nav-item { font-size:12px; padding:7px 10px; }
+  body.font-large  .sidebar-nav .nav-item { font-size:14.5px; padding:9px 12px; }
+  body.font-xlarge .sidebar-nav .nav-item { font-size:15.5px; padding:9px 12px; }
+  body.font-large  .sidebar-nav .nav-group-label, body.font-xlarge .sidebar-nav .nav-group-label { padding:8px 12px 4px; }
+  body.font-large  .sidebar-nav, body.font-xlarge .sidebar-nav { padding:10px 12px; }
 
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; font-size:var(--base-font); }
