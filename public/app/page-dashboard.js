@@ -37,16 +37,17 @@ async function renderDashboard() {
   });
   const days = Object.keys(byDay).sort().slice(-14);
   const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
+  const safeAttr = s => String(s).replace(/"/g, '&quot;');
   document.getElementById('barChart').innerHTML = days.length
     ? days.map(d=>{
         const inc = byDay[d].income, exp = byDay[d].expense;
         const dateLbl = dateLabel(d);
-        const incTitle = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
-        const expTitle = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
+        const incTip = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
+        const expTip = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
         return `<div class="bar-wrap">
         <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" title="${incTitle.replace(/"/g,'&quot;')}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:help"></div>
-          <div class="bar" title="${expTitle.replace(/"/g,'&quot;')}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:help"></div>
+          <div class="bar" data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;"></div>
+          <div class="bar" data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;"></div>
         </div>
         <div class="bar-label">${dateLbl.split(' ')[0]}</div>
       </div>`;
