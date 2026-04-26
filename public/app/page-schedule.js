@@ -38,10 +38,14 @@ async function renderSchedule() {
     }
   } catch {}
 
-  // показать/скрыть кнопку формирования выплат
+  // показать/скрыть кнопку формирования выплат:
+  // только если включено в настройках И есть edit-право на расписание
   const settings = await API.get('/settings') || {};
   const genBtn = document.getElementById('schedGenTxBtn');
-  if (genBtn) genBtn.style.display = settings.scheduleTx === 'true' ? '' : 'none';
+  if (genBtn) {
+    const allowed = settings.scheduleTx === 'true' && canEdit('schedule');
+    genBtn.style.display = allowed ? '' : 'none';
+  }
 
   if (!_monthPickers['schedMonthPicker']) createMonthPicker('schedMonthPicker', () => renderSchedule());
   const cur = today().slice(0,7);
