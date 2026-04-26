@@ -491,6 +491,7 @@ app.post('/api/reasons', authMiddleware, (req, res) => {
   if (!name || !name.trim() || !type) return res.status(400).json({ error: 'Заполните все поля' });
   db.run('INSERT INTO reasons (id, type, name) VALUES (?, ?, ?)', [id, type, name.trim()]);
   saveDb();
+  dataChanged('reasons');
   res.json({ ok: true });
 });
 app.put('/api/reasons/:id', authMiddleware, (req, res) => {
@@ -498,11 +499,13 @@ app.put('/api/reasons/:id', authMiddleware, (req, res) => {
   if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
   db.run('UPDATE reasons SET type=?, name=? WHERE id=?', [type, name.trim(), req.params.id]);
   saveDb();
+  dataChanged('reasons');
   res.json({ ok: true });
 });
 app.delete('/api/reasons/:id', authMiddleware, (req, res) => {
   db.run('DELETE FROM reasons WHERE id=?', [req.params.id]);
   saveDb();
+  dataChanged('reasons');
   res.json({ ok: true });
 });
 
@@ -517,6 +520,7 @@ app.post('/api/positions', authMiddleware, checkPermission('positions', 'edit'),
   try {
     db.run('INSERT INTO positions (id, name, hidden_in_schedule) VALUES (?, ?, ?)', [id, name.trim(), hidden_in_schedule ? 1 : 0]);
     saveDb();
+    dataChanged('positions');
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: 'Такая должность уже существует' });
@@ -528,6 +532,7 @@ app.put('/api/positions/:id', authMiddleware, checkPermission('positions', 'edit
   try {
     db.run('UPDATE positions SET name=?, hidden_in_schedule=? WHERE id=?', [name.trim(), hidden_in_schedule ? 1 : 0, req.params.id]);
     saveDb();
+    dataChanged('positions');
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: 'Такая должность уже существует' });
@@ -536,6 +541,7 @@ app.put('/api/positions/:id', authMiddleware, checkPermission('positions', 'edit
 app.delete('/api/positions/:id', authMiddleware, checkPermission('positions', 'edit'), (req, res) => {
   db.run('DELETE FROM positions WHERE id=?', [req.params.id]);
   saveDb();
+  dataChanged('positions');
   res.json({ ok: true });
 });
 
@@ -552,6 +558,7 @@ app.post('/api/employees', authMiddleware, checkPermission('employees', 'edit'),
     [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0]
   );
   saveDb();
+  dataChanged('employees');
   res.json({ ok: true });
 });
 app.put('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
@@ -561,11 +568,13 @@ app.put('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit
     [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0, req.params.id]
   );
   saveDb();
+  dataChanged('employees');
   res.json({ ok: true });
 });
 app.delete('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
   db.run('DELETE FROM employees WHERE id=?', [req.params.id]);
   saveDb();
+  dataChanged('employees');
   res.json({ ok: true });
 });
 
@@ -588,6 +597,7 @@ app.post('/api/schedule', authMiddleware, checkPermission('schedule', 'edit'), (
     [id, emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note||'']
   );
   saveDb();
+  dataChanged('schedule');
   res.json({ ok: true });
 });
 app.put('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
@@ -597,11 +607,13 @@ app.put('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edit')
     [emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note||'', req.params.id]
   );
   saveDb();
+  dataChanged('schedule');
   res.json({ ok: true });
 });
 app.delete('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   db.run('DELETE FROM schedule WHERE id=?', [req.params.id]);
   saveDb();
+  dataChanged('schedule');
   res.json({ ok: true });
 });
 
@@ -625,6 +637,7 @@ app.post('/api/transactions', authMiddleware, checkAnyPermission(['transactions'
     [id, date, type, cat||'', empId||null, parseFloat(amount), note||'']
   );
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true });
 });
 app.put('/api/transactions/:id', authMiddleware, checkAnyPermission(['transactions','salary','banquets'], 'edit'), (req, res) => {
@@ -634,11 +647,13 @@ app.put('/api/transactions/:id', authMiddleware, checkAnyPermission(['transactio
     [date, type, cat||'', empId||null, parseFloat(amount), note||'', req.params.id]
   );
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true });
 });
 app.delete('/api/transactions/:id', authMiddleware, checkAnyPermission(['transactions','salary','banquets'], 'edit'), (req, res) => {
   db.run('DELETE FROM transactions WHERE id=?', [req.params.id]);
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true });
 });
 
@@ -661,6 +676,7 @@ app.post('/api/settings', authMiddleware, checkPermission('settings', 'edit'), (
     db.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [key, value ?? '']);
   });
   saveDb();
+  dataChanged('settings');
   res.json({ ok: true });
 });
 
@@ -758,6 +774,7 @@ app.post('/api/calc-percent-bonus', authMiddleware, checkPermission('salary-repo
   });
 
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true, created, qualifyingRevenue: Math.round(qualifyingRevenue), qualifyingDaysCount: qualifyingDays.length });
 });
 
@@ -836,6 +853,7 @@ app.post('/api/banquets', authMiddleware, checkPermission('banquets', 'edit'), (
     [bId, date, parseFloat(total), parseFloat(percent) || 10, note || '']);
   recalcShares(bId, parseFloat(total), parseFloat(percent) || 10);
   saveDb();
+  dataChanged('banquets');
   res.json({ ok: true, id: bId });
 });
 
@@ -867,6 +885,7 @@ app.put('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edit')
     });
   }
   saveDb();
+  dataChanged('banquets');
   res.json({ ok: true });
 });
 
@@ -880,6 +899,8 @@ app.delete('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edi
     ['Банкет ' + req.params.id + '%']
   );
   saveDb();
+  dataChanged('banquets');
+  dataChanged('transactions');
   res.json({ ok: true });
 });
 
@@ -909,6 +930,7 @@ app.post('/api/banquets/:id/apply', authMiddleware, (req, res) => {
     created++;
   });
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true, created });
 });
 
@@ -961,6 +983,7 @@ app.post('/api/calc-monthly-salary', authMiddleware, checkPermission('salary-rep
   });
 
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true, created });
 });
 
@@ -1020,6 +1043,7 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
   });
 
   saveDb();
+  dataChanged('transactions');
   res.json({ ok: true, created });
 });
 
@@ -1254,6 +1278,13 @@ function wsBroadcast(msg) {
   wsClients.forEach((_info, ws) => {
     if (ws.readyState === 1) ws.send(data);
   });
+}
+
+// Уведомляет всех подключённых клиентов что какие-то данные изменились,
+// чтобы они смогли перерисовать активную страницу.
+// entity: 'transactions'|'schedule'|'banquets'|'employees'|'positions'|'settings'|'reasons'|'users'
+function dataChanged(entity) {
+  wsBroadcast({ type: 'data_changed', entity });
 }
 
 function wsBroadcastToUser(userId, msg) {

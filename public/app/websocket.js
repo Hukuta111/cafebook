@@ -84,4 +84,72 @@ async function handleWsMessage(msg) {
     }
     return;
   }
+  if (msg.type === 'data_changed') {
+    handleDataChanged(msg.entity);
+    return;
+  }
 }
+
+// Маппинг: что нужно перерисовывать при изменении конкретной сущности.
+// Если сейчас открыта страница из списка — она перерисовывается.
+const _DATA_REFRESH_MAP = {
+  transactions: ['dashboard','transactions','daily','monthly','salary','salary-report'],
+  schedule:     ['schedule','salary-report'],
+  banquets:     ['banquets','dashboard','daily','monthly','transactions','salary','salary-report'],
+  employees:    ['employees','dashboard','transactions','daily','monthly','salary','salary-report','schedule','banquets'],
+  positions:    ['positions','employees'],
+  settings:     ['settings','dashboard','transactions','daily','monthly','salary','salary-report','schedule','banquets'],
+  reasons:      ['transactions','salary'],
+};
+
+function handleDataChanged(entity) {
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+  const pageId = activePage.id.replace('page-','');
+  const pages = _DATA_REFRESH_MAP[entity] || [];
+  if (!pages.includes(pageId)) return;
+  // Не дёргаем перерисовку пока пользователь редактирует что-то в модалке —
+  // populateEmpSelects и т.п. сбросили бы введённые значения. Пометим pending
+  // и перерисуем как только модалка закроется.
+  if (document.querySelector('.modal-overlay.open')) {
+    _pendingRerenderPage = pageId;
+    return;
+  }
+  rerenderPageById(pageId);
+}
+
+let _pendingRerenderPage = null;
+
+function rerenderPageById(pageId) {
+  try {
+    if (pageId === 'dashboard'      && typeof renderDashboard === 'function')     renderDashboard();
+    else if (pageId === 'transactions'   && typeof renderTransactions === 'function')  renderTransactions();
+    else if (pageId === 'daily'          && typeof renderDaily === 'function')         renderDaily();
+    else if (pageId === 'monthly'        && typeof renderMonthly === 'function')       renderMonthly();
+    else if (pageId === 'positions'      && typeof renderPositions === 'function')     renderPositions();
+    else if (pageId === 'employees'      && typeof renderEmployees === 'function')     renderEmployees();
+    else if (pageId === 'salary'         && typeof renderSalary === 'function')        renderSalary();
+    else if (pageId === 'salary-report'  && typeof renderSalaryReport === 'function')  renderSalaryReport();
+    else if (pageId === 'schedule'       && typeof renderSchedule === 'function')      renderSchedule();
+    else if (pageId === 'banquets'       && typeof renderBanquets === 'function')      renderBanquets();
+    else if (pageId === 'settings'       && typeof renderSettings === 'function')      renderSettings();
+  } catch {}
+}
+
+// Обёртка над closeModal — после закрытия применяет отложенный rerender.
+// Хук на оригинальную closeModal (определена в core-utils.js).
+(function patchCloseModal() {
+  if (typeof window === 'undefined') return;
+  const original = window.closeModal;
+  if (typeof original !== 'function' || original.__patched) return;
+  window.closeModal = function(id) {
+    original(id);
+    if (_pendingRerenderPage) {
+      const pageId = _pendingRerenderPage;
+      _pendingRerenderPage = null;
+      // даём короткий тик чтобы модалка успела закрыться визуально
+      setTimeout(() => rerenderPageById(pageId), 50);
+    }
+  };
+  window.closeModal.__patched = true;
+})();
