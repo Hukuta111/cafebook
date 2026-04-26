@@ -30,6 +30,15 @@ function openUserModal(user) {
 
   // Self-edit: скрыть блок прав (нельзя менять свои права)
   document.getElementById('uPermsBlock').style.display = isSelf ? 'none' : '';
+  // Self-edit: скрыть toggle личного графика (свои настройки доступа не меняем сами)
+  const schedPersOnlyRow = document.getElementById('uSchedPersonalOnlyRow');
+  if (schedPersOnlyRow) schedPersOnlyRow.style.display = isSelf ? 'none' : '';
+  // Заполнить toggle из permissions.schedule.personalOnly
+  const schedPersOnly = document.getElementById('uSchedPersonalOnly');
+  if (schedPersOnly) {
+    const perms = user ? (user.permissions || {}) : {};
+    schedPersOnly.checked = !!(perms.schedule && perms.schedule.personalOnly);
+  }
   if (!isSelf) {
     renderPermissionsUI(user ? (user.permissions || defaultPermissions()) : defaultPermissions());
     toggleUserPermsUI();
@@ -145,6 +154,14 @@ function collectPermissionsFromUI() {
     const edit = document.querySelector(`[data-perm-edit="${page}"]`)?.checked === true;
     p[page] = { view: view || edit, edit };
   });
+  // дополнительный флаг: только личный график (хранится внутри permissions.schedule)
+  const schedPersOnly = document.getElementById('uSchedPersonalOnly');
+  if (schedPersOnly && schedPersOnly.checked) {
+    if (!p.schedule) p.schedule = { view: false, edit: false };
+    p.schedule.personalOnly = true;
+    // если стоит personalOnly — гарантируем что у юзера есть хотя бы view
+    p.schedule.view = true;
+  }
   return p;
 }
 

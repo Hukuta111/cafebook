@@ -5,11 +5,22 @@ let _scheduleData = [];
 let _scheduleMode = 'main';      // 'main' (общий) | 'personal' (мой/чужой черновик)
 let _schedulePersonalOwner = ''; // '' = свой; admin может выбрать чужой user_id
 
+function isSchedulePersonalOnly() {
+  // Админу всегда доступны оба режима
+  if (_userRole === 'admin') return false;
+  return !!(_userPermissions && _userPermissions.schedule && _userPermissions.schedule.personalOnly);
+}
+
 function setScheduleMode(mode) {
+  // если стоит флаг «только личный» — main недоступен
+  if (isSchedulePersonalOnly()) mode = 'personal';
   _scheduleMode = mode === 'personal' ? 'personal' : 'main';
   document.querySelectorAll('.sched-mode-btn').forEach(b => {
     b.classList.toggle('btn-primary', b.dataset.schedMode === _scheduleMode);
   });
+  // Если только личный — спрятать кнопку «Общий график»
+  const mainBtn = document.querySelector('.sched-mode-btn[data-sched-mode="main"]');
+  if (mainBtn) mainBtn.style.display = isSchedulePersonalOnly() ? 'none' : '';
   const ownerSel = document.getElementById('schedPersonalOwner');
   const hint = document.getElementById('schedPersonalHint');
   const isPersonal = _scheduleMode === 'personal';
@@ -79,6 +90,20 @@ function dayOfWeek(ym, day) {
 const SHORT_DAYS = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 
 async function renderSchedule() {
+  // Если у пользователя стоит флаг «только личный график» — форсим personal-режим
+  if (isSchedulePersonalOnly() && _scheduleMode !== 'personal') {
+    _scheduleMode = 'personal';
+    document.querySelectorAll('.sched-mode-btn').forEach(b => {
+      b.classList.toggle('btn-primary', b.dataset.schedMode === 'personal');
+    });
+  }
+  // Скрыть кнопку «Общий» если только личный
+  const mainBtn = document.querySelector('.sched-mode-btn[data-sched-mode="main"]');
+  if (mainBtn) mainBtn.style.display = isSchedulePersonalOnly() ? 'none' : '';
+  // Подсказка показывается всегда в личном режиме
+  const hint = document.getElementById('schedPersonalHint');
+  if (hint) hint.style.display = _scheduleMode === 'personal' ? '' : 'none';
+
   _employees = await API.get('/employees') || [];
   _positions = await API.get('/positions') || [];
   // названия должностей, которые скрыты в графике
@@ -295,6 +320,9 @@ function openSchedModal(entry, dateStr, empId) {
   document.getElementById('schedRate').value = (entry && entry.hourly_rate != null) ? entry.hourly_rate : '';
   document.getElementById('schedNote').value = entry ? entry.note || '' : '';
   document.getElementById('schedDeleteBtn').style.display = entry ? '' : 'none';
+  // В личном графике ставка не показывается — это просто черновик для сверки
+  const rateRow = document.getElementById('schedRateRow');
+  if (rateRow) rateRow.style.display = _scheduleMode === 'personal' ? 'none' : '';
 
   openModal('schedModal');
 }
@@ -318,7 +346,8 @@ async function saveScheduleEntry() {
   const work_date = document.getElementById('schedDate').value;
   const hours = parseFloat(document.getElementById('schedHours').value);
   const rateVal = document.getElementById('schedRate').value;
-  const hourly_rate = rateVal !== '' ? parseFloat(rateVal) : null;
+  // В личном графике ставка всегда null — он только для сверки часов
+  const hourly_rate = (_scheduleMode === 'personal') ? null : (rateVal !== '' ? parseFloat(rateVal) : null);
   const note = document.getElementById('schedNote').value;
 
   if (!emp_id || !work_date || !hours || hours <= 0) { showToast('Заполните сотрудника, дату и часы', true); return; }
