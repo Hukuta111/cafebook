@@ -120,18 +120,23 @@ async function navigateToDay(date) {
     drp.from = ''; drp.to = '';
     if (typeof drpUpdateLabel === 'function') drpUpdateLabel('dailyDateRange');
   }
-  // Открыть выбранный день
+  // Полностью обнулить набор открытых дней и оставить только нужный
   _dailyDetailOpen.clear();
   _dailyDetailOpen.add(date);
-  // Рендер — деталка должна развернуться
+  // Первый рендер — должен сразу нарисовать деталку
   await renderDaily();
-  // Защита: если деталка не появилась (рендер прошёл до того как _dailyDetailOpen был добавлен),
-  // повторим
-  if (!document.getElementById('daily-detail-' + date)) {
+
+  // Делаем до 3 попыток подождать пока DOM и асинхронные API.get завершатся.
+  // Между попытками чуть-чуть ждём и повторяем рендер.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (document.getElementById('daily-detail-' + date)) break;
+    await new Promise(r => setTimeout(r, 60));
+    _dailyDetailOpen.clear();
     _dailyDetailOpen.add(date);
     await renderDaily();
   }
-  // Прокрутить экран к деталке для удобства
+
+  // Прокрутить к деталке (если рендер всё-таки удался)
   setTimeout(() => {
     const el = document.getElementById('daily-detail-' + date);
     if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
