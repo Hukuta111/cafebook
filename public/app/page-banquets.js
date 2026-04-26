@@ -124,7 +124,7 @@ function renderBanquetItems() {
     <span style="text-align:center">Кол-во</span>
     <span style="text-align:center">Цена/шт</span>
     <span style="text-align:right">Итого</span>
-    <span style="text-align:center" title="Учитывать в бонусе сотрудникам">% бонус</span>
+    <span style="text-align:center" title="Учитывать сумму этой статьи в базе расчёта бонуса сотрудникам">В&nbsp;бонус</span>
     <span></span>
   </div>`;
   list.innerHTML = datalist + header + _banquetItems.map((it, i) => {
@@ -141,7 +141,7 @@ function renderBanquetItems() {
       <input type="number" value="${it.price}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'price',this.value)"
         style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
       <div data-item-total="${i}" style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
-      <label class="perm-cb" style="justify-self:center" title="Учитывать в бонусе сотрудникам">
+      <label class="perm-cb" style="justify-self:center" title="Учитывать сумму этой статьи в базе расчёта бонуса сотрудникам">
         <input type="checkbox" ${it.inBonus ? 'checked' : ''} onchange="onBanquetItemBonusToggle(${i}, this.checked)">
         <span class="perm-cb-box"></span>
       </label>
