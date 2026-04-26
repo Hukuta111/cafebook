@@ -95,6 +95,7 @@ async function handleWsMessage(msg) {
 const _DATA_REFRESH_MAP = {
   transactions: ['dashboard','transactions','daily','monthly','salary','salary-report'],
   schedule:     ['schedule','salary-report'],
+  personal_schedule: ['schedule'], // только страница График (только если она в personal-режиме)
   banquets:     ['banquets','dashboard','daily','monthly','transactions','salary','salary-report'],
   employees:    ['employees','dashboard','transactions','daily','monthly','salary','salary-report','schedule','banquets'],
   positions:    ['positions','employees'],
