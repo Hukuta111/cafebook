@@ -276,17 +276,11 @@ function printSchedule() {
   // динамически добавить @page правило для landscape — без этого мобильные
   // браузеры не уважают именованную @page и печатают в текущей ориентации
   injectPrintLandscapeStyle();
-  // если в месяце много дней — авто-разбить на 2 страницы для читаемости
-  prepareScheduleSplitForPrint();
   window.print();
   setTimeout(() => {
     document.getElementById('page-schedule').classList.remove('print-target');
     document.body.classList.remove('print-schedule-mode');
     removePrintLandscapeStyle();
-    // после печати — перерисовать график, чтобы убрать клон и восстановить колонки
-    if (typeof renderSchedule === 'function') {
-      try { renderSchedule(); } catch {}
-    }
   }, 700);
 }
 
@@ -294,7 +288,6 @@ function injectPrintLandscapeStyle() {
   if (document.getElementById('printLandscapeStyle')) return;
   const style = document.createElement('style');
   style.id = 'printLandscapeStyle';
-  // Применяется ТОЛЬКО когда body имеет класс print-schedule-mode и идёт печать
   style.textContent = '@media print { @page { size: A4 landscape; margin: 5mm; } }';
   document.head.appendChild(style);
 }
@@ -302,63 +295,4 @@ function injectPrintLandscapeStyle() {
 function removePrintLandscapeStyle() {
   const s = document.getElementById('printLandscapeStyle');
   if (s) s.remove();
-}
-
-// Разбивает таблицу графика на 2 печатные страницы:
-// 1-я: ФИО + дни 1..split + Часы + Сумма
-// 2-я: ФИО + дни split+1..N + Часы + Сумма
-function prepareScheduleSplitForPrint() {
-  const table = document.getElementById('scheduleTable');
-  if (!table) return;
-  const headerRow = table.querySelector('thead tr');
-  if (!headerRow) return;
-  // структура колонок: 0=ФИО, 1..N=дни, N+1=Часы, N+2=Сумма
-  const totalCols = headerRow.children.length;
-  const numDays = totalCols - 3;
-  if (numDays <= 16) return; // в коротком феврале нет смысла разбивать
-  const split = Math.ceil(numDays / 2);
-
-  // создаём wrapper для второй половины
-  const cloneWrap = document.createElement('div');
-  cloneWrap.id = 'schedulePrintHalf2Wrap';
-  cloneWrap.className = 'sched-print-half2-wrap';
-
-  const clone = table.cloneNode(true);
-  clone.id = 'scheduleTablePrintHalf2';
-  cloneWrap.appendChild(clone);
-  document.getElementById('scheduleWrap').after(cloneWrap);
-
-  // в оригинале прячем дни > split
-  hideScheduleDayCells(table, split + 1, numDays);
-  // в клоне прячем дни <= split
-  hideScheduleDayCells(clone, 1, split);
-
-  table.classList.add('sched-print-half', 'sched-print-half-1');
-  clone.classList.add('sched-print-half', 'sched-print-half-2');
-}
-
-function hideScheduleDayCells(table, fromDay, toDay) {
-  // colgroup: 0=ФИО, 1=день1, ..., 31=день31, 32=Часы, 33=Сумма
-  const colgroup = table.querySelector('colgroup');
-  if (colgroup) {
-    for (let d = fromDay; d <= toDay; d++) {
-      const col = colgroup.children[d];
-      if (col) col.style.display = 'none';
-    }
-  }
-  // header row
-  const headerRow = table.querySelector('thead tr');
-  if (headerRow) {
-    for (let d = fromDay; d <= toDay; d++) {
-      const th = headerRow.children[d];
-      if (th) th.style.display = 'none';
-    }
-  }
-  // body rows
-  table.querySelectorAll('tbody tr').forEach(tr => {
-    for (let d = fromDay; d <= toDay; d++) {
-      const td = tr.children[d];
-      if (td) td.style.display = 'none';
-    }
-  });
 }
