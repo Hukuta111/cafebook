@@ -430,6 +430,8 @@
           <button class="btn" onclick="exportData()" data-i18n="settings.export">📤 Экспорт JSON</button>
           <button class="btn" onclick="document.getElementById('importFile').click()" data-i18n="settings.import">📥 Импорт JSON</button>
           <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+          <button class="btn" onclick="document.getElementById('importExcelFile').click()" data-i18n="settings.importExcel">📊 Импорт транзакций (Excel)</button>
+          <input type="file" id="importExcelFile" style="display:none" accept=".xlsx,.xls,.csv" onchange="onExcelFileSelected(event)">
         </div>
       </div>
     </div>
@@ -702,6 +704,18 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- EXCEL IMPORT MODAL -->
+<div class="modal-overlay" id="excelImportModal">
+  <div class="modal" style="width:780px;max-width:96vw;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="modal-title" style="flex-shrink:0;" data-i18n="excelImport.title">📊 Импорт транзакций из Excel</div>
+    <div id="excelImportBody" class="perms-scroll" style="flex:1 1 auto;overflow-y:auto;min-height:0;padding-right:6px;"></div>
+    <div class="modal-footer" style="flex-shrink:0;">
+      <button class="btn" onclick="closeModal('excelImportModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" id="excelImportConfirmBtn" onclick="confirmExcelImport()" disabled data-i18n="excelImport.import">Импортировать</button>
+    </div>
+  </div>
+</div>
+
 <!-- DAY DETAIL MODAL — раскрывает данные одного дня на дашборде -->
 <div class="modal-overlay" id="dayDetailModal">
   <div class="modal day-detail-modal">
@@ -727,6 +741,8 @@
 </div>
 
 
+<!-- SheetJS для импорта Excel-файлов -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- ─── APP SCRIPTS ─────────────────────────────────────────── -->
 <!-- порядок важен: i18n определяет t() и I18N → используются всеми -->
 <script src="/app/i18n.js"></script>
@@ -750,6 +766,7 @@
 <script src="/app/page-salary.js"></script>
 <script src="/app/page-salary-report.js"></script>
 <script src="/app/page-settings.js"></script>
+<script src="/app/excel-import.js"></script>
 <script src="/app/session-poll.js"></script>
 <script src="/app/websocket.js"></script>
 <script src="/app/page-users.js"></script>
