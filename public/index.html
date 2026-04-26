@@ -702,6 +702,17 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- DAY DETAIL MODAL — раскрывает данные одного дня на дашборде -->
+<div class="modal-overlay" id="dayDetailModal">
+  <div class="modal" style="width:760px;max-width:96vw;max-height:90vh;">
+    <div class="modal-title" id="dayDetailTitle">📊 День</div>
+    <div id="dayDetailBody" style="font-size:13px;line-height:1.4;"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('dayDetailModal')" data-i18n="common.cancel">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DIALOG -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="width:440px;max-width:92vw;">
