@@ -38,18 +38,22 @@ async function renderDashboard() {
   const days = Object.keys(byDay).sort().slice(-14);
   const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
   const safeAttr = s => String(s).replace(/"/g, '&quot;');
+  // Пользователь должен иметь view на daily чтобы клик по колонке имел смысл
+  const dailyClickable = typeof canView === 'function' && canView('daily');
   document.getElementById('barChart').innerHTML = days.length
     ? days.map(d=>{
         const inc = byDay[d].income, exp = byDay[d].expense;
         const dateLbl = dateLabel(d);
         const incTip = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
         const expTip = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
+        const clickAttr = dailyClickable ? `onclick="navigateToDay('${d}')"` : '';
+        const cur = dailyClickable ? 'pointer' : 'default';
         return `<div class="bar-wrap">
         <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;"></div>
-          <div class="bar" data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;"></div>
+          <div class="bar" ${clickAttr} data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:${cur};"></div>
+          <div class="bar" ${clickAttr} data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:${cur};"></div>
         </div>
-        <div class="bar-label">${dateLbl.split(' ')[0]}</div>
+        <div class="bar-label" ${clickAttr} style="cursor:${cur};">${dateLbl.split(' ')[0]}</div>
       </div>`;
       }).join('')
     : `<div style="color:var(--text3);font-size:13px;padding:40px">${t('detail.noData') || 'Нет данных'}</div>`;
@@ -87,4 +91,37 @@ async function renderDashboard() {
         </tr>`;
       }).join('')
     : `<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`;
+}
+
+// Переход с дашборда на «Дневные отчёты» с открытым нужным днём
+async function navigateToDay(date) {
+  if (typeof canView === 'function' && !canView('daily')) {
+    if (typeof showToast === 'function') showToast('Нет доступа к дневным отчётам', true);
+    return;
+  }
+  const month = date.slice(0, 7);
+  // Активируем nav-item и страницу вручную (не через nav() — он сбрасывает месяц на текущий)
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  const navEl = document.querySelector('.nav-item[data-page="daily"]');
+  if (navEl) navEl.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-daily').classList.add('active');
+  if (typeof closeSidebar === 'function') closeSidebar();
+  if (typeof applyEditRestrictions === 'function') applyEditRestrictions();
+  // Создать пикер месяца если ещё нет, выставить нужный месяц
+  if (!_monthPickers['dailyMonthPicker']) {
+    createMonthPicker('dailyMonthPicker', () => renderDaily());
+  }
+  mpSetValue('dailyMonthPicker', month);
+  // Сбросить date-range фильтр (если был)
+  const drp = _dateRangePickers && _dateRangePickers['dailyDateRange'];
+  if (drp) {
+    drp.from = ''; drp.to = '';
+    if (typeof drpUpdateLabel === 'function') drpUpdateLabel('dailyDateRange');
+  }
+  // Открыть только выбранный день
+  _dailyDetailOpen.clear();
+  _dailyDetailOpen.add(date);
+  // Перерендерить
+  await renderDaily();
 }
