@@ -111,7 +111,7 @@ function getBanquetItemNameSuggestions() {
 function renderBanquetItems() {
   const list = document.getElementById('banquetItemsList');
   if (!_banquetItems.length) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:6px 4px;">Статей нет. Можно добавить: «Открытие бутылок», «Аренда посуды», «Чаевые» и т.п.</div>';
+    list.innerHTML = `<div style="color:var(--text3);font-size:12px;padding:6px 4px;">${t('banquet.empty')}</div>`;
     updateBanquetSummary();
     return;
   }
@@ -120,11 +120,11 @@ function renderBanquetItems() {
   const gridCols = '24px minmax(0,1.6fr) 60px 80px 80px 32px 32px';
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 6px 4px;">
     <span></span>
-    <span>Название</span>
-    <span style="text-align:center">Кол-во</span>
-    <span style="text-align:center">Цена/шт</span>
-    <span style="text-align:right">Итого</span>
-    <span style="text-align:center" title="Учитывать сумму этой статьи в базе расчёта бонуса сотрудникам">В&nbsp;бонус</span>
+    <span>${t('banquet.title')}</span>
+    <span style="text-align:center">${t('banquet.qty')}</span>
+    <span style="text-align:center">${t('banquet.price')}</span>
+    <span style="text-align:right">${t('banquet.itemTotal')}</span>
+    <span style="text-align:center" title="${t('banquet.inBonusHint')}">${t('banquet.inBonus')}</span>
     <span></span>
   </div>`;
   list.innerHTML = datalist + header + _banquetItems.map((it, i) => {
@@ -133,7 +133,7 @@ function renderBanquetItems() {
     const total = (+it.qty || 0) * (+it.price || 0);
     return `<div data-item-idx="${i}" style="display:grid;grid-template-columns:${gridCols};gap:6px;align-items:center;padding:6px;background:var(--surface2);border-radius:var(--radius-sm);">
       <span style="color:${color};font-size:18px;font-weight:700;text-align:center;">${label}</span>
-      <input type="text" list="banquetItemNames" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="Название" title="${(it.name||'').replace(/"/g,'&quot;')}"
+      <input type="text" list="banquetItemNames" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="${t('banquet.title')}" title="${(it.name||'').replace(/"/g,'&quot;')}"
         oninput="_banquetItems[${i}].name=this.value;this.title=this.value"
         style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;min-width:0;text-overflow:ellipsis;">
       <input type="number" value="${it.qty}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'qty',this.value)"
@@ -141,7 +141,7 @@ function renderBanquetItems() {
       <input type="number" value="${it.price}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'price',this.value)"
         style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
       <div data-item-total="${i}" style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
-      <label class="perm-cb" style="justify-self:center" title="Учитывать сумму этой статьи в базе расчёта бонуса сотрудникам">
+      <label class="perm-cb" style="justify-self:center" title="${t('banquet.inBonusHint')}">
         <input type="checkbox" ${it.inBonus ? 'checked' : ''} onchange="onBanquetItemBonusToggle(${i}, this.checked)">
         <span class="perm-cb-box"></span>
       </label>
@@ -169,10 +169,13 @@ function updateBanquetSummary() {
   const el = document.getElementById('banquetSummary');
   if (el) {
     const baseChanged = Math.abs(bonusBase - total) > 0.001;
-    const bonusLine = baseChanged
-      ? `Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(bonusBase)} = ${fmt(bonus)}</b>`
-      : `Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(total)} = ${fmt(bonus)}</b>`;
-    el.innerHTML = `Основная сумма банкета: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''}${(income||expense) ? ' &nbsp;·&nbsp; факт на кассе: <b style="color:var(--text)">'+fmt(net)+'</b>' : ''}<br>${bonusLine}`;
+    const baseSum = baseChanged ? bonusBase : total;
+    const bonusLine = `${t('banquet.summary.bonus')}: <b style="color:var(--green)">${percent}% ${t('banquet.summary.from')} ${fmt(baseSum)} = ${fmt(bonus)}</b>`;
+    el.innerHTML = `${t('banquet.summary.main')}: <b style="color:var(--text)">${fmt(total)}</b>`
+      + (income ? ` &nbsp;·&nbsp; ${t('banquet.summary.incomes')}: <b style="color:var(--green)">+${fmt(income)}</b>` : '')
+      + (expense ? ` &nbsp;·&nbsp; ${t('banquet.summary.expenses')}: <b style="color:var(--red)">−${fmt(expense)}</b>` : '')
+      + ((income||expense) ? ` &nbsp;·&nbsp; ${t('banquet.summary.actual')}: <b style="color:var(--text)">${fmt(net)}</b>` : '')
+      + `<br>${bonusLine}`;
   }
 }
 
