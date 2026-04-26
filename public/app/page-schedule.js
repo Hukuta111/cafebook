@@ -4,6 +4,7 @@
 let _scheduleData = [];
 let _scheduleMode = 'main';      // 'main' (общий) | 'personal' (мой/чужой черновик)
 let _schedulePersonalOwner = ''; // '' = свой; admin может выбрать чужой user_id
+let _scheduleCompareUser = '';   // user_id чей черновик показать ПОД основным графиком (admin only)
 
 function isSchedulePersonalOnly() {
   // Админу всегда доступны оба режима
@@ -78,6 +79,28 @@ function onPersonalOwnerChange() {
   if (typeof renderSchedule === 'function') renderSchedule();
 }
 
+function onScheduleCompareChange() {
+  const sel = document.getElementById('schedCompareUser');
+  _scheduleCompareUser = sel?.value || '';
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
+
+async function loadScheduleCompareUsers(month) {
+  if (_userRole !== 'admin') return;
+  const sel = document.getElementById('schedCompareUser');
+  if (!sel) return;
+  try {
+    const users = await API.get('/personal-schedule/users?month=' + encodeURIComponent(month)) || [];
+    let html = `<option value="">— ${t('schedMode.compareNone') || 'нет'} —</option>`;
+    users.forEach(u => {
+      const label = (u.displayName || u.username) + ' (' + u.username + ')';
+      html += `<option value="${u.id}">${label.replace(/"/g,'&quot;')}</option>`;
+    });
+    sel.innerHTML = html;
+    if (_scheduleCompareUser) sel.value = _scheduleCompareUser;
+  } catch {}
+}
+
 function daysInMonth(ym) {
   const [y, m] = ym.split('-').map(Number);
   return new Date(y, m, 0).getDate();
@@ -102,6 +125,12 @@ async function renderSchedule() {
   // выбора нет, и кнопка «Мой график» показывать одну единственную опцию бессмысленно
   const modeBar = document.getElementById('scheduleModeBar');
   if (modeBar) modeBar.style.display = isSchedulePersonalOnly() ? 'none' : '';
+  // Compare bar — только для админа в main-режиме
+  const compareBar = document.getElementById('schedCompareBar');
+  if (compareBar) {
+    compareBar.style.display = (_userRole === 'admin' && _scheduleMode === 'main' && !isSchedulePersonalOnly())
+      ? 'flex' : 'none';
+  }
 
   _employees = await API.get('/employees') || [];
   _positions = await API.get('/positions') || [];
@@ -240,6 +269,98 @@ async function renderSchedule() {
 
   // drag & drop строк
   attachScheduleRowDnD(table);
+
+  // Сравнение с черновиком другого пользователя (только админу в main-режиме)
+  if (_userRole === 'admin' && _scheduleMode === 'main') {
+    loadScheduleCompareUsers(month);
+    await renderScheduleCompareTable(active, month, numDays);
+  } else {
+    // убрать compare-таблицу если она была
+    const w = document.getElementById('scheduleCompareWrap');
+    if (w) w.remove();
+  }
+}
+
+// Read-only HTML таблицы графика без onclick/drag — для compare и similar usecases
+function buildPlainScheduleTableHTML(active, lookup, numDays, month) {
+  // colgroup (без sum-col — в личном графике ставки нет)
+  let cols = '<colgroup><col style="width:100px">';
+  for (let d = 1; d <= numDays; d++) cols += '<col>';
+  cols += '<col style="width:40px"></colgroup>';
+
+  let hdr = `<thead><tr><th class="emp-name-cell" style="text-align:left">${t('col.employee')}</th>`;
+  for (let d = 1; d <= numDays; d++) {
+    const dow = dayOfWeek(month, d);
+    const isWeekend = dow === 0 || dow === 6;
+    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${t('wd.' + dow)}</th>`;
+  }
+  hdr += `<th>${t('sch.hours')}</th></tr></thead>`;
+
+  let body = '<tbody>';
+  const dayTotals = new Array(numDays).fill(0);
+  let grandHours = 0;
+  active.forEach(emp => {
+    const roleLabel = emp.role || EMP_TYPE_LABELS[emp.type] || '';
+    const tabLabel = emp.tab_number ? ' <span style="color:var(--accent);font-family:monospace;font-size:10px;">№'+emp.tab_number+'</span>' : '';
+    const nameCell = `<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;"><div style="font-weight:600;line-height:1.1;">${emp.name}${tabLabel}</div>${roleLabel ? '<div style="color:var(--text3);font-size:10px;margin-top:2px;">'+roleLabel+'</div>' : ''}</div></div>`;
+    body += `<tr><td class="emp-name-cell">${nameCell}</td>`;
+    let totalHours = 0;
+    for (let d = 1; d <= numDays; d++) {
+      const entry = lookup[emp.id + '_' + d];
+      const dow = dayOfWeek(month, d);
+      const isWeekend = dow === 0 || dow === 6;
+      if (entry) {
+        totalHours += +entry.hours;
+        dayTotals[d - 1] += +entry.hours;
+        body += `<td class="has-hours" title="${entry.hours}ч${entry.note ? ' · ' + entry.note.replace(/"/g,'&quot;') : ''}">${entry.hours}</td>`;
+      } else {
+        body += `<td style="${isWeekend ? 'background:rgba(224,85,85,.05);' : ''}"></td>`;
+      }
+    }
+    grandHours += totalHours;
+    body += `<td class="total-cell">${totalHours || ''}</td></tr>`;
+  });
+  // итоговая строка
+  body += `<tr class="totals-row"><td class="emp-name-cell">${t('sch.totalRow')}</td>`;
+  for (let d = 0; d < numDays; d++) body += `<td>${dayTotals[d] || ''}</td>`;
+  body += `<td>${grandHours || ''}</td></tr></tbody>`;
+
+  return cols + hdr + body;
+}
+
+async function renderScheduleCompareTable(active, month, numDays) {
+  // удалить предыдущий wrap чтобы не дублировался
+  const existing = document.getElementById('scheduleCompareWrap');
+  if (existing) existing.remove();
+  if (!_scheduleCompareUser) return;
+
+  let data = [];
+  try {
+    data = await API.get('/personal-schedule?month=' + month + '&userId=' + encodeURIComponent(_scheduleCompareUser)) || [];
+  } catch { return; }
+
+  const lookup = {};
+  data.forEach(s => {
+    const day = parseInt(s.work_date.slice(8, 10));
+    lookup[s.emp_id + '_' + day] = s;
+  });
+
+  const sel = document.getElementById('schedCompareUser');
+  const userLabel = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].textContent : '';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'scheduleCompareWrap';
+  wrap.className = 'table-wrap no-print'; // не уходит в печать
+  wrap.style.cssText = 'overflow-x:auto;margin-top:24px;';
+  wrap.innerHTML = `
+    <div style="padding:10px 14px;color:var(--text3);font-size:12px;background:var(--surface2);border-bottom:1px solid var(--border);">
+      📝 ${t('schedMode.compareLabel') || 'Сравнить с черновиком:'} <b style="color:var(--text)">${userLabel.replace(/</g,'&lt;')}</b>
+    </div>
+    <table id="scheduleCompareTable" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;">${buildPlainScheduleTableHTML(active, lookup, numDays, month)}</table>
+  `;
+  // вставляем после schedGrandTotal или scheduleWrap
+  const after = document.getElementById('schedGrandTotal') || document.getElementById('scheduleWrap');
+  after.after(wrap);
 }
 
 function attachScheduleRowDnD(table) {
