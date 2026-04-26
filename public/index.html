@@ -117,9 +117,28 @@
       </select>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><span class="table-title" id="txCount">Транзакции</span></div>
-      <table><thead><tr><th data-i18n="col.date">Дата</th><th data-i18n="col.type">Тип</th><th data-i18n="col.category">Категория</th><th data-i18n="col.employee">Сотрудник</th><th data-i18n="col.amount">Сумма</th><th data-i18n="col.note">Комментарий</th><th></th></tr></thead>
-      <tbody id="txTable"></tbody></table>
+      <div class="table-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="table-title" id="txCount">Транзакции</span>
+        <div id="txBulkBar" data-edit-page="transactions" style="display:none;align-items:center;gap:10px;">
+          <span id="txSelectedCount" style="color:var(--text3);font-size:12px;"></span>
+          <button class="btn btn-sm btn-danger" onclick="bulkDeleteSelectedTx()" data-i18n="tx.bulkDelete">✕ Удалить выбранные</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34px;text-align:center;" data-edit-page="transactions"><input type="checkbox" id="txSelectAll" onchange="toggleSelectAllTx(this.checked)"></th>
+            <th data-i18n="col.date">Дата</th>
+            <th data-i18n="col.type">Тип</th>
+            <th data-i18n="col.category">Категория</th>
+            <th data-i18n="col.employee">Сотрудник</th>
+            <th data-i18n="col.amount">Сумма</th>
+            <th data-i18n="col.note">Комментарий</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="txTable"></tbody>
+      </table>
     </div>
   </div>
 
