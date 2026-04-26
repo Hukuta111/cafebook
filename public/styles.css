@@ -343,7 +343,7 @@
   #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
 
   /* SCHEDULE TABLE */
-  #scheduleTable { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+  #scheduleTable { width:100%; min-width:1100px; table-layout:fixed; border-collapse:collapse; font-size:12px; }
   #scheduleTable th, #scheduleTable td { padding:4px 2px; text-align:center; border:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; }
   #scheduleTable th { background:var(--surface2); font-size:9px; letter-spacing:0; text-transform:uppercase; color:var(--text3); font-weight:500; }
   #scheduleTable td { cursor:pointer; transition:background .1s; }
@@ -395,17 +395,27 @@
     .page.print-target,.page.active{display:block!important}
 
     /* Schedule print */
-    /* Принудительный landscape A4 — width:287mm на body заставляет браузер
-       layout-ить под A4 landscape, даже на iOS Safari.
-       Жёстко ограничиваем высоту 195mm (меньше landscape printable area 200mm),
-       чтобы исключить phantom-вторую страницу из-за округления */
-    body.print-schedule-mode {
+    /* Принудительный landscape A4 — width:287mm заставляет браузер layout-ить
+       под A4 landscape, даже на iOS Safari. Жёстко ограничиваем высоту 195mm
+       (меньше landscape printable area 200mm), чтобы исключить phantom-вторую
+       страницу из-за округления */
+    html.print-schedule-mode, html.print-schedule-mode body.print-schedule-mode {
       width:287mm !important; min-width:287mm !important; max-width:287mm !important;
       height:195mm !important; min-height:0 !important; max-height:195mm !important;
       overflow:hidden !important;
+      margin:0 !important; padding:0 !important;
       page-break-after:avoid !important; break-after:avoid !important;
     }
-    body.print-schedule-mode .main,
+    /* Главный контейнер вынесен из потока через position:fixed —
+       гарантирует что ничего за его пределы не выйдет */
+    body.print-schedule-mode .main {
+      position:fixed !important;
+      top:0 !important; left:0 !important; right:auto !important; bottom:auto !important;
+      width:287mm !important; height:195mm !important;
+      max-width:287mm !important; max-height:195mm !important;
+      margin:0 !important; padding:0 !important;
+      overflow:hidden !important;
+    }
     body.print-schedule-mode #page-schedule,
     body.print-schedule-mode #scheduleWrap {
       width:287mm !important; min-width:287mm !important; max-width:287mm !important;

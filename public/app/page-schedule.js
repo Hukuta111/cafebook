@@ -272,6 +272,7 @@ function printSchedule() {
   // mark schedule page as print target
   document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
   document.getElementById('page-schedule').classList.add('print-target');
+  document.documentElement.classList.add('print-schedule-mode');
   document.body.classList.add('print-schedule-mode');
   // динамически добавить @page правило для landscape — без этого мобильные
   // браузеры не уважают именованную @page и печатают в текущей ориентации
@@ -279,6 +280,7 @@ function printSchedule() {
   window.print();
   setTimeout(() => {
     document.getElementById('page-schedule').classList.remove('print-target');
+    document.documentElement.classList.remove('print-schedule-mode');
     document.body.classList.remove('print-schedule-mode');
     removePrintLandscapeStyle();
   }, 700);
