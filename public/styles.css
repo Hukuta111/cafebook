@@ -396,23 +396,29 @@
 
     /* Schedule print */
     /* Принудительный landscape A4 — width:287mm на body заставляет браузер
-       layout-ить под A4 landscape, даже на iOS Safari */
+       layout-ить под A4 landscape, даже на iOS Safari.
+       Жёстко ограничиваем высоту 195mm (меньше landscape printable area 200mm),
+       чтобы исключить phantom-вторую страницу из-за округления */
     body.print-schedule-mode {
-      width:287mm !important; min-width:287mm !important;
-      /* ограничиваем высоту до содержимого + skip-overflow, чтобы не было пустой 2-й страницы */
-      height:auto !important; min-height:0 !important; max-height:none !important;
+      width:287mm !important; min-width:287mm !important; max-width:287mm !important;
+      height:195mm !important; min-height:0 !important; max-height:195mm !important;
       overflow:hidden !important;
+      page-break-after:avoid !important; break-after:avoid !important;
     }
     body.print-schedule-mode .main,
     body.print-schedule-mode #page-schedule,
     body.print-schedule-mode #scheduleWrap {
-      width:287mm !important; min-width:287mm !important;
-      height:auto !important; min-height:0 !important;
+      width:287mm !important; min-width:287mm !important; max-width:287mm !important;
+      height:auto !important; min-height:0 !important; max-height:195mm !important;
+      overflow:hidden !important;
       page-break-after:avoid !important; break-after:avoid !important;
+      page-break-before:avoid !important; break-before:avoid !important;
+      page-break-inside:avoid !important; break-inside:avoid !important;
     }
-    /* Все потомки — без принудительных разрывов и без min-height */
+    /* Все потомки — никаких принудительных разрывов вообще */
     body.print-schedule-mode * {
-      page-break-after:auto !important;
+      page-break-after:avoid !important; break-after:avoid !important;
+      page-break-before:avoid !important; break-before:avoid !important;
       min-height:0 !important;
     }
     /* Заголовок страницы — компактный */
