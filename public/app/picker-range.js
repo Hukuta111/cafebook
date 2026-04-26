@@ -140,8 +140,8 @@ function drpUpdateLabel(id) {
   const label = document.getElementById(id+'_label');
   if (!d.from) { label.textContent = t('filter.allDates'); label.className = ''; return; }
   const f = dateLabel(d.from);
-  const t = d.to && d.to !== d.from ? ' — ' + dateLabel(d.to) : '';
-  label.innerHTML = '<span class="drp-dates">' + f + t + '</span>';
+  const toLbl = d.to && d.to !== d.from ? ' — ' + dateLabel(d.to) : '';
+  label.innerHTML = '<span class="drp-dates">' + f + toLbl + '</span>';
 }
 
 // close all popups on outside click
