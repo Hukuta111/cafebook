@@ -395,24 +395,52 @@
     .page.print-target,.page.active{display:block!important}
 
     /* Schedule print */
-    /* Принудительный landscape A4 для всей страницы при печати графика —
-       width:287mm на body заставляет браузер layout-ить под A4 landscape (297−10),
-       даже на iOS Safari, который часто игнорирует @page size в портретной ориентации */
-    body.print-schedule-mode { width:287mm !important; min-width:287mm !important; }
-    body.print-schedule-mode .main { width:287mm !important; min-width:287mm !important; }
-    body.print-schedule-mode #page-schedule { width:287mm !important; min-width:287mm !important; }
-    body.print-schedule-mode #scheduleWrap { width:287mm !important; max-width:287mm !important; min-width:287mm !important; }
-    body.print-schedule-mode #scheduleTable { width:287mm !important; max-width:287mm !important; }
+    /* Принудительный landscape A4 — width:287mm на body заставляет браузер
+       layout-ить под A4 landscape, даже на iOS Safari */
+    body.print-schedule-mode {
+      width:287mm !important; min-width:287mm !important;
+      /* ограничиваем высоту до содержимого + skip-overflow, чтобы не было пустой 2-й страницы */
+      height:auto !important; min-height:0 !important; max-height:none !important;
+      overflow:hidden !important;
+    }
+    body.print-schedule-mode .main,
+    body.print-schedule-mode #page-schedule,
+    body.print-schedule-mode #scheduleWrap {
+      width:287mm !important; min-width:287mm !important;
+      height:auto !important; min-height:0 !important;
+      page-break-after:avoid !important; break-after:avoid !important;
+    }
+    /* Все потомки — без принудительных разрывов и без min-height */
+    body.print-schedule-mode * {
+      page-break-after:auto !important;
+      min-height:0 !important;
+    }
+    /* Заголовок страницы — компактный */
+    body.print-schedule-mode .page-header {
+      margin:0 0 4px 0 !important; padding:0 !important;
+      page-break-after:avoid !important; break-after:avoid !important;
+    }
+    body.print-schedule-mode .page-title {
+      font-size:13px !important; margin:0 !important; padding:0 !important; line-height:1.1 !important;
+    }
+    /* Итог под таблицей — компактный */
+    body.print-schedule-mode .sched-grand-total {
+      margin:4px 0 0 0 !important; padding:2px 0 !important;
+      font-size:11px !important; line-height:1.2 !important;
+      page-break-before:avoid !important; break-before:avoid !important;
+    }
     #page-schedule.print-target { page:schedule-landscape; }
     .sched-print-title{display:none!important}
-    /* Таблица — на всю ширину страницы, не разрывать по странице */
+    /* Таблица — на всю ширину страницы, не разрывать */
     #scheduleTable {
       font-size:11px;width:100% !important;max-width:100% !important;
       border-collapse:collapse;table-layout:fixed;margin:0 !important;
-      page-break-inside:avoid;break-inside:avoid;
+      page-break-inside:avoid !important;break-inside:avoid !important;
+      page-break-after:avoid !important;break-after:avoid !important;
     }
     #scheduleTable th, #scheduleTable td {
       border:1px solid #888;padding:2px 2px;overflow:hidden;text-overflow:clip;text-align:center;
+      line-height:1.15;
     }
     #scheduleTable th {
       font-size:10px;letter-spacing:0;background:#eee;color:#333;font-weight:600;
@@ -431,11 +459,10 @@
       font-size:11px;font-weight:700;
     }
     #scheduleTable tr {
-      page-break-inside:avoid;break-inside:avoid;
+      page-break-inside:avoid !important;break-inside:avoid !important;
     }
     /* Перетаскивающие иконки убираем при печати */
     .drag-handle { display:none !important; }
-    .sched-grand-total{display:block!important;text-align:right;margin-top:8px;font-size:13px;font-weight:700;color:#000}
     .table-wrap{border:none;overflow:visible;border-radius:0!important}
     *{border-radius:0!important}
     .page-header{margin-bottom:8px!important}
