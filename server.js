@@ -237,6 +237,22 @@ function checkPermission(page, action) {
   };
 }
 
+// Разрешает действие если у пользователя есть права хотя бы на ОДНОЙ из перечисленных страниц
+function checkAnyPermission(pages, action) {
+  return (req, res, next) => {
+    if (req.user?.role === 'admin') return next();
+    const perms = req.user?.permissions || {};
+    const ok = pages.some(page => {
+      const p = perms[page];
+      return p && p[action];
+    });
+    if (!ok) {
+      return res.status(403).json({ error: `Нет прав: ${action} на ${pages.join('/')}` });
+    }
+    next();
+  };
+}
+
 // ─── AUTH ROUTES ───────────────────────────────────────────
 
 app.post('/api/login', (req, res) => {
@@ -475,7 +491,7 @@ app.get('/api/positions', authMiddleware, (req, res) => {
   const rows = db.exec('SELECT * FROM positions ORDER BY name');
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
-app.post('/api/positions', authMiddleware, (req, res) => {
+app.post('/api/positions', authMiddleware, checkPermission('positions', 'edit'), (req, res) => {
   const { id, name, hidden_in_schedule } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
   try {
@@ -486,7 +502,7 @@ app.post('/api/positions', authMiddleware, (req, res) => {
     res.status(400).json({ error: 'Такая должность уже существует' });
   }
 });
-app.put('/api/positions/:id', authMiddleware, (req, res) => {
+app.put('/api/positions/:id', authMiddleware, checkPermission('positions', 'edit'), (req, res) => {
   const { name, hidden_in_schedule } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Название обязательно' });
   try {
@@ -497,7 +513,7 @@ app.put('/api/positions/:id', authMiddleware, (req, res) => {
     res.status(400).json({ error: 'Такая должность уже существует' });
   }
 });
-app.delete('/api/positions/:id', authMiddleware, (req, res) => {
+app.delete('/api/positions/:id', authMiddleware, checkPermission('positions', 'edit'), (req, res) => {
   db.run('DELETE FROM positions WHERE id=?', [req.params.id]);
   saveDb();
   res.json({ ok: true });
@@ -508,7 +524,7 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   const rows = db.exec('SELECT * FROM employees ORDER BY name');
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
-app.post('/api/employees', authMiddleware, (req, res) => {
+app.post('/api/employees', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
   const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя обязательно' });
   db.run(
@@ -518,7 +534,7 @@ app.post('/api/employees', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.put('/api/employees/:id', authMiddleware, (req, res) => {
+app.put('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
   const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
   db.run(
     `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=?,hidden_in_monthly=? WHERE id=?`,
@@ -527,7 +543,7 @@ app.put('/api/employees/:id', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.delete('/api/employees/:id', authMiddleware, (req, res) => {
+app.delete('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
   db.run('DELETE FROM employees WHERE id=?', [req.params.id]);
   saveDb();
   res.json({ ok: true });
@@ -544,7 +560,7 @@ app.get('/api/schedule', authMiddleware, (req, res) => {
   const rows = db.exec(sql, params);
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
-app.post('/api/schedule', authMiddleware, (req, res) => {
+app.post('/api/schedule', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   const { id, emp_id, work_date, hours, hourly_rate, note } = req.body;
   if (!emp_id || !work_date || !hours) return res.status(400).json({ error: 'Заполните все поля' });
   db.run(
@@ -554,7 +570,7 @@ app.post('/api/schedule', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.put('/api/schedule/:id', authMiddleware, (req, res) => {
+app.put('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   const { emp_id, work_date, hours, hourly_rate, note } = req.body;
   db.run(
     'UPDATE schedule SET emp_id=?,work_date=?,hours=?,hourly_rate=?,note=? WHERE id=?',
@@ -563,7 +579,7 @@ app.put('/api/schedule/:id', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.delete('/api/schedule/:id', authMiddleware, (req, res) => {
+app.delete('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   db.run('DELETE FROM schedule WHERE id=?', [req.params.id]);
   saveDb();
   res.json({ ok: true });
@@ -581,7 +597,7 @@ app.get('/api/transactions', authMiddleware, (req, res) => {
   const rows = db.exec(sql, params);
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
-app.post('/api/transactions', authMiddleware, (req, res) => {
+app.post('/api/transactions', authMiddleware, checkAnyPermission(['transactions','salary','banquets'], 'edit'), (req, res) => {
   const { id, date, type, cat, empId, amount, note } = req.body;
   if (!date || !type || !amount) return res.status(400).json({ error: 'Заполните все поля' });
   db.run(
@@ -591,7 +607,7 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.put('/api/transactions/:id', authMiddleware, (req, res) => {
+app.put('/api/transactions/:id', authMiddleware, checkAnyPermission(['transactions','salary','banquets'], 'edit'), (req, res) => {
   const { date, type, cat, empId, amount, note } = req.body;
   db.run(
     'UPDATE transactions SET date=?,type=?,cat=?,emp_id=?,amount=?,note=? WHERE id=?',
@@ -600,7 +616,7 @@ app.put('/api/transactions/:id', authMiddleware, (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-app.delete('/api/transactions/:id', authMiddleware, (req, res) => {
+app.delete('/api/transactions/:id', authMiddleware, checkAnyPermission(['transactions','salary','banquets'], 'edit'), (req, res) => {
   db.run('DELETE FROM transactions WHERE id=?', [req.params.id]);
   saveDb();
   res.json({ ok: true });
@@ -618,7 +634,7 @@ app.get('/api/settings', authMiddleware, (req, res) => {
   });
   res.json(obj);
 });
-app.post('/api/settings', authMiddleware, (req, res) => {
+app.post('/api/settings', authMiddleware, checkPermission('settings', 'edit'), (req, res) => {
   const body = req.body;
   Object.entries(body).forEach(([key, value]) => {
     if (PROTECTED_SETTING_KEYS.has(key)) return; // не позволяем перезаписать через общий endpoint
@@ -672,7 +688,7 @@ app.post('/api/master-password/set', authMiddleware, adminOnly, (req, res) => {
 });
 
 // ─── PERCENT BONUS CALC ───────────────────────────────────
-app.post('/api/calc-percent-bonus', authMiddleware, (req, res) => {
+app.post('/api/calc-percent-bonus', authMiddleware, checkPermission('salary-report', 'edit'), (req, res) => {
   const { month } = req.body;
   if (!month) return res.status(400).json({ error: 'Укажите месяц' });
 
@@ -781,7 +797,7 @@ function recalcShares(banquetId, total, percent) {
   return shares;
 }
 
-app.post('/api/banquets', authMiddleware, (req, res) => {
+app.post('/api/banquets', authMiddleware, checkPermission('banquets', 'edit'), (req, res) => {
   const { id, date, total, percent, note } = req.body;
   if (!date || !total) return res.status(400).json({ error: 'Укажите дату и сумму' });
   const bId = id || uid();
@@ -792,7 +808,7 @@ app.post('/api/banquets', authMiddleware, (req, res) => {
   res.json({ ok: true, id: bId });
 });
 
-app.put('/api/banquets/:id', authMiddleware, (req, res) => {
+app.put('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edit'), (req, res) => {
   const { date, total, percent, note, shares, items, recalc } = req.body;
   db.run('UPDATE banquets SET date=?, total=?, percent=?, note=? WHERE id=?',
     [date, parseFloat(total), parseFloat(percent) || 10, note || '', req.params.id]);
@@ -822,7 +838,7 @@ app.put('/api/banquets/:id', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete('/api/banquets/:id', authMiddleware, (req, res) => {
+app.delete('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edit'), (req, res) => {
   db.run('DELETE FROM banquet_shares WHERE banquet_id = ?', [req.params.id]);
   db.run('DELETE FROM banquet_items WHERE banquet_id = ?', [req.params.id]);
   db.run('DELETE FROM banquets WHERE id = ?', [req.params.id]);
@@ -872,7 +888,7 @@ app.get('/api/monthly-salary-candidates', authMiddleware, (req, res) => {
   res.json(employees);
 });
 
-app.post('/api/calc-monthly-salary', authMiddleware, (req, res) => {
+app.post('/api/calc-monthly-salary', authMiddleware, checkPermission('salary-report', 'edit'), (req, res) => {
   const { month, assignments } = req.body;
   if (!month) return res.status(400).json({ error: 'Укажите месяц' });
 
@@ -917,7 +933,7 @@ app.post('/api/calc-monthly-salary', authMiddleware, (req, res) => {
 });
 
 // ─── SCHEDULE → TRANSACTIONS ──────────────────────────────
-app.post('/api/calc-schedule-tx', authMiddleware, (req, res) => {
+app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   const { month } = req.body;
   if (!month) return res.status(400).json({ error: 'Укажите месяц' });
 
