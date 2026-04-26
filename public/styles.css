@@ -224,6 +224,10 @@
   .toggle-mini input:checked ~ .toggle-sw { background:var(--accent); }
   .toggle-mini input:checked ~ .toggle-sw::after { transform:translateX(13px); background:#1a1714; }
 
+  /* Скрытый скроллбар для области прав доступа (но скролл сохраняется) */
+  .perms-scroll-wrap { scrollbar-width:none; -ms-overflow-style:none; }
+  .perms-scroll-wrap::-webkit-scrollbar { width:0; height:0; display:none; }
+
   /* PERM CHECKBOX (для прав доступа в модалке пользователя) */
   .perm-cb { display:inline-flex; cursor:pointer; user-select:none; }
   .perm-cb input { display:none; }
