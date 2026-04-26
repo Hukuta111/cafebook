@@ -13,7 +13,7 @@ const EXCEL_FIELDS = [
   { key: 'amount',   labelKey: 'col.amount',   defaultLabel: 'Сумма',       required: true },
   { key: 'cat',      labelKey: 'col.category', defaultLabel: 'Категория',   required: false, fixedFrom: () => excelFixedCategoryOptions() },
   { key: 'employee', labelKey: 'col.employee', defaultLabel: 'Сотрудник',   required: false, fixedFrom: () => excelFixedEmployeeOptions() },
-  { key: 'note',     labelKey: 'col.note',     defaultLabel: 'Комментарий', required: false },
+  { key: 'note',     labelKey: 'col.note',     defaultLabel: 'Комментарий', required: false, multi: true },
 ];
 
 // Возвращает список фиксированных опций для типа транзакции
@@ -97,15 +97,20 @@ function onExcelFileSelected(e) {
   e.target.value = '';
 }
 
+function isMappingSet(m) {
+  if (Array.isArray(m)) return m.length > 0;
+  return !!m;
+}
+
 function autoDetectMapping() {
   _excelMapping = {};
   _excelHeaders.forEach(h => {
     const low = h.toLowerCase();
     for (const field of EXCEL_FIELDS) {
-      if (_excelMapping[field.key]) continue; // уже сопоставлено
+      if (isMappingSet(_excelMapping[field.key])) continue; // уже сопоставлено
       const hints = HEADER_HINTS[field.key] || [];
       if (hints.some(hint => low.includes(hint))) {
-        _excelMapping[field.key] = h;
+        _excelMapping[field.key] = field.multi ? [h] : h;
         break;
       }
     }
@@ -119,10 +124,34 @@ function renderExcelImportModal() {
     return;
   }
 
-  // Селект для маппинга колонок (с группами: Из файла / Фиксированное значение)
+  // Селекты/чекбоксы для маппинга колонок
+  const safe = s => String(s).replace(/"/g, '&quot;');
   const mappingHtml = EXCEL_FIELDS.map(f => {
     const fieldLabel = (f.labelKey && t(f.labelKey)) || f.defaultLabel;
-    const safe = s => String(s).replace(/"/g, '&quot;');
+    const reqMark = f.required ? ' <span style="color:var(--red)">*</span>' : '';
+
+    // === Multi-mode (например для note) ===
+    // Несколько колонок объединяются разделителем " · "
+    if (f.multi) {
+      const cur = Array.isArray(_excelMapping[f.key]) ? _excelMapping[f.key] : [];
+      const cbs = _excelHeaders.map(h => {
+        const checked = cur.includes(h) ? ' checked' : '';
+        return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;user-select:none;">
+          <input type="checkbox"${checked} onchange="onExcelMapMultiChange('${f.key}', '${safe(h)}', this.checked)" style="margin:0;">
+          <span>${h}</span>
+        </label>`;
+      }).join('');
+      const summary = cur.length ? `<span style="color:var(--text3);font-size:11px;margin-left:8px;">→ ${cur.join(' · ')}</span>` : '';
+      return `<div style="display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;padding:6px 0;">
+        <span style="font-size:13px;padding-top:4px;">${fieldLabel}${reqMark}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          ${cbs || `<span style="color:var(--text3);font-size:12px;">${t('excelImport.noColumns') || 'Нет колонок'}</span>`}
+          ${summary}
+        </div>
+      </div>`;
+    }
+
+    // === Single-select mode (для всех остальных полей) ===
     const cur = _excelMapping[f.key] || '';
 
     // 1) "Не использовать"
@@ -152,7 +181,6 @@ function renderExcelImportModal() {
       }
     }
 
-    const reqMark = f.required ? ' <span style="color:var(--red)">*</span>' : '';
     return `<div style="display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;padding:6px 0;">
       <span style="font-size:13px;">${fieldLabel}${reqMark}</span>
       <select onchange="onExcelMapChange('${f.key}', this.value)"
@@ -188,11 +216,24 @@ function onExcelMapChange(key, header) {
   if (header) _excelMapping[key] = header;
   else delete _excelMapping[key];
   updateExcelImportSummary();
+  renderExcelImportModal();
+}
+
+// Обработчик для multi-полей (note): добавить/убрать колонку
+function onExcelMapMultiChange(key, header, checked) {
+  if (!Array.isArray(_excelMapping[key])) _excelMapping[key] = [];
+  const arr = _excelMapping[key];
+  const idx = arr.indexOf(header);
+  if (checked && idx < 0) arr.push(header);
+  if (!checked && idx >= 0) arr.splice(idx, 1);
+  if (!arr.length) delete _excelMapping[key];
+  renderExcelImportModal();
+  updateExcelImportSummary();
 }
 
 function updateExcelImportSummary() {
   const required = EXCEL_FIELDS.filter(f => f.required).map(f => f.key);
-  const missing = required.filter(k => !_excelMapping[k]);
+  const missing = required.filter(k => !isMappingSet(_excelMapping[k]));
   const btn = document.getElementById('excelImportConfirmBtn');
   const summary = document.getElementById('excelImportSummary');
   if (missing.length) {
@@ -249,10 +290,19 @@ function findEmployeeByName(name) {
   return (_employees || []).find(e => (e.name || '').toLowerCase().includes(low) || low.includes((e.name || '').toLowerCase()));
 }
 
-// Получает значение поля для строки: либо из колонки Excel, либо фиксированное.
-// Возвращает { value, isFixed } чтобы вызывающий код не парсил повторно фикс. значение.
+// Получает значение поля для строки: либо из колонки Excel, либо фиксированное,
+// либо объединённое значение из нескольких колонок (multi-mode).
+// Возвращает { value, isFixed } — вызывающий код не парсит повторно фикс. значение.
 function getMappedValue(mapping, row) {
   if (!mapping) return { value: '', isFixed: false };
+  // Несколько колонок — объединяем значения через ' · '
+  if (Array.isArray(mapping)) {
+    const parts = mapping
+      .map(h => row[h])
+      .filter(v => v !== undefined && v !== null && String(v).trim() !== '')
+      .map(v => String(v).trim());
+    return { value: parts.join(' · '), isFixed: false };
+  }
   if (typeof mapping === 'string' && mapping.startsWith('fixed:')) {
     return { value: mapping.slice(6), isFixed: true };
   }
@@ -261,7 +311,7 @@ function getMappedValue(mapping, row) {
 
 async function confirmExcelImport() {
   const required = EXCEL_FIELDS.filter(f => f.required).map(f => f.key);
-  if (required.some(k => !_excelMapping[k])) {
+  if (required.some(k => !isMappingSet(_excelMapping[k]))) {
     showToast('Не все обязательные поля заданы', true);
     return;
   }
