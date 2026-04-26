@@ -358,6 +358,9 @@
   .sched-print-title { display:none; }
   .sched-grand-total { text-align:right; padding:12px 20px; font-size:14px; color:var(--text); }
 
+  /* Клон второй половины графика — виден только в режиме печати */
+  .sched-print-half2-wrap { display:none; }
+
   @page { margin:10mm; }
   @page schedule-landscape { size:A4 landscape; margin:5mm; }
 
@@ -389,14 +392,38 @@
     /* Schedule print */
     #page-schedule.print-target{page:schedule-landscape}
     .sched-print-title{display:none!important}
-    #scheduleTable{font-size:9px;width:100%;border-collapse:collapse;table-layout:fixed}
-    #scheduleTable th,#scheduleTable td{border:1px solid #999;padding:2px 2px;overflow:hidden;text-overflow:clip}
-    #scheduleTable th{font-size:8px;letter-spacing:0;background:#eee;color:#333}
-    #scheduleTable .emp-name-cell{font-size:9px;min-width:auto!important;width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #scheduleTable td.has-hours{background:#e8f5e9;color:#1b5e20;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    #scheduleTable .totals-row td{background:#f0f0f0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    #scheduleTable .total-cell{font-size:9px}
-    .sched-grand-total{display:block!important;text-align:right;margin-top:8px;font-size:12px;font-weight:700;color:#000}
+    /* Базовая таблица + клон второй половины */
+    #scheduleTable, #scheduleTablePrintHalf2 {
+      font-size:12px;width:100%;border-collapse:collapse;table-layout:fixed;
+    }
+    #scheduleTable th,#scheduleTable td,
+    #scheduleTablePrintHalf2 th,#scheduleTablePrintHalf2 td {
+      border:1px solid #888;padding:3px 3px;overflow:hidden;text-overflow:clip;text-align:center;
+    }
+    #scheduleTable th, #scheduleTablePrintHalf2 th {
+      font-size:11px;letter-spacing:0;background:#eee;color:#333;font-weight:600;
+    }
+    #scheduleTable .emp-name-cell, #scheduleTablePrintHalf2 .emp-name-cell {
+      font-size:12px;min-width:auto!important;width:140px;
+      white-space:normal;overflow:hidden;text-align:left;line-height:1.15;
+    }
+    #scheduleTable td.has-hours, #scheduleTablePrintHalf2 td.has-hours {
+      background:#e8f5e9;color:#1b5e20;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600;
+    }
+    #scheduleTable .totals-row td, #scheduleTablePrintHalf2 .totals-row td {
+      background:#f0f0f0;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700;
+    }
+    #scheduleTable .total-cell, #scheduleTablePrintHalf2 .total-cell {
+      font-size:12px;font-weight:700;
+    }
+    /* Перетаскивающие иконки убираем при печати */
+    .drag-handle { display:none !important; }
+    /* Wrapper второй половины — показываем только при печати с принудительным разрывом страницы */
+    .sched-print-half2-wrap {
+      display:block !important;
+      page-break-before:always;break-before:page;margin-top:0;
+    }
+    .sched-grand-total{display:block!important;text-align:right;margin-top:8px;font-size:13px;font-weight:700;color:#000}
     .table-wrap{border:none;overflow:visible;border-radius:0!important}
     *{border-radius:0!important}
     .page-header{margin-bottom:8px!important}
