@@ -369,12 +369,29 @@ app.post('/api/users', authMiddleware, adminOnly, (req, res) => {
   res.json({ ok: true, id });
 });
 
-app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
-  const { displayName, role, newPassword, permissions, masterPassword } = req.body;
+app.put('/api/users/:id', authMiddleware, (req, res) => {
+  const { displayName, role, newPassword, permissions, masterPassword, currentPassword } = req.body;
   const user = dbGetUserById(req.params.id);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-  if (role && role !== 'admin' && user.role === 'admin') {
+  const isSelf = String(user.id) === String(req.user.id);
+
+  // Доступ: либо админ редактирует кого угодно, либо юзер редактирует САМ СЕБЯ
+  if (!isSelf && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Доступ запрещён. Требуются права администратора.' });
+  }
+
+  // Self-edit: обязателен текущий пароль
+  if (isSelf) {
+    if (!currentPassword || !bcrypt.compareSync(String(currentPassword), user.password_hash)) {
+      return res.status(403).json({ error: 'Неверный текущий пароль', needCurrent: true });
+    }
+  }
+
+  // Запрет менять собственную роль и права (защита от случайной деградации)
+  if (isSelf) {
+    // игнорируем role/permissions из тела запроса
+  } else if (role && role !== 'admin' && user.role === 'admin') {
     const admins = dbGetUsers().filter(u => u.role === 'admin');
     if (admins.length <= 1) {
       return res.status(400).json({ error: 'Нельзя убрать роль у единственного администратора' });
@@ -382,30 +399,31 @@ app.put('/api/users/:id', authMiddleware, adminOnly, (req, res) => {
   }
   const patch = {};
   if (displayName !== undefined) patch.display_name = displayName.trim();
-  if (role !== undefined) patch.role = role === 'admin' ? 'admin' : 'user';
-  if (permissions !== undefined && (patch.role || user.role) !== 'admin') {
-    patch.permissions = JSON.stringify(permissions);
+  if (!isSelf) {
+    if (role !== undefined) patch.role = role === 'admin' ? 'admin' : 'user';
+    if (permissions !== undefined && (patch.role || user.role) !== 'admin') {
+      patch.permissions = JSON.stringify(permissions);
+    }
+    if (patch.role === 'admin') patch.permissions = null;
   }
-  if (patch.role === 'admin') patch.permissions = null;
   if (newPassword) {
     if (newPassword.length < 4) return res.status(400).json({ error: 'Пароль слишком короткий' });
-    // защита: если меняем пароль ЧУЖОМУ — требуем мастер-пароль (если он настроен)
-    const isOtherUser = String(user.id) !== String(req.user.id);
-    if (isOtherUser && getMasterPasswordHash()) {
+    // если меняем пароль ЧУЖОМУ и мастер-пароль настроен — проверяем мастер-пароль
+    if (!isSelf && getMasterPasswordHash()) {
       if (!verifyMasterPassword(masterPassword)) {
         return res.status(403).json({ error: 'Неверный мастер-пароль', needMaster: true });
       }
     }
+    // self-edit: текущий пароль уже проверен выше
     patch.password_hash = bcrypt.hashSync(newPassword, 10);
     patch.session_id = null;
   }
   dbUpdateUser(user.id, patch);
   saveDb();
-  // если сменили пароль/права — кикнуть старую сессию
-  if (patch.session_id === null && user.session_id) {
+  // если сменили пароль/права — кикнуть старую сессию (только для чужого, себе не нужно)
+  if (!isSelf && patch.session_id === null && user.session_id) {
     wsBroadcastToSession(user.session_id, { type: 'kicked' });
-  } else if (patch.permissions !== undefined || patch.role !== undefined) {
-    // права изменились — попросить клиент перезагрузить /me
+  } else if (!isSelf && (patch.permissions !== undefined || patch.role !== undefined)) {
     if (user.session_id) wsBroadcastToSession(user.session_id, { type: 'perms_changed' });
   }
   wsBroadcast({ type: 'users_changed' });

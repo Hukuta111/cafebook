@@ -2,24 +2,40 @@
 // USER MANAGEMENT
 // ═══════════════════════════════════════════
 function openUserModal(user) {
-  document.getElementById('userModalTitle').textContent = user ? t('user.edit') : t('user.new');
+  const myUsername = sessionStorage.getItem('cb_user') || '';
+  const isSelf = !!(user && user.username === myUsername);
+
+  document.getElementById('userModalTitle').textContent = user
+    ? (isSelf ? (t('user.editMe') || 'Изменить свои данные') : t('user.edit'))
+    : t('user.new');
   document.getElementById('uEditId').value = user ? user.id : '';
   document.getElementById('uUsername').value = user ? user.username : '';
   document.getElementById('uUsername').disabled = !!user;
   document.getElementById('uDisplayName').value = user ? (user.displayName || user.username) : '';
   document.getElementById('uRole').value = user ? user.role : 'user';
+  // Self-edit: запрещаем менять собственную роль (защита от случайной деградации админа)
+  document.getElementById('uRole').disabled = isSelf;
   document.getElementById('uPassword').value = '';
   document.getElementById('uPassword2').value = '';
   document.getElementById('uMasterPassword').value = '';
   document.getElementById('uMasterRow').style.display = 'none';
+  // Self-edit: поле подтверждения собственным паролем
+  const selfPassRow = document.getElementById('uSelfPassRow');
+  const selfPassInput = document.getElementById('uSelfPassword');
+  if (selfPassInput) selfPassInput.value = '';
+  if (selfPassRow) selfPassRow.style.display = isSelf ? '' : 'none';
   document.getElementById('uPassLabel').textContent = user
     ? t('user.passwordEdit')
     : t('user.password');
 
-  renderPermissionsUI(user ? (user.permissions || defaultPermissions()) : defaultPermissions());
-  toggleUserPermsUI();
-  // подгрузим статус мастер-пароля для подсказки
-  refreshMasterPasswordStatus();
+  // Self-edit: скрыть блок прав (нельзя менять свои права)
+  document.getElementById('uPermsBlock').style.display = isSelf ? 'none' : '';
+  if (!isSelf) {
+    renderPermissionsUI(user ? (user.permissions || defaultPermissions()) : defaultPermissions());
+    toggleUserPermsUI();
+    // подгрузим статус мастер-пароля для подсказки
+    refreshMasterPasswordStatus();
+  }
   openModal('userModal');
 }
 
@@ -167,24 +183,36 @@ async function saveUser() {
   const password = document.getElementById('uPassword').value;
   const password2 = document.getElementById('uPassword2').value;
   const masterPassword = document.getElementById('uMasterPassword').value;
-  const permissions = role === 'admin' ? null : collectPermissionsFromUI();
+  const selfPassword = document.getElementById('uSelfPassword')?.value || '';
+  const myUsername = sessionStorage.getItem('cb_user') || '';
+  const isSelf = !!editId && username && username === myUsername;
+  const permissions = role === 'admin' || isSelf ? null : collectPermissionsFromUI();
 
   if (!editId && !username) { showToast('Введите логин', true); return; }
   if (!editId && !password) { showToast('Введите пароль', true); return; }
   if (password && password !== password2) { showToast('Пароли не совпадают', true); return; }
 
-  // если поле мастер-пароля видно — оно обязательно
-  const masterRowVisible = document.getElementById('uMasterRow').style.display !== 'none';
-  if (masterRowVisible && !masterPassword) {
-    showToast(t('mp.required'), true);
+  // self-edit: всегда требуется свой текущий пароль
+  if (isSelf && !selfPassword) {
+    showToast(t('user.selfConfirmRequired') || 'Введите свой текущий пароль для подтверждения', true);
     return;
+  }
+  // если поле мастер-пароля видно — оно обязательно (только при редактировании чужого)
+  if (!isSelf) {
+    const masterRowVisible = document.getElementById('uMasterRow').style.display !== 'none';
+    if (masterRowVisible && !masterPassword) {
+      showToast(t('mp.required'), true);
+      return;
+    }
   }
 
   let res;
   if (editId) {
-    const body = { displayName, role, permissions };
+    const body = isSelf
+      ? { displayName, currentPassword: selfPassword }
+      : { displayName, role, permissions };
     if (password) body.newPassword = password;
-    if (masterPassword) body.masterPassword = masterPassword;
+    if (!isSelf && masterPassword) body.masterPassword = masterPassword;
     res = await API.put('/users/' + editId, body);
   } else {
     res = await API.post('/users', { username, displayName, password, role, permissions });
@@ -196,7 +224,6 @@ async function saveUser() {
     showToast(editId ? 'Пользователь обновлён ✓' : 'Пользователь создан ✓');
   } else if (res) {
     if (res.needMaster) {
-      // сервер сказал что нужен/неверен мастер-пароль — обновим статус и покажем поле
       _masterPasswordIsSet = true;
       updateMasterPassRow();
     }
@@ -277,7 +304,10 @@ async function renderUsers() {
     const escapedName = (u.displayName||u.username).replace(/"/g, '&quot;');
     const safeUser = JSON.stringify(u).replace(/"/g, '&quot;');
     const actions = isMe
-      ? `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
+      ? '<div style="display:flex;gap:6px;align-items:center;">'
+        + `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
+        + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')" title="' + (t('user.editSelf') || 'Изменить свои данные') + '">✎</button>'
+        + '</div>'
       : '<div style="display:flex;gap:6px;">'
         + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)" title="Выбить из системы">⏏ Выбить</button>' : '')
         + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')">✎</button>'
