@@ -7,12 +7,18 @@ async function renderSettings() {
   document.getElementById('settingCurrency').value = s.currency||'₴';
   document.getElementById('settingRevenueThreshold').value = s.revenueThreshold||'';
   document.getElementById('settingScheduleTx').checked = s.scheduleTx === 'true';
+  document.getElementById('settingHideSchedSum').checked = s.hideSchedSum === 'true';
   await loadSalTypes();
   renderSalTypesList();
   await loadTxCats();
   renderTxCatTabs();
   renderTxCatsList();
   await loadMasterPasswordCard();
+}
+
+// Применяет/снимает класс body.hide-sched-sum по сохранённому setting
+function applyHideSchedSum(value) {
+  document.body.classList.toggle('hide-sched-sum', value === 'true' || value === true);
 }
 
 // ═══════════════════════════════════════════
@@ -343,13 +349,15 @@ async function saveSettings() {
   const currency = document.getElementById('settingCurrency').value;
   const revenueThreshold = document.getElementById('settingRevenueThreshold').value;
   const scheduleTx = document.getElementById('settingScheduleTx').checked ? 'true' : 'false';
-  const res = await API.post('/settings', { cafeName, currency, revenueThreshold, scheduleTx });
+  const hideSchedSum = document.getElementById('settingHideSchedSum').checked ? 'true' : 'false';
+  const res = await API.post('/settings', { cafeName, currency, revenueThreshold, scheduleTx, hideSchedSum });
   if (res && res.ok) {
     _currency = currency;
     const sub = document.getElementById('cafeNameSub');
     if (cafeName) { sub.textContent = cafeName; sub.removeAttribute('data-i18n'); }
     else { sub.setAttribute('data-i18n', 'login.title'); sub.textContent = t('login.title'); }
     if (cafeName) document.title = cafeName + ' — CaféBook';
+    applyHideSchedSum(hideSchedSum);
     showToast('Настройки сохранены ✓');
   }
 }

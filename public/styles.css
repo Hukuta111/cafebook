@@ -343,7 +343,12 @@
   #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
 
   /* SCHEDULE TABLE */
-  #scheduleTable { width:100%; min-width:1100px; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+  #scheduleTable { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+  /* Скрытие колонки Сумма (применяется по body.hide-sched-sum) */
+  body.hide-sched-sum #scheduleTable col.sum-col,
+  body.hide-sched-sum #scheduleTable th.sum-col,
+  body.hide-sched-sum #scheduleTable td.sum-col,
+  body.hide-sched-sum #schedGrandTotal .sum-col { display:none !important; }
   #scheduleTable th, #scheduleTable td { padding:4px 2px; text-align:center; border:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; }
   #scheduleTable th { background:var(--surface2); font-size:9px; letter-spacing:0; text-transform:uppercase; color:var(--text3); font-weight:500; }
   #scheduleTable td { cursor:pointer; transition:background .1s; }

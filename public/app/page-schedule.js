@@ -71,7 +71,7 @@ async function renderSchedule() {
   // colgroup: Сотрудник(auto) | days(equal) | Часы | Сумма(wider)
   let cols = '<colgroup><col style="width:100px">';
   for (let d = 1; d <= numDays; d++) cols += '<col>';
-  cols += '<col style="width:40px"><col style="width:75px"></colgroup>';
+  cols += '<col style="width:40px"><col class="sum-col" style="width:75px"></colgroup>';
 
   // header
   let hdr = `<thead><tr><th class="emp-name-cell" style="text-align:left">${t('col.employee')}</th>`;
@@ -80,7 +80,7 @@ async function renderSchedule() {
     const isWeekend = dow === 0 || dow === 6;
     hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${t('wd.' + dow)}</th>`;
   }
-  hdr += `<th>${t('sch.hours')}</th><th>${t('col.sum')}</th></tr></thead>`;
+  hdr += `<th>${t('sch.hours')}</th><th class="sum-col">${t('col.sum')}</th></tr></thead>`;
 
   // body
   let body = '<tbody>';
@@ -115,7 +115,7 @@ async function renderSchedule() {
     grandHours += totalHours;
     grandSum += totalSum;
     body += `<td class="total-cell">${totalHours || ''}</td>`;
-    body += `<td class="total-cell" style="color:var(--green)">${totalSum ? fmt(totalSum) : ''}</td>`;
+    body += `<td class="total-cell sum-col" style="color:var(--green)">${totalSum ? fmt(totalSum) : ''}</td>`;
     body += '</tr>';
   });
 
@@ -124,7 +124,7 @@ async function renderSchedule() {
   for (let d = 0; d < numDays; d++) {
     body += `<td>${dayTotals[d] || ''}</td>`;
   }
-  body += `<td>${grandHours || ''}</td><td></td></tr>`;
+  body += `<td>${grandHours || ''}</td><td class="sum-col"></td></tr>`;
   body += '</tbody>';
 
   table.innerHTML = `<div class="sched-print-title">${t('page.schedule')} — ${monthLabel(month)}</div>` + cols + hdr + body;
@@ -137,7 +137,7 @@ async function renderSchedule() {
     grandEl.className = 'sched-grand-total';
     document.getElementById('scheduleWrap').after(grandEl);
   }
-  grandEl.innerHTML = grandSum ? `${t('sch.totalHours')}: <b>${grandHours}</b> &nbsp;|&nbsp; ${t('sch.totalSum')}: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b>` : '';
+  grandEl.innerHTML = grandSum ? `${t('sch.totalHours')}: <b>${grandHours}</b><span class="sum-col"> &nbsp;|&nbsp; ${t('sch.totalSum')}: <b style="color:var(--green)">${fmt(grandSum)} ${_currency}</b></span>` : '';
   grandEl.style.display = grandSum ? 'block' : 'none';
 
   // drag & drop строк
