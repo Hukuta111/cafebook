@@ -74,6 +74,16 @@ async function initDb() {
       amount REAL NOT NULL DEFAULT 0,
       in_bonus INTEGER DEFAULT 0
     )`,
+    // Личный (черновой) график пользователя — не влияет на основной график
+    `CREATE TABLE IF NOT EXISTS personal_schedule (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      emp_id TEXT NOT NULL,
+      work_date TEXT NOT NULL,
+      hours REAL DEFAULT 0,
+      hourly_rate REAL,
+      note TEXT
+    )`,
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
       display_name TEXT, password_hash TEXT NOT NULL,
@@ -614,6 +624,84 @@ app.delete('/api/schedule/:id', authMiddleware, checkPermission('schedule', 'edi
   db.run('DELETE FROM schedule WHERE id=?', [req.params.id]);
   saveDb();
   dataChanged('schedule');
+  res.json({ ok: true });
+});
+
+// ─── PERSONAL SCHEDULE (черновик пользователя) ─────────────
+// Не влияет на основной график и зарплатные расчёты.
+// Любой залогиненный юзер может редактировать СВОЙ личный график.
+// Админ может видеть и редактировать чужой.
+app.get('/api/personal-schedule', authMiddleware, (req, res) => {
+  const { month, userId } = req.query;
+  let targetUserId = req.user.id;
+  if (userId && req.user.role === 'admin') targetUserId = userId;
+  let sql = 'SELECT * FROM personal_schedule WHERE user_id = ?';
+  const params = [targetUserId];
+  if (month) { sql += ' AND strftime("%Y-%m", work_date) = ?'; params.push(month); }
+  sql += ' ORDER BY work_date, emp_id';
+  const rows = db.exec(sql, params);
+  res.json(rows[0] ? rowsToObjects(rows[0]) : []);
+});
+
+// Список пользователей с непустым личным графиком за месяц (для админа)
+app.get('/api/personal-schedule/users', authMiddleware, adminOnly, (req, res) => {
+  const { month } = req.query;
+  let sql = 'SELECT DISTINCT user_id FROM personal_schedule';
+  const params = [];
+  if (month) { sql += ' WHERE strftime("%Y-%m", work_date) = ?'; params.push(month); }
+  const rows = db.exec(sql, params);
+  const userIds = rows[0] ? rows[0].values.map(v => v[0]) : [];
+  const users = userIds.map(id => {
+    const u = dbGetUserById(id);
+    return u
+      ? { id: u.id, username: u.username, displayName: u.display_name || u.username }
+      : { id, username: '?', displayName: '? (удалён)' };
+  });
+  res.json(users);
+});
+
+app.post('/api/personal-schedule', authMiddleware, (req, res) => {
+  const { id, emp_id, work_date, hours, hourly_rate, note, ownerUserId } = req.body;
+  if (!emp_id || !work_date || !hours) return res.status(400).json({ error: 'Заполните все поля' });
+  // По умолчанию пишем в свой личный график. Админ может писать в чужой через ownerUserId.
+  let targetUser = req.user.id;
+  if (ownerUserId && req.user.role === 'admin') targetUser = ownerUserId;
+  db.run(
+    'INSERT INTO personal_schedule (id,user_id,emp_id,work_date,hours,hourly_rate,note) VALUES (?,?,?,?,?,?,?)',
+    [id, targetUser, emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note || '']
+  );
+  saveDb();
+  dataChanged('personal_schedule');
+  res.json({ ok: true });
+});
+
+app.put('/api/personal-schedule/:id', authMiddleware, (req, res) => {
+  const ownerRow = db.exec('SELECT user_id FROM personal_schedule WHERE id = ?', [req.params.id]);
+  if (!ownerRow[0]) return res.status(404).json({ error: 'Запись не найдена' });
+  const ownerId = ownerRow[0].values[0][0];
+  if (ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Чужой личный график нельзя редактировать' });
+  }
+  const { emp_id, work_date, hours, hourly_rate, note } = req.body;
+  db.run(
+    'UPDATE personal_schedule SET emp_id=?, work_date=?, hours=?, hourly_rate=?, note=? WHERE id=?',
+    [emp_id, work_date, parseFloat(hours), hourly_rate != null ? parseFloat(hourly_rate) : null, note || '', req.params.id]
+  );
+  saveDb();
+  dataChanged('personal_schedule');
+  res.json({ ok: true });
+});
+
+app.delete('/api/personal-schedule/:id', authMiddleware, (req, res) => {
+  const ownerRow = db.exec('SELECT user_id FROM personal_schedule WHERE id = ?', [req.params.id]);
+  if (!ownerRow[0]) return res.status(404).json({ error: 'Запись не найдена' });
+  const ownerId = ownerRow[0].values[0][0];
+  if (ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Чужой личный график нельзя удалить' });
+  }
+  db.run('DELETE FROM personal_schedule WHERE id=?', [req.params.id]);
+  saveDb();
+  dataChanged('personal_schedule');
   res.json({ ok: true });
 });
 

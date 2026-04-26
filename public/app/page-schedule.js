@@ -2,6 +2,69 @@
 // SCHEDULE
 // ═══════════════════════════════════════════
 let _scheduleData = [];
+let _scheduleMode = 'main';      // 'main' (общий) | 'personal' (мой/чужой черновик)
+let _schedulePersonalOwner = ''; // '' = свой; admin может выбрать чужой user_id
+
+function setScheduleMode(mode) {
+  _scheduleMode = mode === 'personal' ? 'personal' : 'main';
+  document.querySelectorAll('.sched-mode-btn').forEach(b => {
+    b.classList.toggle('btn-primary', b.dataset.schedMode === _scheduleMode);
+  });
+  const ownerSel = document.getElementById('schedPersonalOwner');
+  const hint = document.getElementById('schedPersonalHint');
+  const isPersonal = _scheduleMode === 'personal';
+  if (hint) hint.style.display = isPersonal ? '' : 'none';
+  // селектор владельца виден только админу в режиме personal
+  if (ownerSel) ownerSel.style.display = (isPersonal && _userRole === 'admin') ? '' : 'none';
+  // в режиме personal сбрасываем выбор владельца на «себя»
+  if (!isPersonal) _schedulePersonalOwner = '';
+  // Кнопка «Сформировать выплаты» не для личного графика
+  const genBtn = document.getElementById('schedGenTxBtn');
+  if (genBtn && isPersonal) genBtn.style.display = 'none';
+  // Кнопка «+ Смена» в режиме personal доступна всем (свой график) и админу (любой)
+  refreshScheduleEditUI();
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
+
+// Обновляет visual-режим (cursor/+/btn) исходя из текущего режима графика
+function refreshScheduleEditUI() {
+  let canEditNow;
+  if (_scheduleMode === 'main') {
+    canEditNow = canEdit('schedule');
+  } else {
+    // personal: свой = всегда; чужой = только админ
+    canEditNow = !_schedulePersonalOwner || _userRole === 'admin';
+  }
+  document.body.classList.toggle('no-schedule-edit', !canEditNow);
+  const addBtn = document.querySelector('#page-schedule [onclick="openSchedModal()"]');
+  if (addBtn) addBtn.style.display = canEditNow ? '' : 'none';
+}
+
+async function loadPersonalScheduleOwners(month) {
+  if (_userRole !== 'admin') return;
+  const ownerSel = document.getElementById('schedPersonalOwner');
+  if (!ownerSel) return;
+  try {
+    const users = await API.get('/personal-schedule/users?month=' + encodeURIComponent(month)) || [];
+    const me = sessionStorage.getItem('cb_user') || '';
+    // Всегда есть «Мой» сверху
+    let html = `<option value="">${t('schedMode.myOwn') || '👤 Мой'}</option>`;
+    users.forEach(u => {
+      if (u.username === me) return; // свой уже есть
+      const label = (u.displayName || u.username) + ' (' + u.username + ')';
+      html += `<option value="${u.id}">${label.replace(/"/g,'&quot;')}</option>`;
+    });
+    ownerSel.innerHTML = html;
+    if (_schedulePersonalOwner) ownerSel.value = _schedulePersonalOwner;
+  } catch {}
+}
+
+function onPersonalOwnerChange() {
+  const ownerSel = document.getElementById('schedPersonalOwner');
+  _schedulePersonalOwner = ownerSel?.value || '';
+  refreshScheduleEditUI();
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
 
 function daysInMonth(ym) {
   const [y, m] = ym.split('-').map(Number);
@@ -39,11 +102,11 @@ async function renderSchedule() {
   } catch {}
 
   // показать/скрыть кнопку формирования выплат:
-  // только если включено в настройках И есть edit-право на расписание
+  // только в режиме main И если включено в настройках И есть edit-право
   const settings = await API.get('/settings') || {};
   const genBtn = document.getElementById('schedGenTxBtn');
   if (genBtn) {
-    const allowed = settings.scheduleTx === 'true' && canEdit('schedule');
+    const allowed = _scheduleMode === 'main' && settings.scheduleTx === 'true' && canEdit('schedule');
     genBtn.style.display = allowed ? '' : 'none';
   }
 
@@ -51,8 +114,19 @@ async function renderSchedule() {
   const cur = today().slice(0,7);
   const month = _monthPickers['schedMonthPicker']?.value || cur;
   const numDays = daysInMonth(month);
+  // обновим visibility кнопок/курсоров под текущий режим
+  refreshScheduleEditUI();
 
-  _scheduleData = await API.get('/schedule?month=' + month) || [];
+  // выбор источника данных по режиму
+  if (_scheduleMode === 'personal') {
+    let url = '/personal-schedule?month=' + month;
+    if (_schedulePersonalOwner) url += '&userId=' + encodeURIComponent(_schedulePersonalOwner);
+    _scheduleData = await API.get(url) || [];
+    // подгрузим список владельцев черновиков (для админа)
+    loadPersonalScheduleOwners(month);
+  } else {
+    _scheduleData = await API.get('/schedule?month=' + month) || [];
+  }
 
   // build lookup: key = empId_day -> entry
   const lookup = {};
@@ -177,8 +251,14 @@ function attachScheduleRowDnD(table) {
 }
 
 function openSchedModal(entry, dateStr, empId) {
-  // защита: пользователь без edit-прав на расписание не может открыть форму
-  if (!canEdit('schedule')) return;
+  // В режиме main — нужны edit-права на расписание.
+  // В режиме personal: свой график можно редактировать всегда; чужой — только админ.
+  if (_scheduleMode === 'main') {
+    if (!canEdit('schedule')) return;
+  } else {
+    // personal: чужой = только админ
+    if (_schedulePersonalOwner && _userRole !== 'admin') return;
+  }
   populateEmpSelects();
   const empSel = document.getElementById('schedEmployee');
   // группируем по табельному номеру для совмещений (как в transaction/salary modal)
@@ -219,11 +299,16 @@ function openSchedModal(entry, dateStr, empId) {
   openModal('schedModal');
 }
 
+function _schedApiPath(path) {
+  // в режиме personal все CRUD-вызовы летят на /personal-schedule/...
+  return _scheduleMode === 'personal' ? path.replace(/^\/schedule/, '/personal-schedule') : path;
+}
+
 async function deleteScheduleFromModal() {
   const id = document.getElementById('schedEditId').value;
   if (!id) return;
   if (!await confirmDialog({ text: t('confirm.delShift') })) return;
-  const res = await API.del('/schedule/' + id);
+  const res = await API.del(_schedApiPath('/schedule/' + id));
   if (res && res.ok) { closeModal('schedModal'); renderSchedule(); showToast('Смена удалена'); }
 }
 
@@ -240,9 +325,13 @@ async function saveScheduleEntry() {
 
   const isEdit = !!document.getElementById('schedEditId').value;
   const data = { emp_id, work_date, hours, hourly_rate, note };
+  // Если админ редактирует чужой личный график — указываем владельца
+  if (_scheduleMode === 'personal' && _schedulePersonalOwner && _userRole === 'admin') {
+    data.ownerUserId = _schedulePersonalOwner;
+  }
   const res = isEdit
-    ? await API.put('/schedule/' + id, data)
-    : await API.post('/schedule', { id, ...data });
+    ? await API.put(_schedApiPath('/schedule/' + id), data)
+    : await API.post(_schedApiPath('/schedule'), { id, ...data });
 
   if (res && res.ok) {
     closeModal('schedModal');
@@ -255,7 +344,7 @@ async function saveScheduleEntry() {
 
 async function deleteScheduleEntry(id) {
   if (!await confirmDialog({ text: t('confirm.delShift') })) return;
-  const res = await API.del('/schedule/' + id);
+  const res = await API.del(_schedApiPath('/schedule/' + id));
   if (res && res.ok) { renderSchedule(); showToast('Удалено'); }
 }
 
