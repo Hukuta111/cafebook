@@ -108,10 +108,11 @@ async function navigateToDay(date) {
   document.getElementById('page-daily').classList.add('active');
   if (typeof closeSidebar === 'function') closeSidebar();
   if (typeof applyEditRestrictions === 'function') applyEditRestrictions();
-  // Создать пикер месяца если ещё нет, выставить нужный месяц
+  // Создать пикер месяца если ещё нет
   if (!_monthPickers['dailyMonthPicker']) {
     createMonthPicker('dailyMonthPicker', () => renderDaily());
   }
+  // Установить месяц
   mpSetValue('dailyMonthPicker', month);
   // Сбросить date-range фильтр (если был)
   const drp = _dateRangePickers && _dateRangePickers['dailyDateRange'];
@@ -119,9 +120,20 @@ async function navigateToDay(date) {
     drp.from = ''; drp.to = '';
     if (typeof drpUpdateLabel === 'function') drpUpdateLabel('dailyDateRange');
   }
-  // Открыть только выбранный день
+  // Открыть выбранный день
   _dailyDetailOpen.clear();
   _dailyDetailOpen.add(date);
-  // Перерендерить
+  // Рендер — деталка должна развернуться
   await renderDaily();
+  // Защита: если деталка не появилась (рендер прошёл до того как _dailyDetailOpen был добавлен),
+  // повторим
+  if (!document.getElementById('daily-detail-' + date)) {
+    _dailyDetailOpen.add(date);
+    await renderDaily();
+  }
+  // Прокрутить экран к деталке для удобства
+  setTimeout(() => {
+    const el = document.getElementById('daily-detail-' + date);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 80);
 }
