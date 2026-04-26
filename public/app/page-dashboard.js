@@ -38,22 +38,19 @@ async function renderDashboard() {
   const days = Object.keys(byDay).sort().slice(-14);
   const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
   const safeAttr = s => String(s).replace(/"/g, '&quot;');
-  // Пользователь должен иметь view на daily чтобы клик по колонке имел смысл
-  const dailyClickable = typeof canView === 'function' && canView('daily');
   document.getElementById('barChart').innerHTML = days.length
     ? days.map(d=>{
         const inc = byDay[d].income, exp = byDay[d].expense;
         const dateLbl = dateLabel(d);
         const incTip = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
         const expTip = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
-        const clickAttr = dailyClickable ? `onclick="navigateToDay('${d}')"` : '';
-        const cur = dailyClickable ? 'pointer' : 'default';
+        const clickAttr = `onclick="navigateToDay('${d}')"`;
         return `<div class="bar-wrap">
         <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" ${clickAttr} data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:${cur};"></div>
-          <div class="bar" ${clickAttr} data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:${cur};"></div>
+          <div class="bar" ${clickAttr} data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:pointer;"></div>
+          <div class="bar" ${clickAttr} data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:pointer;"></div>
         </div>
-        <div class="bar-label" ${clickAttr} style="cursor:${cur};">${dateLbl.split(' ')[0]}</div>
+        <div class="bar-label" ${clickAttr} style="cursor:pointer;">${dateLbl.split(' ')[0]}</div>
       </div>`;
       }).join('')
     : `<div style="color:var(--text3);font-size:13px;padding:40px">${t('detail.noData') || 'Нет данных'}</div>`;
@@ -93,52 +90,103 @@ async function renderDashboard() {
     : `<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`;
 }
 
-// Переход с дашборда на «Дневные отчёты» с открытым нужным днём
+// Открыть модалку с детализацией дня (вместо перехода на страницу дневных отчётов)
 async function navigateToDay(date) {
-  if (typeof canView === 'function' && !canView('daily')) {
-    if (typeof showToast === 'function') showToast('Нет доступа к дневным отчётам', true);
-    return;
-  }
-  const month = date.slice(0, 7);
-  // Активируем nav-item и страницу вручную (не через nav() — он сбрасывает месяц на текущий)
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  const navEl = document.querySelector('.nav-item[data-page="daily"]');
-  if (navEl) navEl.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-daily').classList.add('active');
-  if (typeof closeSidebar === 'function') closeSidebar();
-  if (typeof applyEditRestrictions === 'function') applyEditRestrictions();
-  // Создать пикер месяца если ещё нет
-  if (!_monthPickers['dailyMonthPicker']) {
-    createMonthPicker('dailyMonthPicker', () => renderDaily());
-  }
-  // Установить месяц
-  mpSetValue('dailyMonthPicker', month);
-  // Сбросить date-range фильтр (если был)
-  const drp = _dateRangePickers && _dateRangePickers['dailyDateRange'];
-  if (drp) {
-    drp.from = ''; drp.to = '';
-    if (typeof drpUpdateLabel === 'function') drpUpdateLabel('dailyDateRange');
-  }
-  // Полностью обнулить набор открытых дней и оставить только нужный
-  _dailyDetailOpen.clear();
-  _dailyDetailOpen.add(date);
-  // Первый рендер — должен сразу нарисовать деталку
-  await renderDaily();
+  // Заголовок
+  document.getElementById('dayDetailTitle').textContent = '📊 ' + dateLabel(date);
+  const body = document.getElementById('dayDetailBody');
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">Загрузка...</div>';
+  openModal('dayDetailModal');
 
-  // Делаем до 3 попыток подождать пока DOM и асинхронные API.get завершатся.
-  // Между попытками чуть-чуть ждём и повторяем рендер.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (document.getElementById('daily-detail-' + date)) break;
-    await new Promise(r => setTimeout(r, 60));
-    _dailyDetailOpen.clear();
-    _dailyDetailOpen.add(date);
-    await renderDaily();
+  // Получаем все транзакции этого дня
+  let allTx = [];
+  try {
+    const all = await API.get('/transactions') || [];
+    allTx = all.filter(t => t.date === date);
+  } catch {}
+  const emps = _employees.length ? _employees : (await API.get('/employees') || []);
+
+  // Подсчёт итогов по типам
+  const totals = { income:0, expense:0, salary:0, advance:0, bonus:0, fine:0 };
+  allTx.forEach(t => { if (totals[t.type] !== undefined) totals[t.type] += +t.amount; });
+  const net = totals.income - totals.expense - totals.salary - totals.advance - totals.bonus + totals.fine;
+
+  // Категории по типам
+  const byType = {};
+  allTx.forEach(t => {
+    if (!byType[t.type]) byType[t.type] = {};
+    const cat = t.cat || '—';
+    byType[t.type][cat] = (byType[t.type][cat] || 0) + +t.amount;
+  });
+
+  function renderCats(type, color) {
+    const cats = byType[type] || {};
+    const entries = Object.entries(cats).sort((a,b) => b[1] - a[1]);
+    if (!entries.length) return `<div style="color:var(--text3);font-size:12px;">${t('detail.noData') || '—'}</div>`;
+    const tot = entries.reduce((s,[,v]) => s + v, 0);
+    return entries.map(([cat, sum]) => {
+      const pct = tot ? Math.round(sum / tot * 100) : 0;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 10px;background:var(--surface2);border-radius:4px;margin-bottom:3px;">
+        <span style="font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat}</span>
+        <span style="color:var(--text3);font-size:11px;">${pct}%</span>
+        <span style="color:${color};font-weight:600;font-size:12.5px;min-width:90px;text-align:right;">${fmt(sum)} ${_currency}</span>
+      </div>`;
+    }).join('');
   }
 
-  // Прокрутить к деталке (если рендер всё-таки удался)
-  setTimeout(() => {
-    const el = document.getElementById('daily-detail-' + date);
-    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 80);
+  // Все операции списком
+  const ops = allTx.slice().sort((a,b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  const opsHtml = ops.length
+    ? ops.map(tx => {
+        const isPositive = tx.type === 'income' || tx.type === 'fine';
+        const sign = isPositive ? '+' : '−';
+        const color = ({
+          income:'var(--green)', expense:'var(--red)',
+          salary:'var(--accent)', advance:'var(--blue)',
+          bonus:'var(--purple)', fine:'var(--green)'
+        })[tx.type] || 'var(--text)';
+        const empName = tx.emp_id ? (emps.find(e => e.id === tx.emp_id)?.name || 'удалён') : '';
+        return `<div style="display:grid;grid-template-columns:90px 1fr 110px;gap:8px;padding:5px 10px;background:var(--surface2);border-radius:4px;margin-bottom:3px;font-size:12px;">
+          <span><span class="badge ${TYPE_BADGES[tx.type]||''}" style="font-size:10px">${TYPE_LABELS[tx.type]||tx.type}</span></span>
+          <span>${tx.cat||'—'}${empName?' · <span style="color:var(--text3)">'+empName+'</span>':''}${tx.note?' <span style="color:var(--text3);font-size:11px">— '+tx.note+'</span>':''}</span>
+          <span style="color:${color};font-weight:600;text-align:right;">${sign}${fmt(tx.amount)} ${_currency}</span>
+        </div>`;
+      }).join('')
+    : `<div style="color:var(--text3);font-size:12px;padding:8px 0;">${t('detail.noData') || 'Нет операций'}</div>`;
+
+  // Итоговые карточки
+  const card = (label, value, color, sign) => `<div style="background:var(--surface2);padding:10px 12px;border-radius:var(--radius-sm);">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:4px;">${label}</div>
+    <div style="font-size:14px;font-weight:600;color:${color};white-space:nowrap;">${sign||''}${fmt(value)} ${_currency}</div>
+  </div>`;
+
+  const netColor = net >= 0 ? 'var(--green)' : 'var(--red)';
+  const netSign  = net >= 0 ? '+' : '';
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px;">
+      ${card(t('col.income'), totals.income, 'var(--green)', '+')}
+      ${card(t('col.expense'), totals.expense, 'var(--red)', '−')}
+      ${card(t('col.salary'), totals.salary, 'var(--accent)', '−')}
+      ${card(t('col.advance'), totals.advance, 'var(--blue)', '−')}
+      ${card(t('col.bonus'), totals.bonus, 'var(--purple)', '+')}
+      ${card(t('col.fine'), totals.fine, 'var(--red)', '−')}
+    </div>
+    <div style="background:var(--surface2);padding:12px 14px;border-radius:var(--radius-sm);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);">${t('col.result')}</span>
+      <span style="font-size:18px;font-weight:700;color:${netColor};">${netSign}${fmt(net)} ${_currency}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${t('detail.incomeByCat') || '📈 Доходы'}</div>
+        ${renderCats('income','var(--green)')}
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${t('detail.expenseByCat') || '📉 Расходы'}</div>
+        ${renderCats('expense','var(--red)')}
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${t('detail.allOps') || '📋 Все операции дня'}</div>
+    ${opsHtml}
+  `;
 }
