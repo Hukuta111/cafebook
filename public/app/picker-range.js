@@ -69,6 +69,16 @@ function drpRender(id) {
   const daysInMo = new Date(d.viewYear, d.viewMonth + 1, 0).getDate();
   const todayStr = today();
 
+  function btn(ds, dayNum, otherMonth) {
+    const cls = (otherMonth ? 'other-month ' : '') + drpDayClass(d, ds) + (ds === todayStr ? ' today' : '');
+    const isFuture = ds > todayStr;
+    if (isFuture) {
+      // Будущая дата — заблокирована
+      return `<button class="${cls}" disabled style="opacity:.3;cursor:not-allowed;">${dayNum}</button>`;
+    }
+    return `<button class="${cls}" onclick="drpClick('${id}','${ds}')">${dayNum}</button>`;
+  }
+
   let html = '';
   // prev month padding
   const prevDays = new Date(d.viewYear, d.viewMonth, 0).getDate();
@@ -76,13 +86,12 @@ function drpRender(id) {
     const day = prevDays - i;
     const dt = new Date(d.viewYear, d.viewMonth - 1, day);
     const ds = dt.toISOString().slice(0,10);
-    html += `<button class="other-month ${drpDayClass(d,ds)}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+    html += btn(ds, day, true);
   }
   // current month
   for (let day = 1; day <= daysInMo; day++) {
     const ds = d.viewYear + '-' + String(d.viewMonth+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-    const cls = drpDayClass(d, ds) + (ds === todayStr ? ' today' : '');
-    html += `<button class="${cls}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+    html += btn(ds, day, false);
   }
   // next month padding
   const totalCells = startDow + daysInMo;
@@ -90,7 +99,7 @@ function drpRender(id) {
   for (let day = 1; day <= remaining; day++) {
     const dt = new Date(d.viewYear, d.viewMonth + 1, day);
     const ds = dt.toISOString().slice(0,10);
-    html += `<button class="other-month ${drpDayClass(d,ds)}" onclick="drpClick('${id}','${ds}')">${day}</button>`;
+    html += btn(ds, day, true);
   }
 
   document.getElementById(id+'_grid').innerHTML = html;
@@ -108,6 +117,7 @@ function drpDayClass(d, ds) {
 }
 
 function drpClick(id, ds) {
+  if (ds > today()) return; // защита от выбора будущих дат
   const d = _dateRangePickers[id];
   if (!d.tempFrom || d.tempTo || ds < d.tempFrom) {
     d.tempFrom = ds;

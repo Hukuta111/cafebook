@@ -51,6 +51,8 @@ function createMonthPicker(containerId, onChange) {
 
 function mpChangeYear(id, delta) {
   const p = _monthPickers[id];
+  const curYear = +today().slice(0,4);
+  if (delta > 0 && p.year >= curYear) return; // нельзя вперёд за текущий год
   p.year += delta;
   document.getElementById(id + '_year').textContent = p.year;
   mpRenderGrid(id);
@@ -62,14 +64,19 @@ function mpRenderGrid(id) {
   const grid = document.getElementById(id + '_grid');
   grid.innerHTML = MONTH_NAMES_SHORT.map((name, i) => {
     const val = p.year + '-' + String(i+1).padStart(2,'0');
+    const isFuture = val > curMonth;
     const isActive = val === p.value ? ' active' : '';
     const isToday = val === curMonth ? ' today' : '';
-    return `<button class="${isActive}${isToday}" onclick="mpSelect('${id}','${val}')">${name}</button>`;
+    const disabledAttr = isFuture ? ' disabled style="opacity:.35;cursor:not-allowed;"' : '';
+    const onClickAttr = isFuture ? '' : ` onclick="mpSelect('${id}','${val}')"`;
+    return `<button class="${isActive}${isToday}"${disabledAttr}${onClickAttr}>${name}</button>`;
   }).join('');
 }
 
 function mpSelect(id, val) {
   const p = _monthPickers[id];
+  // Защита от выбора будущего месяца (если как-то пришло)
+  if (val > today().slice(0,7)) return;
   p.value = val;
   document.getElementById(id + '_label').textContent = monthLabel(val);
   document.getElementById(id + '_popup').classList.remove('open');
