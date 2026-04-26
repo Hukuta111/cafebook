@@ -212,6 +212,13 @@ function renderExcelImportModal() {
       <div style="font-size:11px;text-transform:uppercase;color:var(--text3);letter-spacing:.5px;margin-bottom:8px;">${t('excelImport.mapping') || 'Сопоставление колонок'}</div>
       ${mappingHtml}
     </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;user-select:none;margin-bottom:14px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);">
+      <input type="checkbox" id="excelImportSkipDup" checked>
+      <span>
+        <b>${t('excelImport.skipDup') || 'Пропускать дубликаты'}</b>
+        <span style="color:var(--text3);font-size:11px;margin-left:6px;">${t('excelImport.skipDupHint') || '— строки с такими же датой, типом, суммой, категорией, сотрудником и комментарием'}</span>
+      </span>
+    </label>
     <div style="font-size:11px;text-transform:uppercase;color:var(--text3);letter-spacing:.5px;margin-bottom:6px;">${t('excelImport.preview') || 'Превью первых 5 строк'}</div>
     <div style="overflow-x:auto;">${previewHtml}</div>
     <div id="excelImportSummary" style="margin-top:14px;font-size:12px;color:var(--text3);"></div>
@@ -316,14 +323,41 @@ function getMappedValue(mapping, row) {
   return { value: row[mapping] !== undefined ? row[mapping] : '', isFixed: false };
 }
 
+// Уникальный отпечаток транзакции для детекции дубликатов
+function txFingerprint(t) {
+  const norm = s => String(s == null ? '' : s).trim().toLowerCase();
+  const amt = (Math.round((+t.amount || 0) * 100) / 100).toFixed(2);
+  return [
+    norm(t.date),
+    norm(t.type),
+    amt,
+    norm(t.cat),
+    norm(t.emp_id || t.empId || ''),
+    norm(t.note),
+  ].join('|');
+}
+
 async function confirmExcelImport() {
   const required = EXCEL_FIELDS.filter(f => f.required).map(f => f.key);
   if (required.some(k => !isMappingSet(_excelMapping[k]))) {
     showToast('Не все обязательные поля заданы', true);
     return;
   }
+
+  const skipDup = !!document.getElementById('excelImportSkipDup')?.checked;
+
   showLoader(true);
-  // results: { rowNum, status: 'ok'|'error', message?, parsed?, raw }
+
+  // Загрузим существующие транзакции для проверки дубликатов
+  const existingFp = new Set();
+  if (skipDup) {
+    try {
+      const all = await API.get('/transactions') || [];
+      all.forEach(t => existingFp.add(txFingerprint(t)));
+    } catch {}
+  }
+
+  // results: { rowNum, status: 'ok'|'error'|'duplicate', message?, parsed?, raw }
   const results = [];
 
   for (let i = 0; i < _excelRows.length; i++) {
@@ -364,6 +398,17 @@ async function confirmExcelImport() {
     if (!amount || amount <= 0) { results.push({ rowNum, status:'error', message: 'Неверная сумма: "' + amountMv.value + '"', parsed, raw: row }); continue; }
 
     const body = { id: uid(), date, type, cat: cat || '', empId, amount, note: note || '' };
+
+    // Проверка дубликата
+    if (skipDup) {
+      const fp = txFingerprint(body);
+      if (existingFp.has(fp)) {
+        results.push({ rowNum, status:'duplicate', message: t('excelImport.dupMsg') || 'Уже существует — пропущено', parsed, raw: row });
+        continue;
+      }
+      existingFp.add(fp); // защита от дубликатов внутри самого Excel
+    }
+
     try {
       const res = await API.post('/transactions', body);
       if (res && res.ok) results.push({ rowNum, status:'ok', parsed, raw: row });
@@ -403,11 +448,13 @@ function setExcelResultsTab(tab) {
 
 function drawExcelResults() {
   const results = _excelLastResults;
-  const okCount = results.filter(r => r.status === 'ok').length;
-  const failCount = results.length - okCount;
+  const okCount  = results.filter(r => r.status === 'ok').length;
+  const dupCount = results.filter(r => r.status === 'duplicate').length;
+  const failCount = results.filter(r => r.status === 'error').length;
 
   let filtered = results;
   if (_excelResultsTab === 'ok')    filtered = results.filter(r => r.status === 'ok');
+  if (_excelResultsTab === 'duplicate') filtered = results.filter(r => r.status === 'duplicate');
   if (_excelResultsTab === 'error') filtered = results.filter(r => r.status === 'error');
 
   const tabBtn = (key, label, count, color) => {
@@ -418,6 +465,11 @@ function drawExcelResults() {
   const safe = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
   // карточки итогов
+  const dupCard = dupCount > 0 ? `
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;border-left:3px solid var(--accent);">
+      <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">⏭ ${t('excelImport.duplicates') || 'Дубликаты'}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--accent);">${dupCount}</div>
+    </div>` : '';
   const summary = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;">
       <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">${t('excelImport.totalRows') || 'Всего строк'}</div>
@@ -427,6 +479,7 @@ function drawExcelResults() {
       <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">✓ ${t('excelImport.imported') || 'Импортировано'}</div>
       <div style="font-size:18px;font-weight:600;color:var(--green);">${okCount}</div>
     </div>
+    ${dupCard}
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;border-left:3px solid var(--red);">
       <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">✕ ${t('excelImport.errors') || 'Ошибки'}</div>
       <div style="font-size:18px;font-weight:600;color:var(--red);">${failCount}</div>
@@ -458,16 +511,17 @@ function drawExcelResults() {
   // таблица результатов
   const rowsHtml = filtered.length
     ? filtered.map(r => {
-        const isOk = r.status === 'ok';
-        const statusBadge = isOk
-          ? '<span style="color:var(--green);font-size:11px;">✓</span>'
-          : '<span style="color:var(--red);font-size:11px;">✕</span>';
+        const statusBadge =
+          r.status === 'ok'        ? '<span style="color:var(--green);font-size:11px;">✓</span>' :
+          r.status === 'duplicate' ? '<span style="color:var(--accent);font-size:11px;">⏭</span>' :
+                                      '<span style="color:var(--red);font-size:11px;">✕</span>';
         const p = r.parsed || {};
         const typeLbl = p.type ? (TYPE_LABELS[p.type] || p.type) : '—';
         const amount = p.amount ? fmt(p.amount) + ' ' + _currency : '—';
-        const errCell = isOk
-          ? `<span style="color:var(--text3);font-size:11px;">—</span>`
-          : `<span style="color:var(--red);font-size:12px;">${safe(r.message)}</span>`;
+        const errCell =
+          r.status === 'ok'         ? `<span style="color:var(--text3);font-size:11px;">—</span>` :
+          r.status === 'duplicate'  ? `<span style="color:var(--accent);font-size:12px;">${safe(r.message || '')}</span>` :
+                                      `<span style="color:var(--red);font-size:12px;">${safe(r.message)}</span>`;
         return `<tr style="border-bottom:1px solid var(--border);">
           <td style="padding:6px 8px;width:40px;text-align:center;color:var(--text3);font-size:11px;">${r.rowNum}</td>
           <td style="padding:6px 8px;width:32px;text-align:center;">${statusBadge}</td>
@@ -486,9 +540,10 @@ function drawExcelResults() {
     ${summary}
     ${breakdownHtml}
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-      ${tabBtn('all',   t('excelImport.allRows')  || 'Все',           results.length, 'var(--text)')}
-      ${tabBtn('ok',    '✓ ' + (t('excelImport.tabOk') || 'Успешные'), okCount,        'var(--green)')}
-      ${tabBtn('error', '✕ ' + (t('excelImport.tabErrors') || 'Ошибки'), failCount,    'var(--red)')}
+      ${tabBtn('all',       t('excelImport.allRows')  || 'Все',                            results.length, 'var(--text)')}
+      ${tabBtn('ok',        '✓ ' + (t('excelImport.tabOk') || 'Успешные'),                  okCount,        'var(--green)')}
+      ${dupCount > 0 ? tabBtn('duplicate','⏭ ' + (t('excelImport.tabDup') || 'Дубликаты'), dupCount,       'var(--accent)') : ''}
+      ${tabBtn('error',     '✕ ' + (t('excelImport.tabErrors') || 'Ошибки'),                failCount,      'var(--red)')}
     </div>
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
