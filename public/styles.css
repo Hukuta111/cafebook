@@ -103,9 +103,7 @@
   body.sidebar-collapsed .sidebar-logo span { display:none; }
   body.sidebar-collapsed .sidebar-logo { padding:18px 0; text-align:center; }
   body.sidebar-collapsed .sidebar-nav .nav-group-label {
-    text-indent:-9999px !important; overflow:hidden !important; padding:0 !important; height:1px !important;
-    background:var(--border) !important; margin:10px 14px !important; line-height:1px !important;
-    letter-spacing:0 !important; font-size:0 !important;
+    display:none !important;
   }
   body.sidebar-collapsed .nav-item { padding:12px 0; justify-content:center; gap:0; overflow:hidden; }
   body.sidebar-collapsed .nav-item .icon { font-size:20px; width:auto; }
