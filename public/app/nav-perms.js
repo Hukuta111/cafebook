@@ -23,6 +23,8 @@ function applyPermissions() {
     if (page === 'users') return; // уже обработали .admin-only
     el.style.display = canView(page) ? 'flex' : 'none';
   });
+  // спрятать заголовки групп в которых ни одного видимого пункта
+  refreshNavGroupVisibility();
   // скрыть/показать редактирующие кнопки по edit
   applyEditRestrictions();
 
@@ -43,6 +45,22 @@ function applyPermissions() {
       }
     }
   }
+}
+
+// Скрывает заголовки групп сайдбара (ОБЗОР/ФИНАНСЫ/...) если в группе
+// нет ни одного видимого .nav-item. Когда добавляются права — пересчитывается.
+function refreshNavGroupVisibility() {
+  document.querySelectorAll('.sidebar-nav .nav-group-label').forEach(label => {
+    let hasVisible = false;
+    let sibling = label.nextElementSibling;
+    while (sibling && !sibling.classList.contains('nav-group-label')) {
+      if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') {
+        hasVisible = true; break;
+      }
+      sibling = sibling.nextElementSibling;
+    }
+    label.style.display = hasVisible ? '' : 'none';
+  });
 }
 
 function applyEditRestrictions() {
