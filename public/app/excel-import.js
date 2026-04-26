@@ -433,6 +433,28 @@ function drawExcelResults() {
     </div>
   </div>`;
 
+  // разбивка по месяцам (только успешно импортированные)
+  const byMonth = {};
+  results.filter(r => r.status === 'ok').forEach(r => {
+    const m = (r.parsed && r.parsed.date || '').slice(0, 7);
+    if (!m) return;
+    byMonth[m] = (byMonth[m] || 0) + 1;
+  });
+  const monthsHtml = Object.entries(byMonth).sort().map(([m, n]) => {
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11.5px;">
+      <b>${monthLabel(m)}</b><span style="color:var(--text3);">${n}</span>
+    </span>`;
+  }).join('');
+  const breakdownHtml = monthsHtml ? `
+    <div style="background:rgba(231,158,72,0.06);border:1px solid rgba(231,158,72,0.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">${t('excelImport.byMonth') || '📅 По месяцам'}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${monthsHtml}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;">
+        ${t('excelImport.byMonthHint') || 'Если на странице Транзакции выбран только один месяц — там видны только записи за этот месяц.'}
+      </div>
+    </div>
+  ` : '';
+
   // таблица результатов
   const rowsHtml = filtered.length
     ? filtered.map(r => {
@@ -462,6 +484,7 @@ function drawExcelResults() {
   const body = document.getElementById('excelImportBody');
   body.innerHTML = `
     ${summary}
+    ${breakdownHtml}
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
       ${tabBtn('all',   t('excelImport.allRows')  || 'Все',           results.length, 'var(--text)')}
       ${tabBtn('ok',    '✓ ' + (t('excelImport.tabOk') || 'Успешные'), okCount,        'var(--green)')}
