@@ -5,15 +5,41 @@ let _excelRows = [];        // массив объектов первого ли
 let _excelHeaders = [];     // ключи (заголовки колонок) первой строки
 let _excelMapping = {};     // { date: 'A', type: 'B', cat: '...', amount: '...', note: '...', employee: '...' }
 
-// Поля приложения, которые можно мапить из Excel
+// Поля приложения, которые можно мапить из Excel.
+// fixedFrom — функция, возвращающая список вариантов "зафиксировать значение" для всех строк.
 const EXCEL_FIELDS = [
-  { key: 'date',     label: 'Дата',         required: true },
-  { key: 'type',     label: 'Тип',          required: true },
-  { key: 'amount',   label: 'Сумма',        required: true },
-  { key: 'cat',      label: 'Категория',    required: false },
-  { key: 'employee', label: 'Сотрудник',    required: false },
-  { key: 'note',     label: 'Комментарий',  required: false },
+  { key: 'date',     labelKey: 'col.date',     defaultLabel: 'Дата',        required: true },
+  { key: 'type',     labelKey: 'col.type',     defaultLabel: 'Тип',         required: true,  fixedFrom: () => excelFixedTypeOptions() },
+  { key: 'amount',   labelKey: 'col.amount',   defaultLabel: 'Сумма',       required: true },
+  { key: 'cat',      labelKey: 'col.category', defaultLabel: 'Категория',   required: false, fixedFrom: () => excelFixedCategoryOptions() },
+  { key: 'employee', labelKey: 'col.employee', defaultLabel: 'Сотрудник',   required: false, fixedFrom: () => excelFixedEmployeeOptions() },
+  { key: 'note',     labelKey: 'col.note',     defaultLabel: 'Комментарий', required: false },
 ];
+
+// Возвращает список фиксированных опций для типа транзакции
+function excelFixedTypeOptions() {
+  return ['income','expense','salary','advance','bonus','fine'].map(id => ({
+    value: id,
+    label: t('tx.' + id) || id,
+  }));
+}
+
+// Возвращает уникальные имена категорий (из всех типов, без дубликатов)
+function excelFixedCategoryOptions() {
+  const all = new Set();
+  ['income','expense','salary','advance','bonus','fine'].forEach(type => {
+    const cats = (typeof getCategoriesForType === 'function') ? getCategoriesForType(type) : [];
+    cats.forEach(c => all.add(c));
+  });
+  return [...all].sort().map(name => ({ value: name, label: name }));
+}
+
+// Возвращает список активных сотрудников
+function excelFixedEmployeeOptions() {
+  return (_employees || [])
+    .filter(e => e.status === 'active')
+    .map(e => ({ value: e.id, label: e.name + (e.tab_number ? ' (№' + e.tab_number + ')' : '') }));
+}
 
 // Возможные русско-укр-англ названия колонок для авто-определения
 const HEADER_HINTS = {
@@ -93,17 +119,42 @@ function renderExcelImportModal() {
     return;
   }
 
-  // Селект для маппинга колонок
+  // Селект для маппинга колонок (с группами: Из файла / Фиксированное значение)
   const mappingHtml = EXCEL_FIELDS.map(f => {
-    const opts = [`<option value="">${t('excelImport.skip') || '— не использовать —'}</option>`]
-      .concat(_excelHeaders.map(h => {
-        const sel = _excelMapping[f.key] === h ? ' selected' : '';
-        return `<option value="${h.replace(/"/g,'&quot;')}"${sel}>${h}</option>`;
-      }))
-      .join('');
+    const fieldLabel = (f.labelKey && t(f.labelKey)) || f.defaultLabel;
+    const safe = s => String(s).replace(/"/g, '&quot;');
+    const cur = _excelMapping[f.key] || '';
+
+    // 1) "Не использовать"
+    let opts = `<option value=""${cur === '' ? ' selected' : ''}>— ${t('excelImport.skip') || 'не использовать'} —</option>`;
+
+    // 2) Колонки из файла
+    if (_excelHeaders.length) {
+      opts += `<optgroup label="${t('excelImport.fromFile') || 'Из файла'}">`;
+      _excelHeaders.forEach(h => {
+        const sel = cur === h ? ' selected' : '';
+        opts += `<option value="${safe(h)}"${sel}>${h}</option>`;
+      });
+      opts += '</optgroup>';
+    }
+
+    // 3) Фиксированное значение для всех строк
+    if (typeof f.fixedFrom === 'function') {
+      const fixedOpts = f.fixedFrom();
+      if (fixedOpts.length) {
+        opts += `<optgroup label="${t('excelImport.fixed') || 'Зафиксировать для всех строк'}">`;
+        fixedOpts.forEach(o => {
+          const v = 'fixed:' + o.value;
+          const sel = cur === v ? ' selected' : '';
+          opts += `<option value="${safe(v)}"${sel}>${o.label}</option>`;
+        });
+        opts += '</optgroup>';
+      }
+    }
+
     const reqMark = f.required ? ' <span style="color:var(--red)">*</span>' : '';
     return `<div style="display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;padding:6px 0;">
-      <span style="font-size:13px;">${f.label}${reqMark}</span>
+      <span style="font-size:13px;">${fieldLabel}${reqMark}</span>
       <select onchange="onExcelMapChange('${f.key}', this.value)"
         style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-size:12.5px;outline:none;">
         ${opts}
@@ -198,6 +249,16 @@ function findEmployeeByName(name) {
   return (_employees || []).find(e => (e.name || '').toLowerCase().includes(low) || low.includes((e.name || '').toLowerCase()));
 }
 
+// Получает значение поля для строки: либо из колонки Excel, либо фиксированное.
+// Возвращает { value, isFixed } чтобы вызывающий код не парсил повторно фикс. значение.
+function getMappedValue(mapping, row) {
+  if (!mapping) return { value: '', isFixed: false };
+  if (typeof mapping === 'string' && mapping.startsWith('fixed:')) {
+    return { value: mapping.slice(6), isFixed: true };
+  }
+  return { value: row[mapping] !== undefined ? row[mapping] : '', isFixed: false };
+}
+
 async function confirmExcelImport() {
   const required = EXCEL_FIELDS.filter(f => f.required).map(f => f.key);
   if (required.some(k => !_excelMapping[k])) {
@@ -210,31 +271,48 @@ async function confirmExcelImport() {
 
   for (let i = 0; i < _excelRows.length; i++) {
     const row = _excelRows[i];
-    const dateRaw = row[_excelMapping.date];
-    const typeRaw = row[_excelMapping.type];
-    const amountRaw = row[_excelMapping.amount];
-    const catRaw = _excelMapping.cat ? row[_excelMapping.cat] : '';
-    const empRaw = _excelMapping.employee ? row[_excelMapping.employee] : '';
-    const noteRaw = _excelMapping.note ? row[_excelMapping.note] : '';
 
-    const date = parseExcelDate(dateRaw);
-    const type = parseExcelType(typeRaw);
-    const amount = parseExcelAmount(amountRaw);
+    // Дата (фикс. значение тоже допустимо хотя обычно не используется)
+    const dateMv = getMappedValue(_excelMapping.date, row);
+    const date = parseExcelDate(dateMv.value);
 
-    if (!date) { failCount++; errors.push('Строка ' + (i+2) + ': неверная дата "' + dateRaw + '"'); continue; }
-    if (!type) { failCount++; errors.push('Строка ' + (i+2) + ': неизвестный тип "' + typeRaw + '"'); continue; }
-    if (!amount || amount <= 0) { failCount++; errors.push('Строка ' + (i+2) + ': неверная сумма "' + amountRaw + '"'); continue; }
+    // Тип: если зафиксирован — берём как есть, иначе парсим из колонки
+    const typeMv = getMappedValue(_excelMapping.type, row);
+    const type = typeMv.isFixed ? typeMv.value : parseExcelType(typeMv.value);
 
-    const emp = findEmployeeByName(empRaw);
+    // Сумма
+    const amountMv = getMappedValue(_excelMapping.amount, row);
+    const amount = parseExcelAmount(amountMv.value);
+
+    // Категория (текст как есть)
+    const catMv = getMappedValue(_excelMapping.cat, row);
+    const cat = String(catMv.value || '');
+
+    // Сотрудник: если зафиксирован — это уже emp.id; иначе ищем по имени
+    const empMv = getMappedValue(_excelMapping.employee, row);
+    let empId = null;
+    if (empMv.isFixed) {
+      empId = empMv.value || null;
+    } else if (empMv.value) {
+      const emp = findEmployeeByName(empMv.value);
+      empId = emp ? emp.id : null;
+    }
+
+    // Комментарий
+    const noteMv = getMappedValue(_excelMapping.note, row);
+    const note = String(noteMv.value || '');
+
+    if (!date) { failCount++; errors.push('Строка ' + (i+2) + ': неверная дата "' + dateMv.value + '"'); continue; }
+    if (!type) { failCount++; errors.push('Строка ' + (i+2) + ': неизвестный тип "' + typeMv.value + '"'); continue; }
+    if (!amount || amount <= 0) { failCount++; errors.push('Строка ' + (i+2) + ': неверная сумма "' + amountMv.value + '"'); continue; }
 
     const body = {
       id: uid(),
-      date,
-      type,
-      cat: catRaw || '',
-      empId: emp ? emp.id : null,
+      date, type,
+      cat: cat || '',
+      empId,
       amount,
-      note: noteRaw || '',
+      note: note || '',
     };
     try {
       const res = await API.post('/transactions', body);
