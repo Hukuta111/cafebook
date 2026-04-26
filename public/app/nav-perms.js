@@ -51,6 +51,8 @@ function applyEditRestrictions() {
     const page = el.dataset.editPage;
     el.style.display = canEdit(page) ? '' : 'none';
   });
+  // флаг для read-only режимов где есть inline onclick на ячейках
+  document.body.classList.toggle('no-schedule-edit', !canEdit('schedule'));
 }
 
 function applyRoleUI(role) { _userRole = role; applyPermissions(); }
