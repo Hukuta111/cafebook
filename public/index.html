@@ -662,6 +662,10 @@
       <label style="color:var(--accent);" data-i18n="mp.requiredLabel">🔐 Мастер-пароль (для смены пароля чужому пользователю)</label>
       <input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль">
     </div>
+    <div class="form-row" id="uSelfPassRow" style="display:none;background:rgba(93,185,124,0.06);border:1px solid rgba(93,185,124,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
+      <label style="color:var(--green);" data-i18n="user.selfConfirmLabel">🔒 Подтвердите своим текущим паролем</label>
+      <input type="password" id="uSelfPassword" autocomplete="current-password" data-i18n-placeholder="user.selfConfirmPh" placeholder="ваш текущий пароль">
+    </div>
     <div id="uPermsBlock" class="form-row">
       <label data-i18n="user.perms">Права доступа к страницам</label>
       <div class="perms-scroll" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface2);max-height:280px;overflow-y:auto;">
