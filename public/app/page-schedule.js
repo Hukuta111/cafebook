@@ -177,6 +177,8 @@ function attachScheduleRowDnD(table) {
 }
 
 function openSchedModal(entry, dateStr, empId) {
+  // защита: пользователь без edit-прав на расписание не может открыть форму
+  if (!canEdit('schedule')) return;
   populateEmpSelects();
   const empSel = document.getElementById('schedEmployee');
   // группируем по табельному номеру для совмещений (как в transaction/salary modal)

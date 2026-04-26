@@ -2,6 +2,7 @@
 // EMPLOYEES
 // ═══════════════════════════════════════════
 function openEmpModal(emp) {
+  if (!canEdit('employees')) return;
   populatePositionSelects();
   document.getElementById('empModalTitle').textContent = emp ? t('emp.edit') : t('emp.new');
   document.getElementById('empEditId').value = emp ? emp.id : '';

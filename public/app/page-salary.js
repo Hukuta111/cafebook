@@ -2,6 +2,7 @@
 // SALARY
 // ═══════════════════════════════════════════
 function openSalModal(tx) {
+  if (!canEdit('salary')) return;
   populateEmpSelects();
   populateSalTypeSelect();
   document.getElementById('salEditId').value = tx ? tx.id : '';

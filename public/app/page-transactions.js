@@ -8,6 +8,7 @@ function updateTxCats() {
 }
 
 function openTxModal(tx) {
+  if (!canEdit('transactions')) return;
   populateEmpSelects();
   document.getElementById('txEditId').value = tx ? tx.id : '';
   document.getElementById('txDate').value = tx ? tx.date : today();

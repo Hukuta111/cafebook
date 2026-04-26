@@ -33,6 +33,7 @@ async function renderPositions() {
 }
 
 function openPosModal(pos) {
+  if (!canEdit('positions')) return;
   document.getElementById('posModalTitle').textContent = pos ? t('pos.edit') : t('pos.new');
   document.getElementById('posEditId').value = pos ? pos.id : '';
   document.getElementById('posName').value = pos ? pos.name : '';

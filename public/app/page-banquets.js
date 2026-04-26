@@ -83,6 +83,7 @@ async function renderBanquets() {
 let _banquetItems = []; // локальный буфер в модалке: [{id?, type, name, qty, price}]
 
 function openBanquetModal(b) {
+  if (!canEdit('banquets')) return;
   document.getElementById('banquetModalTitle').textContent = b ? t('banquet.edit') : t('banquet.new');
   document.getElementById('banquetEditId').value = b ? b.id : '';
   if (!_dayPickers['banquetDatePicker']) createDayPicker('banquetDatePicker');
