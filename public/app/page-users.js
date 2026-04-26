@@ -75,24 +75,38 @@ function renderPermissionsUI(perms) {
   }).join('');
 }
 
-// Клик по чекбоксу уровня — снимает другие два (взаимоисключение)
+// Логика: edit автоматически включает view; снятие view каскадом снимает edit;
+// none — статус: помечается когда оба off, его клик сбрасывает обе других;
+// снятие none возвращает базовый view.
 function onPermLevelChange(page, level) {
   const noneCb = document.querySelector(`[data-perm-none="${page}"]`);
   const viewCb = document.querySelector(`[data-perm-view="${page}"]`);
   const editCb = document.querySelector(`[data-perm-edit="${page}"]`);
-  const cb = level === 'none' ? noneCb : level === 'view' ? viewCb : editCb;
-  if (!cb || !noneCb || !viewCb || !editCb) return;
-  // если пользователь снимает галочку с активного уровня — переводим в Нет
-  if (!cb.checked) {
-    noneCb.checked = true;
-    viewCb.checked = false;
-    editCb.checked = false;
-    return;
+  if (!noneCb || !viewCb || !editCb) return;
+
+  if (level === 'edit') {
+    if (editCb.checked) {
+      // Включили Редактирование → автоматически включается Просмотр
+      viewCb.checked = true;
+    }
+    // если сняли — Просмотр остаётся как есть
+  } else if (level === 'view') {
+    if (!viewCb.checked) {
+      // Сняли Просмотр → каскадом снимается Редактирование
+      editCb.checked = false;
+    }
+  } else if (level === 'none') {
+    if (noneCb.checked) {
+      // Включили Нет → снимаются и Просмотр, и Редактирование
+      viewCb.checked = false;
+      editCb.checked = false;
+    } else {
+      // Сняли Нет → возвращаем как минимум Просмотр
+      viewCb.checked = true;
+    }
   }
-  // выбран новый уровень — снимаем остальные
-  noneCb.checked = level === 'none';
-  viewCb.checked = level === 'view';
-  editCb.checked = level === 'edit';
+  // финальный статус Нет = (нет ни view, ни edit)
+  noneCb.checked = !viewCb.checked && !editCb.checked;
 }
 
 // Кнопки массовой настройки: всем страницам разом
