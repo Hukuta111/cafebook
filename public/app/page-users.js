@@ -305,8 +305,8 @@ async function renderUsers() {
     const safeUser = JSON.stringify(u).replace(/"/g, '&quot;');
     const actions = isMe
       ? '<div style="display:flex;gap:6px;align-items:center;">'
-        + `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
         + '<button class="btn btn-sm" onclick="openUserModal(' + safeUser + ')" title="' + (t('user.editSelf') || 'Изменить свои данные') + '">✎</button>'
+        + `<span style="color:var(--text3);font-size:12px">${t('status.it_is_you')}</span>`
         + '</div>'
       : '<div style="display:flex;gap:6px;">'
         + (u.isOnline ? '<button class="btn btn-sm btn-danger" onclick="kickUser(&quot;' + u.id + '&quot;,&quot;' + escapedName + '&quot;)" title="Выбить из системы">⏏ Выбить</button>' : '')
