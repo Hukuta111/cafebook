@@ -356,7 +356,7 @@ async function renderScheduleCompareTable(active, month, numDays) {
     <div style="padding:10px 14px;color:var(--text3);font-size:12px;background:var(--surface2);border-bottom:1px solid var(--border);">
       📝 ${t('schedMode.compareLabel') || 'Сравнить с черновиком:'} <b style="color:var(--text)">${userLabel.replace(/</g,'&lt;')}</b>
     </div>
-    <table id="scheduleCompareTable" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;">${buildPlainScheduleTableHTML(active, lookup, numDays, month)}</table>
+    <table id="scheduleCompareTable">${buildPlainScheduleTableHTML(active, lookup, numDays, month)}</table>
   `;
   // вставляем после schedGrandTotal или scheduleWrap
   const after = document.getElementById('schedGrandTotal') || document.getElementById('scheduleWrap');

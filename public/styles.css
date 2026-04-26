@@ -368,28 +368,33 @@
   #sessionBanner p { color:var(--text3); font-size:14px; max-width:360px; }
 
   /* SCHEDULE TABLE */
-  #scheduleTable { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+  #scheduleTable, #scheduleCompareTable { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
   /* Скрытие колонки Сумма (применяется по body.hide-sched-sum) */
   body.hide-sched-sum #scheduleTable col.sum-col,
   body.hide-sched-sum #scheduleTable th.sum-col,
   body.hide-sched-sum #scheduleTable td.sum-col,
   body.hide-sched-sum #schedGrandTotal .sum-col { display:none !important; }
-  #scheduleTable th, #scheduleTable td { padding:4px 2px; text-align:center; border:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; }
-  #scheduleTable th { background:var(--surface2); font-size:9px; letter-spacing:0; text-transform:uppercase; color:var(--text3); font-weight:500; }
+  #scheduleTable th, #scheduleTable td,
+  #scheduleCompareTable th, #scheduleCompareTable td { padding:4px 2px; text-align:center; border:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; }
+  #scheduleTable th, #scheduleCompareTable th { background:var(--surface2); font-size:9px; letter-spacing:0; text-transform:uppercase; color:var(--text3); font-weight:500; }
   #scheduleTable td { cursor:pointer; transition:background .1s; }
   #scheduleTable td:hover { background:var(--surface2); }
-  #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
-  #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; overflow:hidden; }
+  #scheduleTable td.has-hours, #scheduleCompareTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
+  #scheduleTable .emp-name-cell, #scheduleCompareTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; overflow:hidden; }
   #scheduleTable tr:not(.totals-row) td:not(.has-hours):not(.emp-name-cell):not(.total-cell):hover::after { content:'+'; color:var(--accent); font-size:14px; font-weight:700; }
+  /* Compare-таблица — read-only по дизайну */
+  #scheduleCompareTable td { cursor:default; }
+  #scheduleCompareTable td:hover { background:transparent; }
+  #scheduleCompareTable td.has-hours:hover { background:rgba(93,185,124,.12); }
   /* Режим только-чтения для графика — без курсора-указателя, без "+" при ховере */
   body.no-schedule-edit #scheduleTable td { cursor:default !important; }
   body.no-schedule-edit #scheduleTable td:hover { background:transparent !important; }
   body.no-schedule-edit #scheduleTable td.has-hours:hover { background:rgba(93,185,124,.12) !important; }
   body.no-schedule-edit #scheduleTable td:hover::after { content:none !important; }
-  #scheduleTable .totals-row td { cursor:default !important; }
+  #scheduleTable .totals-row td, #scheduleCompareTable .totals-row td { cursor:default !important; }
   #scheduleTable .totals-row td:hover { background:var(--surface2) !important; }
-  #scheduleTable .total-cell { font-weight:700; cursor:default; }
-  #scheduleTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
+  #scheduleTable .total-cell, #scheduleCompareTable .total-cell { font-weight:700; cursor:default; }
+  #scheduleTable .totals-row td, #scheduleCompareTable .totals-row td { background:var(--surface2); font-weight:700; cursor:default; }
   .sched-print-title { display:none; }
   .sched-grand-total { text-align:right; padding:12px 20px; font-size:14px; color:var(--text); }
 
