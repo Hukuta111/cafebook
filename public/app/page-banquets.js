@@ -92,7 +92,11 @@ function openBanquetModal(b) {
   document.getElementById('banquetPercent').value = b ? b.percent : 10;
   document.getElementById('banquetNote').value = b ? (b.note || '') : '';
   _banquetItems = b && Array.isArray(b.items)
-    ? b.items.map(x => ({ id: x.id, type: x.type, name: x.name, qty: +x.qty || 1, price: +x.price || 0 }))
+    ? b.items.map(x => ({
+        id: x.id, type: x.type, name: x.name,
+        qty: +x.qty || 1, price: +x.price || 0,
+        inBonus: x.in_bonus === 1 || x.in_bonus === true || x.inBonus === true,
+      }))
     : [];
   renderBanquetItems();
   openModal('banquetModal');
@@ -113,13 +117,14 @@ function renderBanquetItems() {
   }
   const suggestions = getBanquetItemNameSuggestions();
   const datalist = `<datalist id="banquetItemNames">${suggestions.map(n => `<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('')}</datalist>`;
-  const gridCols = '24px minmax(0,1.6fr) 70px 90px 90px 32px';
+  const gridCols = '24px minmax(0,1.6fr) 60px 80px 80px 32px 32px';
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 6px 4px;">
     <span></span>
     <span>Название</span>
     <span style="text-align:center">Кол-во</span>
     <span style="text-align:center">Цена/шт</span>
     <span style="text-align:right">Итого</span>
+    <span style="text-align:center" title="Учитывать в бонусе сотрудникам">% бонус</span>
     <span></span>
   </div>`;
   list.innerHTML = datalist + header + _banquetItems.map((it, i) => {
@@ -136,6 +141,10 @@ function renderBanquetItems() {
       <input type="number" value="${it.price}" step="0.01" min="0" oninput="onBanquetItemChange(${i},'price',this.value)"
         style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-align:right;">
       <div data-item-total="${i}" style="text-align:right;color:${color};font-weight:600;font-size:13px;">${label}${fmt(total)}</div>
+      <label class="perm-cb" style="justify-self:center" title="Учитывать в бонусе сотрудникам">
+        <input type="checkbox" ${it.inBonus ? 'checked' : ''} onchange="onBanquetItemBonusToggle(${i}, this.checked)">
+        <span class="perm-cb-box"></span>
+      </label>
       <button type="button" onclick="removeBanquetItem(${i})" class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:12px;">✕</button>
     </div>`;
   }).join('');
@@ -146,17 +155,31 @@ function updateBanquetSummary() {
   const total = parseFloat(document.getElementById('banquetTotal').value) || 0;
   const percent = parseFloat(document.getElementById('banquetPercent').value) || 0;
   let income = 0, expense = 0;
+  let bonusBase = total; // база для расчёта бонуса = total + только статьи отмеченные ✓
   _banquetItems.forEach(it => {
     const sum = (+it.qty || 0) * (+it.price || 0);
     if (it.type === 'income') income += sum; else expense += sum;
+    if (it.inBonus) {
+      if (it.type === 'income') bonusBase += sum;
+      else bonusBase -= sum;
+    }
   });
   const net = total + income - expense;
-  // Бонус сотрудникам считается ТОЛЬКО от первоначальной суммы банкета
-  const bonus = Math.max(0, total * percent / 100);
+  const bonus = Math.max(0, bonusBase * percent / 100);
   const el = document.getElementById('banquetSummary');
   if (el) {
-    el.innerHTML = `Основная сумма банкета: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''}${(income||expense) ? ' &nbsp;·&nbsp; факт на кассе: <b style="color:var(--text)">'+fmt(net)+'</b>' : ''}<br>Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(total)} = ${fmt(bonus)}</b>`;
+    const baseChanged = Math.abs(bonusBase - total) > 0.001;
+    const bonusLine = baseChanged
+      ? `Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(bonusBase)} = ${fmt(bonus)}</b>`
+      : `Бонус сотрудникам: <b style="color:var(--green)">${percent}% от ${fmt(total)} = ${fmt(bonus)}</b>`;
+    el.innerHTML = `Основная сумма банкета: <b style="color:var(--text)">${fmt(total)}</b>${income ? ' &nbsp;·&nbsp; +доходы: <b style="color:var(--green)">'+fmt(income)+'</b>' : ''}${expense ? ' &nbsp;·&nbsp; −расходы: <b style="color:var(--red)">'+fmt(expense)+'</b>' : ''}${(income||expense) ? ' &nbsp;·&nbsp; факт на кассе: <b style="color:var(--text)">'+fmt(net)+'</b>' : ''}<br>${bonusLine}`;
   }
+}
+
+function onBanquetItemBonusToggle(index, checked) {
+  if (!_banquetItems[index]) return;
+  _banquetItems[index].inBonus = !!checked;
+  updateBanquetSummary();
 }
 
 function onBanquetItemChange(index, field, value) {
@@ -172,7 +195,7 @@ function onBanquetItemChange(index, field, value) {
 }
 
 function addBanquetItem(type) {
-  _banquetItems.push({ id: uid(), type, name: '', qty: 1, price: 0 });
+  _banquetItems.push({ id: uid(), type, name: '', qty: 1, price: 0, inBonus: false });
   renderBanquetItems();
 }
 
@@ -192,6 +215,7 @@ async function saveBanquet() {
     id: it.id, type: it.type, name: it.name || '',
     qty: +it.qty || 0, price: +it.price || 0,
     amount: (+it.qty || 0) * (+it.price || 0),
+    inBonus: !!it.inBonus,
   }));
   const res = id
     ? await API.put('/banquets/' + id, { date, total, percent, note, items, recalc: true })

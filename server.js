@@ -71,7 +71,8 @@ async function initDb() {
       id TEXT PRIMARY KEY, banquet_id TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'income',
       name TEXT NOT NULL, qty REAL DEFAULT 1, price REAL DEFAULT 0,
-      amount REAL NOT NULL DEFAULT 0
+      amount REAL NOT NULL DEFAULT 0,
+      in_bonus INTEGER DEFAULT 0
     )`,
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
@@ -91,6 +92,7 @@ async function initDb() {
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE positions ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_monthly INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE banquet_items ADD COLUMN in_bonus INTEGER DEFAULT 0'); } catch(e) {}
 
   // Миграция пользователей из config.json
   migrateUsersFromConfig();
@@ -783,8 +785,19 @@ function recalcShares(banquetId, total, percent) {
   );
   const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
   if (!empIds.length) return [];
-  // Бонус считается только от первоначальной суммы банкета, без учёта доп. статей
-  const bonus = Math.max(0, (+total) * (percent / 100));
+  // База для бонуса: сумма банкета + только те доп. статьи, у которых in_bonus=1
+  let base = +total;
+  const itemsRows = db.exec(
+    'SELECT type, amount, in_bonus FROM banquet_items WHERE banquet_id = ? AND in_bonus = 1',
+    [banquetId]
+  );
+  if (itemsRows[0]) {
+    itemsRows[0].values.forEach(([type, amount]) => {
+      if (type === 'income') base += +amount;
+      else base -= +amount;
+    });
+  }
+  const bonus = Math.max(0, base * (percent / 100));
   const share = bonus / empIds.length;
   const shares = [];
   empIds.forEach(empId => {
@@ -819,9 +832,10 @@ app.put('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edit')
       const qty = parseFloat(it.qty) || 1;
       const price = parseFloat(it.price) || 0;
       const amount = +it.amount != null && !isNaN(+it.amount) && +it.amount !== 0 ? parseFloat(it.amount) : qty * price;
+      const inBonus = it.inBonus === true || it.in_bonus === 1 || it.in_bonus === true ? 1 : 0;
       db.run(
-        'INSERT INTO banquet_items (id, banquet_id, type, name, qty, price, amount) VALUES (?,?,?,?,?,?,?)',
-        [it.id || uid(), req.params.id, it.type === 'expense' ? 'expense' : 'income', it.name || '', qty, price, amount]
+        'INSERT INTO banquet_items (id, banquet_id, type, name, qty, price, amount, in_bonus) VALUES (?,?,?,?,?,?,?,?)',
+        [it.id || uid(), req.params.id, it.type === 'expense' ? 'expense' : 'income', it.name || '', qty, price, amount, inBonus]
       );
     });
   }
