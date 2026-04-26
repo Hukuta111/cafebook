@@ -38,14 +38,20 @@ async function renderDashboard() {
   const days = Object.keys(byDay).sort().slice(-14);
   const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
   document.getElementById('barChart').innerHTML = days.length
-    ? days.map(d=>`<div class="bar-wrap">
+    ? days.map(d=>{
+        const inc = byDay[d].income, exp = byDay[d].expense;
+        const dateLbl = dateLabel(d);
+        const incTitle = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
+        const expTitle = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
+        return `<div class="bar-wrap">
         <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" style="background:var(--green);height:${Math.max(4,byDay[d].income/maxV*110)}px;width:12px;opacity:.85"></div>
-          <div class="bar" style="background:var(--red);height:${Math.max(4,byDay[d].expense/maxV*110)}px;width:12px;opacity:.85"></div>
+          <div class="bar" title="${incTitle.replace(/"/g,'&quot;')}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:help"></div>
+          <div class="bar" title="${expTitle.replace(/"/g,'&quot;')}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:help"></div>
         </div>
-        <div class="bar-label">${dateLabel(d).split(' ')[0]}</div>
-      </div>`).join('')
-    : `<div style="color:var(--text3);font-size:13px;padding:40px">Нет данных</div>`;
+        <div class="bar-label">${dateLbl.split(' ')[0]}</div>
+      </div>`;
+      }).join('')
+    : `<div style="color:var(--text3);font-size:13px;padding:40px">${t('detail.noData') || 'Нет данных'}</div>`;
 
   // expense breakdown
   const catTotals = {};
