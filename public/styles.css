@@ -59,6 +59,22 @@
   /* Компенсация max-height модалки чтобы при zoom она помещалась на экране */
   body.font-large  .modal-overlay .modal { max-height: 78vh; }
   body.font-xlarge .modal-overlay .modal { max-height: 69vh; }
+
+  /* DAY DETAIL MODAL: фиксированный заголовок/футер, скролл только в теле */
+  .day-detail-modal {
+    width:760px; max-width:96vw;
+    display:flex; flex-direction:column;
+    overflow:hidden;       /* отключаем скролл .modal — он только на body */
+  }
+  .day-detail-modal .modal-title { flex-shrink:0; }
+  .day-detail-modal #dayDetailBody {
+    font-size:13px; line-height:1.4;
+    flex:1 1 auto;
+    overflow-y:auto;
+    min-height:0;
+    padding-right:6px;
+  }
+  .day-detail-modal .modal-footer { flex-shrink:0; }
   /* Пункты сайдбара тоже подгоняем по размеру */
   body.font-small  .sidebar-nav .nav-item { font-size:11px; padding:7px 10px; }
   body.font-small  .sidebar-nav .nav-group-label { font-size:9px; padding:8px 10px 4px; }
