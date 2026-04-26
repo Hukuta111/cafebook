@@ -224,6 +224,25 @@
   .toggle-mini input:checked ~ .toggle-sw { background:var(--accent); }
   .toggle-mini input:checked ~ .toggle-sw::after { transform:translateX(13px); background:#1a1714; }
 
+  /* PERM CHECKBOX (для прав доступа в модалке пользователя) */
+  .perm-cb { display:inline-flex; cursor:pointer; user-select:none; }
+  .perm-cb input { display:none; }
+  .perm-cb-box {
+    width:24px; height:24px; border:2px solid var(--border); border-radius:5px;
+    background:var(--surface);
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:all .15s; flex-shrink:0;
+    color:transparent; font-weight:700; font-size:15px; line-height:1;
+  }
+  .perm-cb:hover .perm-cb-box { border-color:var(--accent); }
+  .perm-cb input:checked ~ .perm-cb-box {
+    background:var(--accent); border-color:var(--accent); color:#1a1714;
+  }
+  .perm-cb input:checked ~ .perm-cb-box::after { content:'✓'; }
+  /* preset мини-кнопки в строке прав */
+  .perm-preset { font-size:10.5px; padding:3px 8px; border:1px solid var(--border); background:transparent; color:var(--text3); border-radius:4px; cursor:pointer; transition:all .12s; }
+  .perm-preset:hover { border-color:var(--accent); color:var(--accent); }
+
   /* FILTERS */
   .filters { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
   .filters input,.filters select { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
