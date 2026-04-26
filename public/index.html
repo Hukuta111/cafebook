@@ -241,8 +241,8 @@
           <input type="checkbox" id="salReportShowHours" onchange="renderSalaryReport()">
           <span class="toggle-sw"></span>
         </label>
-        <button class="btn btn-primary no-print" onclick="calcMonthlySalary()" data-i18n="btn.calcSalary">💵 Начислить оклады</button>
-        <button class="btn btn-primary no-print" onclick="calcPercentBonus()" data-i18n="btn.calcPercent">📊 Рассчитать % кассы</button>
+        <button class="btn btn-primary no-print" data-edit-page="salary-report" onclick="calcMonthlySalary()" data-i18n="btn.calcSalary">💵 Начислить оклады</button>
+        <button class="btn btn-primary no-print" data-edit-page="salary-report" onclick="calcPercentBonus()" data-i18n="btn.calcPercent">📊 Рассчитать % кассы</button>
         <button class="btn no-print" onclick="openSalReportPrintModal()" data-i18n="btn.print">🖨 Печать</button>
       </div>
     </div>
@@ -259,7 +259,7 @@
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="mp-wrap" id="schedMonthPicker"></div>
         <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()" data-i18n="btn.addShift">+ Смена</button>
-        <button class="btn" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none" data-i18n="btn.scheduleTx">💰 Сформировать выплаты</button>
+        <button class="btn" data-edit-page="schedule" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none" data-i18n="btn.scheduleTx">💰 Сформировать выплаты</button>
         <button class="btn" onclick="printSchedule()" data-i18n="btn.print">🖨 Печать</button>
       </div>
     </div>
@@ -296,7 +296,7 @@
   <div class="page" id="page-settings">
     <div class="page-header"><div class="page-title" data-i18n="page.settings">Настройки</div></div>
     <div style="max-width:500px;">
-      <div class="table-wrap" style="padding:24px;">
+      <div class="table-wrap" data-edit-page="settings" style="padding:24px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.cafe">Кафе</div>
         <div class="form-row"><label data-i18n="settings.cafeName">Название кафе</label><input type="text" id="settingCafeName" data-i18n-placeholder="settings.cafeNamePh" placeholder="Например: Кафе Уют"></div>
         <div class="form-row"><label data-i18n="settings.currency">Валюта</label>
@@ -377,7 +377,7 @@
       </div>
 
 
-      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+      <div class="table-wrap" data-edit-page="settings" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.payTypes">Типы выплат</div>
         <div style="color:var(--text3);font-size:12px;margin-bottom:12px;" data-i18n="settings.payTypesHint">Эти типы отображаются при начислении выплат. Стандартные удалить нельзя.</div>
         <div id="salTypesList" style="margin-bottom:12px;"></div>
@@ -391,7 +391,7 @@
         </div>
       </div>
 
-      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+      <div class="table-wrap" data-edit-page="settings" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:6px;" data-i18n="settings.txCats">Категории транзакций</div>
         <div style="color:var(--text3);font-size:12px;margin-bottom:14px;" data-i18n="settings.txCatsHint">
           Категории, доступные при создании транзакции. Стандартные нельзя удалить.
@@ -404,7 +404,7 @@
         </div>
       </div>
 
-      <div class="table-wrap" style="padding:24px;margin-top:16px;">
+      <div class="table-wrap" data-edit-page="settings" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.data">Данные</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="exportData()" data-i18n="settings.export">📤 Экспорт JSON</button>
