@@ -356,6 +356,11 @@
   #scheduleTable td.has-hours { background:rgba(93,185,124,.12); color:var(--green); font-weight:600; }
   #scheduleTable .emp-name-cell { text-align:left; cursor:default; font-weight:600; padding-left:6px; overflow:hidden; }
   #scheduleTable tr:not(.totals-row) td:not(.has-hours):not(.emp-name-cell):not(.total-cell):hover::after { content:'+'; color:var(--accent); font-size:14px; font-weight:700; }
+  /* Режим только-чтения для графика — без курсора-указателя, без "+" при ховере */
+  body.no-schedule-edit #scheduleTable td { cursor:default !important; }
+  body.no-schedule-edit #scheduleTable td:hover { background:transparent !important; }
+  body.no-schedule-edit #scheduleTable td.has-hours:hover { background:rgba(93,185,124,.12) !important; }
+  body.no-schedule-edit #scheduleTable td:hover::after { content:none !important; }
   #scheduleTable .totals-row td { cursor:default !important; }
   #scheduleTable .totals-row td:hover { background:var(--surface2) !important; }
   #scheduleTable .total-cell { font-weight:700; cursor:default; }
