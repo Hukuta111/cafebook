@@ -85,6 +85,13 @@ function onExcelFileSelected(e) {
         return obj;
       }).filter(r => Object.values(r).some(v => v));
       autoDetectMapping();
+      // Сбросить заголовок и показать кнопку "Импортировать" при новом импорте
+      const titleEl = document.querySelector('#excelImportModal .modal-title');
+      if (titleEl) titleEl.textContent = (t('excelImport.title') || '📊 Импорт транзакций из Excel');
+      const confirmBtn = document.getElementById('excelImportConfirmBtn');
+      if (confirmBtn) confirmBtn.style.display = '';
+      _excelLastResults = [];
+      _excelResultsTab = 'all';
       renderExcelImportModal();
       openModal('excelImportModal');
     } catch (err) {
@@ -316,68 +323,166 @@ async function confirmExcelImport() {
     return;
   }
   showLoader(true);
-  let okCount = 0, failCount = 0;
-  const errors = [];
+  // results: { rowNum, status: 'ok'|'error', message?, parsed?, raw }
+  const results = [];
 
   for (let i = 0; i < _excelRows.length; i++) {
     const row = _excelRows[i];
+    const rowNum = i + 2; // +1 — заголовок, +1 — index→row number
 
-    // Дата (фикс. значение тоже допустимо хотя обычно не используется)
     const dateMv = getMappedValue(_excelMapping.date, row);
     const date = parseExcelDate(dateMv.value);
 
-    // Тип: если зафиксирован — берём как есть, иначе парсим из колонки
     const typeMv = getMappedValue(_excelMapping.type, row);
     const type = typeMv.isFixed ? typeMv.value : parseExcelType(typeMv.value);
 
-    // Сумма
     const amountMv = getMappedValue(_excelMapping.amount, row);
     const amount = parseExcelAmount(amountMv.value);
 
-    // Категория (текст как есть)
     const catMv = getMappedValue(_excelMapping.cat, row);
     const cat = String(catMv.value || '');
 
-    // Сотрудник: если зафиксирован — это уже emp.id; иначе ищем по имени
     const empMv = getMappedValue(_excelMapping.employee, row);
-    let empId = null;
+    let empId = null, empNameStr = '';
     if (empMv.isFixed) {
       empId = empMv.value || null;
+      const emp = (_employees || []).find(e => e.id === empId);
+      empNameStr = emp ? emp.name : '';
     } else if (empMv.value) {
       const emp = findEmployeeByName(empMv.value);
       empId = emp ? emp.id : null;
+      empNameStr = emp ? emp.name : String(empMv.value);
     }
 
-    // Комментарий
     const noteMv = getMappedValue(_excelMapping.note, row);
     const note = String(noteMv.value || '');
 
-    if (!date) { failCount++; errors.push('Строка ' + (i+2) + ': неверная дата "' + dateMv.value + '"'); continue; }
-    if (!type) { failCount++; errors.push('Строка ' + (i+2) + ': неизвестный тип "' + typeMv.value + '"'); continue; }
-    if (!amount || amount <= 0) { failCount++; errors.push('Строка ' + (i+2) + ': неверная сумма "' + amountMv.value + '"'); continue; }
+    const parsed = { date, type, cat, empName: empNameStr, amount, note };
 
-    const body = {
-      id: uid(),
-      date, type,
-      cat: cat || '',
-      empId,
-      amount,
-      note: note || '',
-    };
+    if (!date) { results.push({ rowNum, status:'error', message: 'Неверная дата: "' + dateMv.value + '"', parsed, raw: row }); continue; }
+    if (!type) { results.push({ rowNum, status:'error', message: 'Неизвестный тип: "' + typeMv.value + '"', parsed, raw: row }); continue; }
+    if (!amount || amount <= 0) { results.push({ rowNum, status:'error', message: 'Неверная сумма: "' + amountMv.value + '"', parsed, raw: row }); continue; }
+
+    const body = { id: uid(), date, type, cat: cat || '', empId, amount, note: note || '' };
     try {
       const res = await API.post('/transactions', body);
-      if (res && res.ok) okCount++;
-      else { failCount++; errors.push('Строка ' + (i+2) + ': ' + ((res && res.error) || 'ошибка сервера')); }
+      if (res && res.ok) results.push({ rowNum, status:'ok', parsed, raw: row });
+      else results.push({ rowNum, status:'error', message: (res && res.error) || 'Ошибка сервера', parsed, raw: row });
     } catch (e) {
-      failCount++; errors.push('Строка ' + (i+2) + ': ' + e.message);
+      results.push({ rowNum, status:'error', message: e.message || String(e), parsed, raw: row });
     }
   }
 
   showLoader(false);
-  closeModal('excelImportModal');
+  // показать отчёт об импорте в той же модалке
+  renderExcelImportResults(results);
+}
 
-  let msg = `✓ Импортировано: ${okCount}`;
-  if (failCount) msg += ` · ✕ Ошибок: ${failCount}`;
-  showToast(msg, !!failCount);
-  if (errors.length) console.warn('Excel import errors:', errors);
+// ─── РЕЗУЛЬТАТ ИМПОРТА ──────────────────────────────────────
+let _excelResultsTab = 'all'; // 'all' | 'ok' | 'error'
+let _excelLastResults = [];
+
+function renderExcelImportResults(results) {
+  _excelLastResults = results;
+  const okCount = results.filter(r => r.status === 'ok').length;
+  const failCount = results.length - okCount;
+
+  // меняем заголовок и футер
+  document.querySelector('#excelImportModal .modal-title').textContent = (t('excelImport.resultTitle') || '📊 Результат импорта');
+  // прячем кнопку "Импортировать", показываем только "Закрыть"
+  const confirmBtn = document.getElementById('excelImportConfirmBtn');
+  if (confirmBtn) confirmBtn.style.display = 'none';
+
+  drawExcelResults();
+}
+
+function setExcelResultsTab(tab) {
+  _excelResultsTab = tab;
+  drawExcelResults();
+}
+
+function drawExcelResults() {
+  const results = _excelLastResults;
+  const okCount = results.filter(r => r.status === 'ok').length;
+  const failCount = results.length - okCount;
+
+  let filtered = results;
+  if (_excelResultsTab === 'ok')    filtered = results.filter(r => r.status === 'ok');
+  if (_excelResultsTab === 'error') filtered = results.filter(r => r.status === 'error');
+
+  const tabBtn = (key, label, count, color) => {
+    const active = _excelResultsTab === key;
+    return `<button onclick="setExcelResultsTab('${key}')" style="padding:6px 12px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#1a1714' : color};border-radius:var(--radius-sm);font-size:12px;cursor:pointer;font-weight:${active ? '600' : '400'};">${label} (${count})</button>`;
+  };
+
+  const safe = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+  // карточки итогов
+  const summary = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;">
+      <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">${t('excelImport.totalRows') || 'Всего строк'}</div>
+      <div style="font-size:18px;font-weight:600;">${results.length}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;border-left:3px solid var(--green);">
+      <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">✓ ${t('excelImport.imported') || 'Импортировано'}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--green);">${okCount}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;border-left:3px solid var(--red);">
+      <div style="font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">✕ ${t('excelImport.errors') || 'Ошибки'}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--red);">${failCount}</div>
+    </div>
+  </div>`;
+
+  // таблица результатов
+  const rowsHtml = filtered.length
+    ? filtered.map(r => {
+        const isOk = r.status === 'ok';
+        const statusBadge = isOk
+          ? '<span style="color:var(--green);font-size:11px;">✓</span>'
+          : '<span style="color:var(--red);font-size:11px;">✕</span>';
+        const p = r.parsed || {};
+        const typeLbl = p.type ? (TYPE_LABELS[p.type] || p.type) : '—';
+        const amount = p.amount ? fmt(p.amount) + ' ' + _currency : '—';
+        const errCell = isOk
+          ? `<span style="color:var(--text3);font-size:11px;">—</span>`
+          : `<span style="color:var(--red);font-size:12px;">${safe(r.message)}</span>`;
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 8px;width:40px;text-align:center;color:var(--text3);font-size:11px;">${r.rowNum}</td>
+          <td style="padding:6px 8px;width:32px;text-align:center;">${statusBadge}</td>
+          <td style="padding:6px 8px;font-size:12px;white-space:nowrap;">${safe(p.date) || '—'}</td>
+          <td style="padding:6px 8px;font-size:12px;">${safe(typeLbl)}</td>
+          <td style="padding:6px 8px;font-size:12px;color:var(--text2);">${safe(p.cat) || '—'}</td>
+          <td style="padding:6px 8px;font-size:12px;color:var(--text2);">${safe(p.empName) || '—'}</td>
+          <td style="padding:6px 8px;font-size:12px;font-weight:600;text-align:right;white-space:nowrap;">${amount}</td>
+          <td style="padding:6px 8px;">${errCell}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);font-size:12px;">${t('detail.noData') || 'Нет данных'}</td></tr>`;
+
+  const body = document.getElementById('excelImportBody');
+  body.innerHTML = `
+    ${summary}
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      ${tabBtn('all',   t('excelImport.allRows')  || 'Все',           results.length, 'var(--text)')}
+      ${tabBtn('ok',    '✓ ' + (t('excelImport.tabOk') || 'Успешные'), okCount,        'var(--green)')}
+      ${tabBtn('error', '✕ ' + (t('excelImport.tabErrors') || 'Ошибки'), failCount,    'var(--red)')}
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--surface2);">
+            <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;">#</th>
+            <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('excelImport.status') || 'Статус'}</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('col.date') || 'Дата'}</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('col.type') || 'Тип'}</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('col.category') || 'Категория'}</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('col.employee') || 'Сотрудник'}</th>
+            <th style="padding:6px 8px;text-align:right;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('col.amount') || 'Сумма'}</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;">${t('excelImport.errorOrNote') || 'Ошибка'}</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
 }
