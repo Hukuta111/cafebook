@@ -272,16 +272,36 @@ function printSchedule() {
   // mark schedule page as print target
   document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
   document.getElementById('page-schedule').classList.add('print-target');
+  document.body.classList.add('print-schedule-mode');
+  // динамически добавить @page правило для landscape — без этого мобильные
+  // браузеры не уважают именованную @page и печатают в текущей ориентации
+  injectPrintLandscapeStyle();
   // если в месяце много дней — авто-разбить на 2 страницы для читаемости
   prepareScheduleSplitForPrint();
   window.print();
   setTimeout(() => {
     document.getElementById('page-schedule').classList.remove('print-target');
+    document.body.classList.remove('print-schedule-mode');
+    removePrintLandscapeStyle();
     // после печати — перерисовать график, чтобы убрать клон и восстановить колонки
     if (typeof renderSchedule === 'function') {
       try { renderSchedule(); } catch {}
     }
   }, 700);
+}
+
+function injectPrintLandscapeStyle() {
+  if (document.getElementById('printLandscapeStyle')) return;
+  const style = document.createElement('style');
+  style.id = 'printLandscapeStyle';
+  // Применяется ТОЛЬКО когда body имеет класс print-schedule-mode и идёт печать
+  style.textContent = '@media print { @page { size: A4 landscape; margin: 5mm; } }';
+  document.head.appendChild(style);
+}
+
+function removePrintLandscapeStyle() {
+  const s = document.getElementById('printLandscapeStyle');
+  if (s) s.remove();
 }
 
 // Разбивает таблицу графика на 2 печатные страницы:
