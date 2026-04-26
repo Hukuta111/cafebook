@@ -24,7 +24,8 @@ function setScheduleMode(mode) {
   const ownerSel = document.getElementById('schedPersonalOwner');
   const hint = document.getElementById('schedPersonalHint');
   const isPersonal = _scheduleMode === 'personal';
-  if (hint) hint.style.display = isPersonal ? '' : 'none';
+  // Подсказку показываем только когда у пользователя есть выбор между Общий/Мой
+  if (hint) hint.style.display = (isPersonal && !isSchedulePersonalOnly()) ? '' : 'none';
   // селектор владельца виден только админу в режиме personal
   if (ownerSel) ownerSel.style.display = (isPersonal && _userRole === 'admin') ? '' : 'none';
   // в режиме personal сбрасываем выбор владельца на «себя»
@@ -100,9 +101,9 @@ async function renderSchedule() {
   // Скрыть кнопку «Общий» если только личный
   const mainBtn = document.querySelector('.sched-mode-btn[data-sched-mode="main"]');
   if (mainBtn) mainBtn.style.display = isSchedulePersonalOnly() ? 'none' : '';
-  // Подсказка показывается всегда в личном режиме
+  // Подсказка только когда есть выбор Общий/Мой (не показываем personalOnly-юзерам)
   const hint = document.getElementById('schedPersonalHint');
-  if (hint) hint.style.display = _scheduleMode === 'personal' ? '' : 'none';
+  if (hint) hint.style.display = (_scheduleMode === 'personal' && !isSchedulePersonalOnly()) ? '' : 'none';
 
   _employees = await API.get('/employees') || [];
   _positions = await API.get('/positions') || [];
