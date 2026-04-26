@@ -374,7 +374,12 @@
   @media print {
     .no-print { display:none!important; }
     .sidebar,.hamburger,.btn,.filters,.page-header .btn,.modal-overlay,.toast,.loader,.nav-group-label,.page-subtitle{display:none!important}
-    .main{margin-left:0;padding:0;max-width:none}
+    /* Сброс масштабирования и ограничений ширины — иначе таблица не на всю ширину страницы */
+    html, body { zoom:1 !important; -webkit-text-size-adjust:100% !important; width:100% !important; max-width:100% !important; margin:0 !important; padding:0 !important; }
+    body.font-small .main, body.font-large .main, body.font-xlarge .main, .main { zoom:1 !important; }
+    .main { margin-left:0 !important; padding:0 !important; max-width:none !important; width:100% !important; min-height:0 !important; }
+    .page, .page.active, .page.print-target { width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important; }
+    .table-wrap { overflow:visible !important; border:none !important; padding:0 !important; margin:0 !important; background:transparent !important; width:100% !important; max-width:100% !important; }
     body{background:#fff;color:#000;font-size:10px}
     .salary-card{border:1px solid #ccc;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
     /* режим печати выбранных расчётных листов: скрыть невыбранные, каждый на отдельный лист */
@@ -390,11 +395,22 @@
     .page.print-target,.page.active{display:block!important}
 
     /* Schedule print */
-    #page-schedule.print-target{page:schedule-landscape}
+    /* Принудительный landscape A4 для всей страницы при печати графика —
+       width:287mm на body заставляет браузер layout-ить под A4 landscape (297−10),
+       даже на iOS Safari, который часто игнорирует @page size в портретной ориентации */
+    body.print-schedule-mode { width:287mm !important; min-width:287mm !important; }
+    body.print-schedule-mode .main { width:287mm !important; min-width:287mm !important; }
+    body.print-schedule-mode #page-schedule { width:287mm !important; min-width:287mm !important; }
+    body.print-schedule-mode #scheduleWrap,
+    body.print-schedule-mode .sched-print-half2-wrap { width:287mm !important; max-width:287mm !important; min-width:287mm !important; }
+    body.print-schedule-mode #scheduleTable,
+    body.print-schedule-mode #scheduleTablePrintHalf2 { width:287mm !important; max-width:287mm !important; min-width:287mm !important; }
+    #page-schedule.print-target { page:schedule-landscape; }
     .sched-print-title{display:none!important}
     /* Базовая таблица + клон второй половины */
     #scheduleTable, #scheduleTablePrintHalf2 {
-      font-size:12px;width:100%;border-collapse:collapse;table-layout:fixed;
+      font-size:12px;width:100% !important;max-width:100% !important;
+      border-collapse:collapse;table-layout:fixed;margin:0 !important;
     }
     #scheduleTable th,#scheduleTable td,
     #scheduleTablePrintHalf2 th,#scheduleTablePrintHalf2 td {
