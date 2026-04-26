@@ -39,53 +39,71 @@ function defaultPermissions() {
 
 function renderPermissionsUI(perms) {
   const list = document.getElementById('uPermsList');
-  // глобальные кнопки сверху + table-like layout с обычными чекбоксами
+  // 3 колонки: Нет / Просмотр / Редактирование (взаимоисключающие)
   list.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
       <button type="button" class="perm-preset" onclick="setAllPerms('none')">${t('user.permNone')}</button>
       <button type="button" class="perm-preset" onclick="setAllPerms('view')">${t('user.permView')}</button>
       <button type="button" class="perm-preset" onclick="setAllPerms('edit')">${t('user.permEdit')}</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 56px 56px;gap:10px;padding:6px 0 8px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;">
+    <div style="display:grid;grid-template-columns:1fr 60px 60px 60px;gap:8px;padding:6px 0 8px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;">
       <span data-i18n="col.page">Страница</span>
+      <span style="text-align:center" data-i18n="user.permNoneCol">🚫 Нет</span>
       <span style="text-align:center" data-i18n="user.permViewCol">👁 Просмотр</span>
-      <span style="text-align:center" data-i18n="user.permEditCol">✎ Редактирование</span>
+      <span style="text-align:center" data-i18n="user.permEditCol">✎ Ред-ние</span>
     </div>
   ` + PAGES_LIST.map(page => {
     const p = perms[page] || { view:false, edit:false };
-    return `<div style="display:grid;grid-template-columns:1fr 56px 56px;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;">
+    const noneChecked = !p.view && !p.edit;
+    const viewChecked = p.view && !p.edit;
+    const editChecked = p.edit;
+    return `<div style="display:grid;grid-template-columns:1fr 60px 60px 60px;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center;">
       <span style="font-size:13px">${PAGE_LABELS[page]}</span>
+      <label class="perm-cb" style="justify-self:center" title="${t('user.permNone')}">
+        <input type="checkbox" data-perm-none="${page}" ${noneChecked ? 'checked' : ''} onchange="onPermLevelChange('${page}','none')">
+        <span class="perm-cb-box"></span>
+      </label>
       <label class="perm-cb" style="justify-self:center" title="${t('user.permView')}">
-        <input type="checkbox" data-perm-view="${page}" ${p.view ? 'checked' : ''} onchange="onPermViewChange('${page}')">
+        <input type="checkbox" data-perm-view="${page}" ${viewChecked ? 'checked' : ''} onchange="onPermLevelChange('${page}','view')">
         <span class="perm-cb-box"></span>
       </label>
       <label class="perm-cb" style="justify-self:center" title="${t('user.permEdit')}">
-        <input type="checkbox" data-perm-edit="${page}" ${p.edit ? 'checked' : ''} onchange="onPermEditChange('${page}')">
+        <input type="checkbox" data-perm-edit="${page}" ${editChecked ? 'checked' : ''} onchange="onPermLevelChange('${page}','edit')">
         <span class="perm-cb-box"></span>
       </label>
     </div>`;
   }).join('');
 }
 
-// Включить «Редактирование» → автоматически включается «Просмотр»
-function onPermEditChange(page) {
-  const editCb = document.querySelector(`[data-perm-edit="${page}"]`);
+// Клик по чекбоксу уровня — снимает другие два (взаимоисключение)
+function onPermLevelChange(page, level) {
+  const noneCb = document.querySelector(`[data-perm-none="${page}"]`);
   const viewCb = document.querySelector(`[data-perm-view="${page}"]`);
-  if (editCb && editCb.checked && viewCb && !viewCb.checked) viewCb.checked = true;
-}
-// Выключить «Просмотр» → автоматически выключается «Редактирование»
-function onPermViewChange(page) {
   const editCb = document.querySelector(`[data-perm-edit="${page}"]`);
-  const viewCb = document.querySelector(`[data-perm-view="${page}"]`);
-  if (viewCb && !viewCb.checked && editCb && editCb.checked) editCb.checked = false;
+  const cb = level === 'none' ? noneCb : level === 'view' ? viewCb : editCb;
+  if (!cb || !noneCb || !viewCb || !editCb) return;
+  // если пользователь снимает галочку с активного уровня — переводим в Нет
+  if (!cb.checked) {
+    noneCb.checked = true;
+    viewCb.checked = false;
+    editCb.checked = false;
+    return;
+  }
+  // выбран новый уровень — снимаем остальные
+  noneCb.checked = level === 'none';
+  viewCb.checked = level === 'view';
+  editCb.checked = level === 'edit';
 }
+
 // Кнопки массовой настройки: всем страницам разом
 function setAllPerms(level) {
   PAGES_LIST.forEach(page => {
+    const noneCb = document.querySelector(`[data-perm-none="${page}"]`);
     const viewCb = document.querySelector(`[data-perm-view="${page}"]`);
     const editCb = document.querySelector(`[data-perm-edit="${page}"]`);
-    if (!viewCb || !editCb) return;
-    viewCb.checked = level === 'view' || level === 'edit';
+    if (!noneCb || !viewCb || !editCb) return;
+    noneCb.checked = level === 'none';
+    viewCb.checked = level === 'view';
     editCb.checked = level === 'edit';
   });
 }
