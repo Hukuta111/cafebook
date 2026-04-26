@@ -98,12 +98,10 @@ async function renderSchedule() {
       b.classList.toggle('btn-primary', b.dataset.schedMode === 'personal');
     });
   }
-  // Скрыть кнопку «Общий» если только личный
-  const mainBtn = document.querySelector('.sched-mode-btn[data-sched-mode="main"]');
-  if (mainBtn) mainBtn.style.display = isSchedulePersonalOnly() ? 'none' : '';
-  // Подсказка только когда есть выбор Общий/Мой (не показываем personalOnly-юзерам)
-  const hint = document.getElementById('schedPersonalHint');
-  if (hint) hint.style.display = (_scheduleMode === 'personal' && !isSchedulePersonalOnly()) ? '' : 'none';
+  // Если у юзера personalOnly — скрываем весь mode bar (кнопки и подсказку):
+  // выбора нет, и кнопка «Мой график» показывать одну единственную опцию бессмысленно
+  const modeBar = document.getElementById('scheduleModeBar');
+  if (modeBar) modeBar.style.display = isSchedulePersonalOnly() ? 'none' : '';
 
   _employees = await API.get('/employees') || [];
   _positions = await API.get('/positions') || [];
