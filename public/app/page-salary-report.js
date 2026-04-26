@@ -252,20 +252,23 @@ async function renderSalaryReport() {
     function shiftsBlockForEmp(emp) {
       if ((!showDays && !showHours) || !emp) return '';
 
-      // если только часы — показываем таблицу часы × ставка + бонусы/штрафы
+      // если только часы — показываем таблицу часы × ставка + раздельные блоки авансы/бонусы/штрафы
       if (showHours && !showDays) {
         const shifts = (scheduleByEmp[emp.id] || []).slice().sort((a,b) => a.work_date.localeCompare(b.work_date));
-        const bonusFineTxs = (txByEmp[emp.id] || []).filter(t => t.type === 'bonus' || t.type === 'fine');
+        const empTxs = (txByEmp[emp.id] || []);
+        const advanceTxs = empTxs.filter(t => t.type === 'advance');
+        const bonusTxs   = empTxs.filter(t => t.type === 'bonus');
+        const fineTxs    = empTxs.filter(t => t.type === 'fine');
+        const hasAnyTx = advanceTxs.length + bonusTxs.length + fineTxs.length > 0;
 
-        if (!shifts.length && !bonusFineTxs.length)
-          return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет смен, бонусов или штрафов за месяц</div>';
+        // если совсем ничего нет — пустой блок (никаких текстов)
+        if (!shifts.length && !hasAnyTx) return '';
 
         // Блок смен
         let shiftsHtml = '';
-        let totalH = 0, totalP = 0;
         if (shifts.length) {
-          totalH = shifts.reduce((s,x) => s + +x.hours, 0);
-          totalP = shifts.reduce((s,x) => {
+          const totalH = shifts.reduce((s,x) => s + +x.hours, 0);
+          const totalP = shifts.reduce((s,x) => {
             const rate = x.hourly_rate != null ? +x.hourly_rate : (+emp.hourly_rate || 0);
             return s + +x.hours * rate;
           }, 0);
@@ -287,30 +290,32 @@ async function renderSalaryReport() {
           </div>`;
         }
 
-        // Блок бонусов/штрафов
-        let bfHtml = '';
-        if (bonusFineTxs.length) {
-          const sorted = bonusFineTxs.slice().sort((a,b) => a.date.localeCompare(b.date));
-          bfHtml = '<div style="margin-top:8px;">'
-            + `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:4px 10px;">✨ ${t('srep.bonuses')} / ⚠️ ${t('srep.fines')}</div>`
+        // helper для блока авансы/бонусы/штрафы
+        const renderTxBlock = (txs, icon, header, color, sign) => {
+          if (!txs.length) return '';
+          const sorted = txs.slice().sort((a,b) => a.date.localeCompare(b.date));
+          return '<div style="margin-top:8px;">'
+            + `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:4px 10px;">${icon} ${header}</div>`
             + sorted.map(tx => {
-              const isBonus = tx.type === 'bonus';
-              const icon = isBonus ? '✨' : '⚠️';
-              const color = isBonus ? 'var(--purple)' : 'var(--red)';
-              const sign = isBonus ? '+' : '−';
-              const baseLabel = isBonus ? t('tx.bonus') : t('tx.fine');
-              const descr = `${icon} ${baseLabel}${tx.cat && tx.cat !== baseLabel ? ' · '+tx.cat : ''}${tx.note ? ' — '+tx.note : ''}`;
-              return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;margin-bottom:2px;">
-                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dateLabel(tx.date)} · ${descr}</span>
-                <span style="color:${color};font-weight:600;white-space:nowrap;">${sign}${fmt(+tx.amount)} ${_currency}</span>
-              </div>`;
-            }).join('')
+                const baseLabel = header;
+                const descr = `${icon} ${baseLabel}${tx.cat && tx.cat !== baseLabel ? ' · '+tx.cat : ''}${tx.note ? ' — '+tx.note : ''}`;
+                return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 10px;background:var(--surface);border-radius:4px;margin-bottom:2px;">
+                  <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dateLabel(tx.date)} · ${descr}</span>
+                  <span style="color:${color};font-weight:600;white-space:nowrap;">${sign}${fmt(+tx.amount)} ${_currency}</span>
+                </div>`;
+              }).join('')
             + '</div>';
-        }
+        };
+
+        const advanceHtml = renderTxBlock(advanceTxs, '💵', t('srep.advances'), 'var(--blue)',   '−');
+        const bonusHtml   = renderTxBlock(bonusTxs,   '✨', t('srep.bonuses'),  'var(--purple)', '+');
+        const fineHtml    = renderTxBlock(fineTxs,    '⚠️', t('srep.fines'),    'var(--red)',    '−');
 
         return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-          ${shiftsHtml || `<div style="color:var(--text3);font-size:12px;padding:4px 10px;">${t('srep.noShifts')}</div>`}
-          ${bfHtml}
+          ${shiftsHtml}
+          ${advanceHtml}
+          ${bonusHtml}
+          ${fineHtml}
         </div>`;
       }
 
@@ -341,7 +346,7 @@ async function renderSalaryReport() {
         };
       }) : [];
       const all = [...shifts, ...txs].sort((a,b) => a.date.localeCompare(b.date));
-      if (!all.length) return '<div style="color:var(--text3);font-size:12px;margin-top:6px">Нет операций за месяц</div>';
+      if (!all.length) return ''; // ничего не показываем если у сотрудника нет смен/операций
 
       return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
         ${all.map(o => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 10px;background:var(--surface);border-radius:4px;">
