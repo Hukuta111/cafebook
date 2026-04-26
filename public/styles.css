@@ -56,6 +56,9 @@
   body.font-small  .main, body.font-small  #loginScreen, body.font-small  .modal-overlay { zoom: 0.85; }
   body.font-large  .main, body.font-large  #loginScreen, body.font-large  .modal-overlay { zoom: 1.15; }
   body.font-xlarge .main, body.font-xlarge #loginScreen, body.font-xlarge .modal-overlay { zoom: 1.30; }
+  /* Компенсация max-height модалки чтобы при zoom она помещалась на экране */
+  body.font-large  .modal-overlay .modal { max-height: 78vh; }
+  body.font-xlarge .modal-overlay .modal { max-height: 69vh; }
   /* Пункты сайдбара тоже подгоняем по размеру */
   body.font-small  .sidebar-nav .nav-item { font-size:11px; padding:7px 10px; }
   body.font-small  .sidebar-nav .nav-group-label { font-size:9px; padding:8px 10px 4px; }
