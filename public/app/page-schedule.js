@@ -278,16 +278,27 @@ function printSchedule() {
   document.getElementById('page-schedule').classList.add('print-target');
   document.documentElement.classList.add('print-schedule-mode');
   document.body.classList.add('print-schedule-mode');
-  // динамически добавить @page правило для landscape — без этого мобильные
-  // браузеры не уважают именованную @page и печатают в текущей ориентации
+  // мобильные браузеры (iOS Safari) не уважают @page size — для них принудительно
+  // фиксируем ширину 287mm. На десктопе Chrome/Firefox это не нужно — у них @page работает,
+  // и фикс 287mm только мешает (margin по умолчанию 12.7mm → реальная ширина другая)
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 900;
+  if (isMobile) document.body.classList.add('print-schedule-mobile');
   injectPrintLandscapeStyle();
-  window.print();
-  setTimeout(() => {
+
+  // afterprint надёжнее setTimeout — снимаем классы сразу после закрытия диалога
+  const cleanup = () => {
     document.getElementById('page-schedule').classList.remove('print-target');
     document.documentElement.classList.remove('print-schedule-mode');
     document.body.classList.remove('print-schedule-mode');
+    document.body.classList.remove('print-schedule-mobile');
     removePrintLandscapeStyle();
-  }, 700);
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  // запасной fallback на случай если afterprint не сработает
+  setTimeout(cleanup, 30000);
+
+  window.print();
 }
 
 function injectPrintLandscapeStyle() {

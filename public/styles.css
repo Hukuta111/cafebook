@@ -394,36 +394,46 @@
     .page:not(.print-target):not(.active){display:none!important}
     .page.print-target,.page.active{display:block!important}
 
-    /* Schedule print */
-    /* Принудительный landscape A4 — width:287mm заставляет браузер layout-ить
-       под A4 landscape, даже на iOS Safari. Жёстко ограничиваем высоту 195mm
-       (меньше landscape printable area 200mm), чтобы исключить phantom-вторую
-       страницу из-за округления */
+    /* Schedule print — общие правила (работают и на десктопе, и на мобиле) */
     html.print-schedule-mode, html.print-schedule-mode body.print-schedule-mode {
-      width:287mm !important; min-width:287mm !important; max-width:287mm !important;
-      height:195mm !important; min-height:0 !important; max-height:195mm !important;
+      width:100% !important; max-width:none !important;
+      height:auto !important; min-height:0 !important;
       overflow:hidden !important;
       margin:0 !important; padding:0 !important;
       page-break-after:avoid !important; break-after:avoid !important;
     }
-    /* Главный контейнер вынесен из потока через position:fixed —
-       гарантирует что ничего за его пределы не выйдет */
     body.print-schedule-mode .main {
-      position:fixed !important;
-      top:0 !important; left:0 !important; right:auto !important; bottom:auto !important;
-      width:287mm !important; height:195mm !important;
-      max-width:287mm !important; max-height:195mm !important;
+      width:100% !important; max-width:none !important;
+      height:auto !important; min-height:0 !important;
       margin:0 !important; padding:0 !important;
       overflow:hidden !important;
     }
     body.print-schedule-mode #page-schedule,
     body.print-schedule-mode #scheduleWrap {
-      width:287mm !important; min-width:287mm !important; max-width:287mm !important;
-      height:auto !important; min-height:0 !important; max-height:195mm !important;
+      width:100% !important; max-width:none !important;
+      height:auto !important; min-height:0 !important;
       overflow:hidden !important;
       page-break-after:avoid !important; break-after:avoid !important;
       page-break-before:avoid !important; break-before:avoid !important;
       page-break-inside:avoid !important; break-inside:avoid !important;
+    }
+    /* Мобильные браузеры (iOS Safari) игнорируют @page size:landscape —
+       фиксируем размеры под A4 landscape и используем position:fixed,
+       чтобы гарантировать 1 страницу */
+    html.print-schedule-mode body.print-schedule-mobile {
+      width:287mm !important; min-width:287mm !important; max-width:287mm !important;
+      height:195mm !important; max-height:195mm !important;
+    }
+    body.print-schedule-mobile .main {
+      position:fixed !important;
+      top:0 !important; left:0 !important; right:auto !important; bottom:auto !important;
+      width:287mm !important; height:195mm !important;
+      max-width:287mm !important; max-height:195mm !important;
+    }
+    body.print-schedule-mobile #page-schedule,
+    body.print-schedule-mobile #scheduleWrap {
+      width:287mm !important; max-width:287mm !important; min-width:287mm !important;
+      max-height:195mm !important;
     }
     /* Все потомки — никаких принудительных разрывов вообще */
     body.print-schedule-mode * {
