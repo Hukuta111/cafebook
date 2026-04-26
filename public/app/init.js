@@ -18,6 +18,8 @@ async function loadInitialData() {
       Object.keys(_txCats).forEach(k => { if (Array.isArray(parsed[k])) _txCats[k] = parsed[k].filter(c=>c&&c.label); });
     } catch { _txCats = { income:[], expense:[], salary:[], advance:[], bonus:[], fine:[] }; }
     try { _txCatOverrides = JSON.parse((settings && settings.txCatOverrides) || '{}') || {}; } catch { _txCatOverrides = {}; }
+    // применить toggle скрытия колонки Сумма в графике
+    if (typeof applyHideSchedSum === 'function') applyHideSchedSum(settings && settings.hideSchedSum);
     if (settings && settings.cafeName) {
       const sub = document.getElementById('cafeNameSub');
       sub.textContent = settings.cafeName;
