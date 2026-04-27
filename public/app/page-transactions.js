@@ -52,6 +52,34 @@ async function deleteTxFromModal() {
   if (res && res.ok) { closeModal('txModal'); renderTransactions(); showToast('Удалено'); }
 }
 
+// При смене типа сбрасываем выбранную категорию и перерендериваем
+function onTxTypeFilterChange() {
+  const cat = document.getElementById('txFilterCat');
+  if (cat) cat.value = '';
+  renderTransactions();
+}
+
+// Заполняет фильтр категорий: либо все категории выбранного типа из справочника,
+// либо все встреченные в выбранных транзакциях
+function populateTxCategoryFilter(txs, currentType, selectedCat) {
+  const sel = document.getElementById('txFilterCat');
+  if (!sel) return;
+  const cats = new Set();
+  // 1) категории из справочника для типа (если выбран один тип)
+  if (currentType && typeof getCategoriesForType === 'function') {
+    getCategoriesForType(currentType).forEach(c => cats.add(c));
+  }
+  // 2) категории, реально встречающиеся в выборке (на случай если в БД есть категории
+  //    которых нет в справочнике, например авто-созданные 'Месячный оклад')
+  txs.forEach(tx => { if (tx.cat) cats.add(tx.cat); });
+  const sorted = [...cats].sort((a,b) => a.localeCompare(b, 'ru'));
+  const allLbl = t('filter.allCats') || 'Все категории';
+  const opts = [`<option value="">${allLbl}</option>`]
+    .concat(sorted.map(c => `<option value="${String(c).replace(/"/g,'&quot;')}"${c === selectedCat ? ' selected' : ''}>${c}</option>`))
+    .join('');
+  sel.innerHTML = opts;
+}
+
 async function renderTransactions() {
   if (!_monthPickers['txMonthPicker']) createMonthPicker('txMonthPicker', () => renderTransactions());
   _employees = await API.get('/employees') || [];
@@ -59,17 +87,21 @@ async function renderTransactions() {
   const month = _monthPickers['txMonthPicker']?.value || '';
   const type = document.getElementById('txFilterType').value;
   const empId = document.getElementById('txFilterEmployee').value;
+  const cat = document.getElementById('txFilterCat')?.value || '';
   let url = '/transactions?';
   if (month) url += 'month=' + month + '&';
   if (type) url += 'type=' + type + '&';
   if (empId) url += 'empId=' + empId;
   if (!_dateRangePickers['txDateRange']) createDateRangePicker('txDateRange', () => renderTransactions());
   let txs = await API.get(url) || [];
+  // Перезаполнить список категорий по результату (с учётом текущего месяца/типа/сотрудника)
+  populateTxCategoryFilter(txs, type, cat);
   const txDrp = _dateRangePickers['txDateRange'];
   const txFrom = txDrp?.from || '';
   const txTo = txDrp?.to || '';
   if (txFrom) txs = txs.filter(t => t.date >= txFrom);
   if (txTo) txs = txs.filter(t => t.date <= txTo);
+  if (cat) txs = txs.filter(t => (t.cat || '') === cat);
   const txSort = document.getElementById('txSortOrder').value;
   txs.sort((a,b) => txSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   document.getElementById('txCount').textContent = `${t('page.transactions')} (${txs.length})`;
