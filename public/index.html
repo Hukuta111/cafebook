@@ -101,7 +101,7 @@
     <div class="filters">
       <div class="mp-wrap" id="txMonthPicker"></div>
       <div class="drp-wrap" id="txDateRange"></div>
-      <select id="txFilterType" onchange="renderTransactions()">
+      <select id="txFilterType" onchange="onTxTypeFilterChange()">
         <option value="" data-i18n="filter.allTypes">Все типы</option>
         <option value="income" data-i18n="tx.income">Доход</option>
         <option value="salary" data-i18n="tx.salary">Зарплата</option>
@@ -110,6 +110,7 @@
         <option value="fine" data-i18n="tx.fine">Штраф</option>
         <option value="expense" data-i18n="tx.expense">Расход</option>
       </select>
+      <select id="txFilterCat" onchange="renderTransactions()"><option value="" data-i18n="filter.allCats">Все категории</option></select>
       <select id="txFilterEmployee" onchange="renderTransactions()"><option value="" data-i18n="filter.allEmployees">Все сотрудники</option></select>
       <select id="txSortOrder" onchange="renderTransactions()">
         <option value="desc" data-i18n="sort.newest">Сначала новые</option>
