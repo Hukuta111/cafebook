@@ -63,9 +63,9 @@ async function renderDashboard() {
         const expH = exp > 0 ? Math.max(4, exp/maxV*110) : 0;
         const dayNum = d.slice(8, 10);
         return `<div class="bar-wrap" ${clickAttr} style="cursor:pointer;" data-tip="${safeAttr(dateLbl)}">
-        <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${incH}px;width:10px;opacity:.85;"></div>
-          <div class="bar" data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${expH}px;width:10px;opacity:.85;"></div>
+        <div style="display:flex;gap:2px;align-items:flex-end;height:110px;width:100%;">
+          <div class="bar" data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${incH}px;flex:1;min-width:4px;max-width:10px;opacity:.85;"></div>
+          <div class="bar" data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${expH}px;flex:1;min-width:4px;max-width:10px;opacity:.85;"></div>
         </div>
         <div class="bar-label">${dayNum}</div>
       </div>`;
