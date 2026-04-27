@@ -21,7 +21,10 @@
     </div>
     <div class="form-row">
       <label data-i18n="login.pass">Пароль</label>
-      <input type="password" id="loginPass" autocomplete="current-password" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="pass-wrap">
+        <input type="password" id="loginPass" autocomplete="current-password" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button>
+      </div>
     </div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()" data-i18n="login.submit">Войти →</button>
     <div class="login-error" id="loginError"></div>
@@ -689,16 +692,16 @@
       </select>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа" oninput="updateMasterPassRow()" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
-      <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><div class="pass-wrap"><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа" oninput="updateMasterPassRow()" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
+      <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><div class="pass-wrap"><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
     </div>
     <div class="form-row" id="uMasterRow" style="display:none;background:rgba(231,158,72,0.06);border:1px solid rgba(231,158,72,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
       <label style="color:var(--accent);" data-i18n="mp.requiredLabel">🔐 Мастер-пароль (для смены пароля чужому пользователю)</label>
-      <input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
+      <div class="pass-wrap"><input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div>
     </div>
     <div class="form-row" id="uSelfPassRow" style="display:none;background:rgba(93,185,124,0.06);border:1px solid rgba(93,185,124,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
       <label style="color:var(--green);" data-i18n="user.selfConfirmLabel">🔒 Подтвердите своим текущим паролем</label>
-      <input type="password" id="uSelfPassword" autocomplete="current-password" data-i18n-placeholder="user.selfConfirmPh" placeholder="ваш текущий пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
+      <div class="pass-wrap"><input type="password" id="uSelfPassword" autocomplete="current-password" data-i18n-placeholder="user.selfConfirmPh" placeholder="ваш текущий пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div>
     </div>
     <div id="uPermsBlock" class="form-row">
       <label data-i18n="user.perms">Права доступа к страницам</label>

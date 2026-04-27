@@ -220,6 +220,18 @@
   .form-row input,.form-row select,.form-row textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none; transition:border-color .15s; }
   .form-row input:focus,.form-row select:focus { border-color:var(--accent); }
   .form-row select option { background:var(--surface2); }
+  /* Password show/hide toggle */
+  .pass-wrap { position:relative; }
+  .pass-wrap > input { padding-right:40px !important; }
+  .pass-toggle {
+    position:absolute; top:50%; right:6px; transform:translateY(-50%);
+    background:transparent; border:none; cursor:pointer;
+    color:var(--text3); font-size:16px; line-height:1;
+    padding:4px 8px; border-radius:4px;
+    transition:background .15s, color .15s;
+  }
+  .pass-toggle:hover { background:var(--surface2); color:var(--text); }
+  .pass-toggle:focus { outline:none; background:var(--surface2); }
   .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 
   /* TOGGLE SWITCH */

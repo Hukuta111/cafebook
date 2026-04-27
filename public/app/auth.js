@@ -141,3 +141,15 @@ function setupLoginLatinFix() {
   //    до полной загрузки разметки.
   ['loginUser', 'loginPass'].forEach(id => _attachLatinFix(document.getElementById(id)));
 }
+
+// Переключение видимости пароля. Кнопка вызывает togglePassVisibility(this).
+function togglePassVisibility(btn) {
+  if (!btn) return;
+  const input = btn.parentElement && btn.parentElement.querySelector('input');
+  if (!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.textContent = showing ? '👁' : '🙈';
+  btn.setAttribute('aria-label', showing ? 'Показать пароль' : 'Скрыть пароль');
+  btn.title = showing ? 'Показать пароль' : 'Скрыть пароль';
+}
