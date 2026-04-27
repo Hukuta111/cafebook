@@ -20,18 +20,23 @@ const EXCEL_FIELDS = [
 function excelFixedTypeOptions() {
   return ['income','expense','salary','advance','bonus','fine'].map(id => ({
     value: id,
-    label: t('tx.' + id) || id,
+    label: (TYPE_EMOJI[id] || '') + ' ' + (t('tx.' + id) || id),
   }));
 }
 
-// Возвращает уникальные имена категорий (из всех типов, без дубликатов)
+// Возвращает категории, сгруппированные по типу (для optgroup в селекте)
+const TYPE_EMOJI = { income:'📈', expense:'📉', salary:'💰', advance:'💵', bonus:'✨', fine:'⚠️' };
 function excelFixedCategoryOptions() {
-  const all = new Set();
+  const result = [];
   ['income','expense','salary','advance','bonus','fine'].forEach(type => {
     const cats = (typeof getCategoriesForType === 'function') ? getCategoriesForType(type) : [];
-    cats.forEach(c => all.add(c));
+    if (!cats.length) return;
+    const groupLbl = (TYPE_EMOJI[type] || '') + ' ' + (t('tx.' + type) || type);
+    cats.forEach(name => {
+      result.push({ value: name, label: name, group: groupLbl });
+    });
   });
-  return [...all].sort().map(name => ({ value: name, label: name }));
+  return result;
 }
 
 // Возвращает список активных сотрудников
@@ -174,17 +179,42 @@ function renderExcelImportModal() {
       opts += '</optgroup>';
     }
 
-    // 3) Фиксированное значение для всех строк
+    // 3) Фиксированное значение для всех строк (с группировкой по типу если есть o.group)
     if (typeof f.fixedFrom === 'function') {
       const fixedOpts = f.fixedFrom();
       if (fixedOpts.length) {
-        opts += `<optgroup label="${t('excelImport.fixed') || 'Зафиксировать для всех строк'}">`;
+        // Сгруппировать по полю group (если задано)
+        const grouped = {};
+        const ungrouped = [];
         fixedOpts.forEach(o => {
-          const v = 'fixed:' + o.value;
-          const sel = cur === v ? ' selected' : '';
-          opts += `<option value="${safe(v)}"${sel}>${o.label}</option>`;
+          if (o.group) {
+            if (!grouped[o.group]) grouped[o.group] = [];
+            grouped[o.group].push(o);
+          } else {
+            ungrouped.push(o);
+          }
         });
-        opts += '</optgroup>';
+        const fixedPrefix = t('excelImport.fixed') || 'Зафиксировать';
+        // ungrouped — общая группа "Зафиксировать"
+        if (ungrouped.length) {
+          opts += `<optgroup label="${fixedPrefix}">`;
+          ungrouped.forEach(o => {
+            const v = 'fixed:' + o.value;
+            const sel = cur === v ? ' selected' : '';
+            opts += `<option value="${safe(v)}"${sel}>${o.label}</option>`;
+          });
+          opts += '</optgroup>';
+        }
+        // отдельная optgroup на каждый тип
+        Object.entries(grouped).forEach(([groupLbl, items]) => {
+          opts += `<optgroup label="${safe(fixedPrefix + ' → ' + groupLbl)}">`;
+          items.forEach(o => {
+            const v = 'fixed:' + o.value;
+            const sel = cur === v ? ' selected' : '';
+            opts += `<option value="${safe(v)}"${sel}>${o.label}</option>`;
+          });
+          opts += '</optgroup>';
+        });
       }
     }
 
