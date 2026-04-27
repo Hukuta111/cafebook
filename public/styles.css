@@ -232,7 +232,7 @@
   }
   .pass-toggle:hover { background:var(--surface2); color:var(--text); }
   .pass-toggle:focus { outline:none; background:var(--surface2); }
-  .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:end; }
 
   /* TOGGLE SWITCH */
   .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; user-select:none; }
