@@ -105,6 +105,29 @@ async function renderTransactions() {
   const txSort = document.getElementById('txSortOrder').value;
   txs.sort((a,b) => txSort === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
   document.getElementById('txCount').textContent = `${t('page.transactions')} (${txs.length})`;
+  // Сумма по текущей выборке: + income/fine, − expense/salary/advance/bonus
+  let txSumIn = 0, txSumOut = 0;
+  txs.forEach(tx => {
+    const a = +tx.amount || 0;
+    if (tx.type === 'income' || tx.type === 'fine') txSumIn += a;
+    else txSumOut += a;
+  });
+  const totEl = document.getElementById('txTotals');
+  if (totEl) {
+    const incLbl = t('dash.income') || 'Доходы';
+    const expLbl = t('dash.expense') || 'Расходы';
+    const netLbl = t('col.result') || 'Итог';
+    const parts = [];
+    if (txSumIn > 0) parts.push(`<span class="lbl">${incLbl}:</span> <span class="pos">+${fmt(txSumIn)} ${_currency}</span>`);
+    if (txSumOut > 0) parts.push(`<span class="lbl">${expLbl}:</span> <span class="neg">−${fmt(txSumOut)} ${_currency}</span>`);
+    if (txSumIn > 0 && txSumOut > 0) {
+      const net = txSumIn - txSumOut;
+      const sign = net >= 0 ? '+' : '−';
+      const cls = net >= 0 ? 'pos' : 'neg';
+      parts.push(`<span class="lbl">${netLbl}:</span> <span class="net ${cls}">${sign}${fmt(Math.abs(net))} ${_currency}</span>`);
+    }
+    totEl.innerHTML = parts.length ? parts.join('<span class="sep">·</span>') : '';
+  }
   const tbody = document.getElementById('txTable');
   if (!txs.length) {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>Нет транзакций</p></div></td></tr>`;

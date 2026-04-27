@@ -232,6 +232,14 @@
   }
   .pass-toggle:hover { background:var(--surface2); color:var(--text); }
   .pass-toggle:focus { outline:none; background:var(--surface2); }
+  /* Tx totals — суммы по текущей выборке */
+  .tx-totals { display:inline-flex; align-items:center; gap:10px; font-size:12px; color:var(--text3); flex-wrap:wrap; }
+  .tx-totals .sep { opacity:.4; }
+  .tx-totals .pos { color:var(--green); font-weight:600; }
+  .tx-totals .neg { color:var(--red); font-weight:600; }
+  .tx-totals .net.pos { color:var(--green); }
+  .tx-totals .net.neg { color:var(--red); }
+  .tx-totals .lbl { color:var(--text3); }
   .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:end; }
 
   /* TOGGLE SWITCH */
