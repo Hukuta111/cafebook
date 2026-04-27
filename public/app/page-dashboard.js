@@ -28,14 +28,28 @@ async function renderDashboard() {
     <div class="stat-card ${profit>=0?'green':'red'}"><div class="stat-label">${t('dash.profit')}</div><div class="stat-value ${profit>=0?'green':'red'}">${profit>=0?'+':''}${fmt(profit)} ${_currency}</div></div>
   `;
 
-  // bar chart
+  // bar chart — все дни выбранного месяца (до сегодняшнего включительно)
   const byDay = {};
   txs.forEach(t => {
     if (!byDay[t.date]) byDay[t.date] = { income:0, expense:0 };
-    if (t.type==='income') byDay[t.date].income += +t.amount;
+    // Те же правила знаков, что и в карточках/последних транзакциях:
+    // income/fine — «плюс» (зелёная колонка), всё остальное — «минус» (красная)
+    if (t.type === 'income' || t.type === 'fine') byDay[t.date].income += +t.amount;
     else byDay[t.date].expense += +t.amount;
   });
-  const days = Object.keys(byDay).sort().slice(-14);
+  // Сгенерировать все дни месяца: month имеет формат YYYY-MM
+  const [yStr, mStr] = month.split('-');
+  const yNum = parseInt(yStr, 10);
+  const mNum = parseInt(mStr, 10); // 1..12
+  const daysInMonth = new Date(yNum, mNum, 0).getDate();
+  const todayStr = today();
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${yStr}-${mStr}-${String(d).padStart(2, '0')}`;
+    if (ds > todayStr) break; // не показываем будущие даты
+    days.push(ds);
+    if (!byDay[ds]) byDay[ds] = { income: 0, expense: 0 };
+  }
   const maxV = Math.max(...days.map(d=>Math.max(byDay[d].income,byDay[d].expense)),1);
   const safeAttr = s => String(s).replace(/"/g, '&quot;');
   document.getElementById('barChart').innerHTML = days.length
@@ -45,12 +59,15 @@ async function renderDashboard() {
         const incTip = `${dateLbl} · ${t('dash.income')}: ${fmt(inc)} ${_currency}`;
         const expTip = `${dateLbl} · ${t('dash.expense')}: ${fmt(exp)} ${_currency}`;
         const clickAttr = `onclick="navigateToDay('${d}')"`;
-        return `<div class="bar-wrap">
+        const incH = inc > 0 ? Math.max(4, inc/maxV*110) : 0;
+        const expH = exp > 0 ? Math.max(4, exp/maxV*110) : 0;
+        const dayNum = d.slice(8, 10);
+        return `<div class="bar-wrap" ${clickAttr} style="cursor:pointer;" data-tip="${safeAttr(dateLbl)}">
         <div style="display:flex;gap:2px;align-items:flex-end;height:110px;">
-          <div class="bar" ${clickAttr} data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${Math.max(4,inc/maxV*110)}px;width:12px;opacity:.85;cursor:pointer;"></div>
-          <div class="bar" ${clickAttr} data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${Math.max(4,exp/maxV*110)}px;width:12px;opacity:.85;cursor:pointer;"></div>
+          <div class="bar" data-tip="${safeAttr(incTip)}" style="background:var(--green);height:${incH}px;width:10px;opacity:.85;"></div>
+          <div class="bar" data-tip="${safeAttr(expTip)}" style="background:var(--red);height:${expH}px;width:10px;opacity:.85;"></div>
         </div>
-        <div class="bar-label" ${clickAttr} style="cursor:pointer;">${dateLbl.split(' ')[0]}</div>
+        <div class="bar-label">${dayNum}</div>
       </div>`;
       }).join('')
     : `<div style="color:var(--text3);font-size:13px;padding:40px">${t('detail.noData') || 'Нет данных'}</div>`;
