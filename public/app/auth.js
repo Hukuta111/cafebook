@@ -121,19 +121,23 @@ function _cyrToLat(s) {
   if (!s) return s;
   return s.replace(/[\u0400-\u04FF]/g, ch => _CYR_TO_LAT[ch] !== undefined ? _CYR_TO_LAT[ch] : ch);
 }
-function setupLoginLatinFix() {
-  ['loginUser', 'loginPass'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el || el.dataset.latinFixed) return;
-    el.dataset.latinFixed = '1';
-    el.addEventListener('input', () => {
-      const before = el.value;
-      const after = _cyrToLat(before);
-      if (before === after) return;
-      let pos = null;
-      try { pos = el.selectionStart; } catch {}
-      el.value = after;
-      if (pos !== null) { try { el.setSelectionRange(pos, pos); } catch {} }
-    });
+function _attachLatinFix(el) {
+  if (!el || el.dataset.latinFixed) return;
+  el.dataset.latinFixed = '1';
+  el.addEventListener('input', () => {
+    const before = el.value;
+    const after = _cyrToLat(before);
+    if (before === after) return;
+    let pos = null;
+    try { pos = el.selectionStart; } catch {}
+    el.value = after;
+    if (pos !== null) { try { el.setSelectionRange(pos, pos); } catch {} }
   });
+}
+function setupLoginLatinFix() {
+  // 1) Все поля с явной пометкой data-latin-only
+  document.querySelectorAll('[data-latin-only]').forEach(_attachLatinFix);
+  // 2) На всякий случай добавляем фикс на основные поля логина — они нужны
+  //    до полной загрузки разметки.
+  ['loginUser', 'loginPass'].forEach(id => _attachLatinFix(document.getElementById(id)));
 }

@@ -387,10 +387,10 @@
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.security">Безопасность</div>
-        <div class="form-row"><label data-i18n="settings.oldPass">Текущий пароль</label><input type="password" id="oldPass"></div>
+        <div class="form-row"><label data-i18n="settings.oldPass">Текущий пароль</label><input type="password" id="oldPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
         <div class="form-2col">
-          <div class="form-row"><label data-i18n="settings.newPass">Новый пароль</label><input type="password" id="newPass"></div>
-          <div class="form-row"><label data-i18n="settings.repeatPass">Повтор пароля</label><input type="password" id="newPass2"></div>
+          <div class="form-row"><label data-i18n="settings.newPass">Новый пароль</label><input type="password" id="newPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+          <div class="form-row"><label data-i18n="settings.repeatPass">Повтор пароля</label><input type="password" id="newPass2" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
         </div>
         <button class="btn btn-primary" onclick="changePassword()" data-i18n="settings.changePass">Сменить пароль</button>
       </div>
@@ -403,15 +403,15 @@
         <div id="mpStatus" style="font-size:12px;margin-bottom:10px;"></div>
         <div id="mpCurrentRow" class="form-row" style="display:none;">
           <label data-i18n="mp.current">Текущий мастер-пароль</label>
-          <input type="password" id="mpCurrent" autocomplete="off">
+          <input type="password" id="mpCurrent" autocomplete="off" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
         </div>
         <div class="form-2col">
-          <div class="form-row"><label data-i18n="mp.new">Новый мастер-пароль</label><input type="password" id="mpNew" autocomplete="new-password"></div>
-          <div class="form-row"><label data-i18n="mp.repeat">Повтор</label><input type="password" id="mpNew2" autocomplete="new-password"></div>
+          <div class="form-row"><label data-i18n="mp.new">Новый мастер-пароль</label><input type="password" id="mpNew" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+          <div class="form-row"><label data-i18n="mp.repeat">Повтор</label><input type="password" id="mpNew2" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
         </div>
         <div class="form-row">
           <label data-i18n="mp.adminPass">Подтвердите своим текущим паролем</label>
-          <input type="password" id="mpAdminPass" autocomplete="current-password">
+          <input type="password" id="mpAdminPass" autocomplete="current-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
         </div>
         <button class="btn btn-primary" onclick="saveMasterPassword()" data-i18n="mp.save">Сохранить мастер-пароль</button>
       </div>
@@ -679,7 +679,7 @@
   <div class="modal">
     <div class="modal-title" id="userModalTitle" data-i18n="user.new">Новый пользователь</div>
     <div class="form-2col">
-      <div class="form-row"><label data-i18n="user.username">Логин (a-z, 0-9, _)</label><input type="text" id="uUsername" data-i18n-placeholder="user.usernamePh" placeholder="ivan" autocomplete="off"></div>
+      <div class="form-row"><label data-i18n="user.username">Логин (a-z, 0-9, _)</label><input type="text" id="uUsername" data-i18n-placeholder="user.usernamePh" placeholder="ivan" autocomplete="off" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
       <div class="form-row"><label data-i18n="user.displayName">Отображаемое имя</label><input type="text" id="uDisplayName" data-i18n-placeholder="user.displayNamePh" placeholder="Иван Иванов"></div>
     </div>
     <div class="form-row"><label data-i18n="user.role">Роль</label>
@@ -689,16 +689,16 @@
       </select>
     </div>
     <div class="form-2col">
-      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа" oninput="updateMasterPassRow()"></div>
-      <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль"></div>
+      <div class="form-row"><label id="uPassLabel" data-i18n="user.password">Пароль</label><input type="password" id="uPassword" autocomplete="new-password" data-i18n-placeholder="user.passPh" placeholder="мин. 4 символа" oninput="updateMasterPassRow()" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+      <div class="form-row"><label data-i18n="user.repeat">Повтор пароля</label><input type="password" id="uPassword2" autocomplete="new-password" data-i18n-placeholder="user.repeatPh" placeholder="повторите пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
     </div>
     <div class="form-row" id="uMasterRow" style="display:none;background:rgba(231,158,72,0.06);border:1px solid rgba(231,158,72,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
       <label style="color:var(--accent);" data-i18n="mp.requiredLabel">🔐 Мастер-пароль (для смены пароля чужому пользователю)</label>
-      <input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль">
+      <input type="password" id="uMasterPassword" autocomplete="off" data-i18n-placeholder="mp.placeholder" placeholder="введите мастер-пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
     </div>
     <div class="form-row" id="uSelfPassRow" style="display:none;background:rgba(93,185,124,0.06);border:1px solid rgba(93,185,124,0.25);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;">
       <label style="color:var(--green);" data-i18n="user.selfConfirmLabel">🔒 Подтвердите своим текущим паролем</label>
-      <input type="password" id="uSelfPassword" autocomplete="current-password" data-i18n-placeholder="user.selfConfirmPh" placeholder="ваш текущий пароль">
+      <input type="password" id="uSelfPassword" autocomplete="current-password" data-i18n-placeholder="user.selfConfirmPh" placeholder="ваш текущий пароль" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
     </div>
     <div id="uPermsBlock" class="form-row">
       <label data-i18n="user.perms">Права доступа к страницам</label>
