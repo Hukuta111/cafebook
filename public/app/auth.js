@@ -97,3 +97,43 @@ async function changePassword() {
     showToast(res.error || 'Ошибка', true);
   }
 }
+
+// ───────────────────────────────────────────
+// Принудительная латиница в полях логина/пароля.
+// Если у пользователя активна русская/украинская раскладка, вводимые
+// кириллические буквы автоматически заменяются на латинские по позиции
+// клавиши на QWERTY. Работает и для вставки из буфера обмена.
+// ───────────────────────────────────────────
+const _CYR_TO_LAT = {
+  // Верхний ряд QWERTY
+  'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p','х':'[','ъ':']','ї':']',
+  'Й':'Q','Ц':'W','У':'E','К':'R','Е':'T','Н':'Y','Г':'U','Ш':'I','Щ':'O','З':'P','Х':'{','Ъ':'}','Ї':'}',
+  // Средний ряд
+  'ф':'a','ы':'s','і':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k','д':'l','ж':';','э':"'",'є':"'",
+  'Ф':'A','Ы':'S','І':'S','В':'D','А':'F','П':'G','Р':'H','О':'J','Л':'K','Д':'L','Ж':':','Э':'"','Є':'"',
+  // Нижний ряд
+  'я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m','б':',','ю':'.',
+  'Я':'Z','Ч':'X','С':'C','М':'V','И':'B','Т':'N','Ь':'M','Б':'<','Ю':'>',
+  // Прочие
+  'ё':'`','Ё':'~','ґ':'`','Ґ':'~',
+};
+function _cyrToLat(s) {
+  if (!s) return s;
+  return s.replace(/[\u0400-\u04FF]/g, ch => _CYR_TO_LAT[ch] !== undefined ? _CYR_TO_LAT[ch] : ch);
+}
+function setupLoginLatinFix() {
+  ['loginUser', 'loginPass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.latinFixed) return;
+    el.dataset.latinFixed = '1';
+    el.addEventListener('input', () => {
+      const before = el.value;
+      const after = _cyrToLat(before);
+      if (before === after) return;
+      let pos = null;
+      try { pos = el.selectionStart; } catch {}
+      el.value = after;
+      if (pos !== null) { try { el.setSelectionRange(pos, pos); } catch {} }
+    });
+  });
+}

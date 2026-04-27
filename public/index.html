@@ -17,11 +17,11 @@
     <div class="login-sub" data-i18n="login.title">Управление кафе</div>
     <div class="form-row">
       <label data-i18n="login.user">Логин</label>
-      <input type="text" id="loginUser" autocomplete="username">
+      <input type="text" id="loginUser" autocomplete="username" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
     </div>
     <div class="form-row">
       <label data-i18n="login.pass">Пароль</label>
-      <input type="password" id="loginPass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="loginPass" autocomplete="current-password" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()" data-i18n="login.submit">Войти →</button>
     <div class="login-error" id="loginError"></div>
