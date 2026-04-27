@@ -390,10 +390,10 @@
 
       <div class="table-wrap" style="padding:24px;margin-top:16px;">
         <div class="table-title" style="margin-bottom:16px;" data-i18n="settings.security">Безопасность</div>
-        <div class="form-row"><label data-i18n="settings.oldPass">Текущий пароль</label><input type="password" id="oldPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+        <div class="form-row"><label data-i18n="settings.oldPass">Текущий пароль</label><div class="pass-wrap"><input type="password" id="oldPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
         <div class="form-2col">
-          <div class="form-row"><label data-i18n="settings.newPass">Новый пароль</label><input type="password" id="newPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
-          <div class="form-row"><label data-i18n="settings.repeatPass">Повтор пароля</label><input type="password" id="newPass2" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+          <div class="form-row"><label data-i18n="settings.newPass">Новый пароль</label><div class="pass-wrap"><input type="password" id="newPass" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
+          <div class="form-row"><label data-i18n="settings.repeatPass">Повтор пароля</label><div class="pass-wrap"><input type="password" id="newPass2" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
         </div>
         <button class="btn btn-primary" onclick="changePassword()" data-i18n="settings.changePass">Сменить пароль</button>
       </div>
@@ -406,15 +406,15 @@
         <div id="mpStatus" style="font-size:12px;margin-bottom:10px;"></div>
         <div id="mpCurrentRow" class="form-row" style="display:none;">
           <label data-i18n="mp.current">Текущий мастер-пароль</label>
-          <input type="password" id="mpCurrent" autocomplete="off" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
+          <div class="pass-wrap"><input type="password" id="mpCurrent" autocomplete="off" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div>
         </div>
         <div class="form-2col">
-          <div class="form-row"><label data-i18n="mp.new">Новый мастер-пароль</label><input type="password" id="mpNew" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
-          <div class="form-row"><label data-i18n="mp.repeat">Повтор</label><input type="password" id="mpNew2" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"></div>
+          <div class="form-row"><label data-i18n="mp.new">Новый мастер-пароль</label><div class="pass-wrap"><input type="password" id="mpNew" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
+          <div class="form-row"><label data-i18n="mp.repeat">Повтор</label><div class="pass-wrap"><input type="password" id="mpNew2" autocomplete="new-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div></div>
         </div>
         <div class="form-row">
           <label data-i18n="mp.adminPass">Подтвердите своим текущим паролем</label>
-          <input type="password" id="mpAdminPass" autocomplete="current-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
+          <div class="pass-wrap"><input type="password" id="mpAdminPass" autocomplete="current-password" data-latin-only lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr"><button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button></div>
         </div>
         <button class="btn btn-primary" onclick="saveMasterPassword()" data-i18n="mp.save">Сохранить мастер-пароль</button>
       </div>
