@@ -72,7 +72,8 @@ async function initDb() {
       type TEXT NOT NULL DEFAULT 'income',
       name TEXT NOT NULL, qty REAL DEFAULT 1, price REAL DEFAULT 0,
       amount REAL NOT NULL DEFAULT 0,
-      in_bonus INTEGER DEFAULT 0
+      in_bonus INTEGER DEFAULT 0,
+      bonus_full INTEGER DEFAULT 0
     )`,
     // Личный (черновой) график пользователя — не влияет на основной график
     `CREATE TABLE IF NOT EXISTS personal_schedule (
@@ -103,6 +104,7 @@ async function initDb() {
   try { db.run('ALTER TABLE positions ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_monthly INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE banquet_items ADD COLUMN in_bonus INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE banquet_items ADD COLUMN bonus_full INTEGER DEFAULT 0'); } catch(e) {}
 
   // Миграция пользователей из config.json
   migrateUsersFromConfig();
@@ -908,20 +910,34 @@ function recalcShares(banquetId, total, percent) {
   );
   const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
   if (!empIds.length) return [];
-  // Бонус = (сумма банкета × %) + статьи «В бонус» полностью (income +, expense −)
-  // Например: банкет 21 000, 10% → 2100; + чаевые 1 000 «в бонус» → итог 3 100.
-  let bonus = +total * (percent / 100);
-  const itemsRows = db.exec(
-    'SELECT type, amount, in_bonus FROM banquet_items WHERE banquet_id = ? AND in_bonus = 1',
+  // Две независимые галочки на статьях:
+  //   in_bonus  — добавить в БАЗУ для % (т.е. сумма ×% попадёт в бонус)
+  //   bonus_full — прибавить к бонусу ПОЛНОСТЬЮ (поверх процента)
+  // Формула: бонус = (total + Σ in_bonus) × % + Σ bonus_full
+  //   (по income — со знаком +, по expense — со знаком −)
+  let base = +total;
+  const inBonusRows = db.exec(
+    'SELECT type, amount FROM banquet_items WHERE banquet_id = ? AND in_bonus = 1',
     [banquetId]
   );
-  if (itemsRows[0]) {
-    itemsRows[0].values.forEach(([type, amount]) => {
-      if (type === 'income') bonus += +amount;
-      else bonus -= +amount;
+  if (inBonusRows[0]) {
+    inBonusRows[0].values.forEach(([type, amount]) => {
+      if (type === 'income') base += +amount;
+      else base -= +amount;
     });
   }
-  bonus = Math.max(0, bonus);
+  let extra = 0;
+  const fullRows = db.exec(
+    'SELECT type, amount FROM banquet_items WHERE banquet_id = ? AND bonus_full = 1',
+    [banquetId]
+  );
+  if (fullRows[0]) {
+    fullRows[0].values.forEach(([type, amount]) => {
+      if (type === 'income') extra += +amount;
+      else extra -= +amount;
+    });
+  }
+  const bonus = Math.max(0, base * (percent / 100) + extra);
   const share = bonus / empIds.length;
   const shares = [];
   empIds.forEach(empId => {
@@ -957,10 +973,11 @@ app.put('/api/banquets/:id', authMiddleware, checkPermission('banquets', 'edit')
       const qty = parseFloat(it.qty) || 1;
       const price = parseFloat(it.price) || 0;
       const amount = +it.amount != null && !isNaN(+it.amount) && +it.amount !== 0 ? parseFloat(it.amount) : qty * price;
-      const inBonus = it.inBonus === true || it.in_bonus === 1 || it.in_bonus === true ? 1 : 0;
+      const inBonus  = it.inBonus  === true || it.in_bonus  === 1 || it.in_bonus  === true ? 1 : 0;
+      const bonusFull = it.bonusFull === true || it.bonus_full === 1 || it.bonus_full === true ? 1 : 0;
       db.run(
-        'INSERT INTO banquet_items (id, banquet_id, type, name, qty, price, amount, in_bonus) VALUES (?,?,?,?,?,?,?,?)',
-        [it.id || uid(), req.params.id, it.type === 'expense' ? 'expense' : 'income', it.name || '', qty, price, amount, inBonus]
+        'INSERT INTO banquet_items (id, banquet_id, type, name, qty, price, amount, in_bonus, bonus_full) VALUES (?,?,?,?,?,?,?,?,?)',
+        [it.id || uid(), req.params.id, it.type === 'expense' ? 'expense' : 'income', it.name || '', qty, price, amount, inBonus, bonusFull]
       );
     });
   }

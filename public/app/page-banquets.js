@@ -18,16 +18,23 @@ async function renderBanquets() {
 
   container.innerHTML = _banquets.map(b => {
     const items = Array.isArray(b.items) ? b.items : [];
-    const isInBonus = (it) => it.in_bonus === 1 || it.in_bonus === true || it.inBonus === true;
+    const isInBonus  = (it) => it.in_bonus  === 1 || it.in_bonus  === true || it.inBonus  === true;
+    const isBonusFull = (it) => it.bonus_full === 1 || it.bonus_full === true || it.bonusFull === true;
     const incomeSum = items.filter(x => x.type === 'income').reduce((s,x) => s + +x.amount, 0);
     const expenseSum = items.filter(x => x.type === 'expense').reduce((s,x) => s + +x.amount, 0);
     const netTotal = +b.total + incomeSum - expenseSum;
-    // Бонус = (total × %) + статьи «В бонус» полностью (income +, expense −)
-    const inBonusIncome  = items.filter(x => x.type === 'income'  && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
-    const inBonusExpense = items.filter(x => x.type === 'expense' && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
-    const percentBonus = +b.total * (+b.percent / 100);
-    const bonus = Math.max(0, percentBonus + inBonusIncome - inBonusExpense);
-    const hasInBonusItems = inBonusIncome > 0 || inBonusExpense > 0;
+    // База для % = total + статьи «В бонус» (со знаком по типу)
+    const baseIncome  = items.filter(x => x.type === 'income'  && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
+    const baseExpense = items.filter(x => x.type === 'expense' && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
+    const base = +b.total + baseIncome - baseExpense;
+    const baseDiffers = Math.abs(base - +b.total) > 0.001;
+    // Прибавки целиком к бонусу (поверх процента)
+    const extraIncome  = items.filter(x => x.type === 'income'  && isBonusFull(x)).reduce((s,x) => s + +x.amount, 0);
+    const extraExpense = items.filter(x => x.type === 'expense' && isBonusFull(x)).reduce((s,x) => s + +x.amount, 0);
+    const percentBonus = base * (+b.percent / 100);
+    const extra = extraIncome - extraExpense;
+    const bonus = Math.max(0, percentBonus + extra);
+    const hasExtra = Math.abs(extra) > 0.001;
     const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
     const diff = bonus - distributed;
     const itemsHtml = items.length
@@ -36,10 +43,11 @@ async function renderBanquets() {
           const color = it.type === 'income' ? 'var(--green)' : 'var(--red)';
           const sign = it.type === 'income' ? '+' : '−';
           const inB = isInBonus(it);
-          const bonusBadge = inB
-            ? ' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;letter-spacing:.3px;text-transform:uppercase;font-weight:600;">в бонус</span>'
-            : '';
-          const label = `${it.name || '(без названия)'}${+it.qty>1 || +it.price>0 ? ' · '+(+it.qty)+'×'+fmt(+it.price) : ''}${bonusBadge}`;
+          const bF = isBonusFull(it);
+          const badges =
+            (inB ? ' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;letter-spacing:.3px;text-transform:uppercase;font-weight:600;">в бонус</span>' : '') +
+            (bF ? ' <span style="background:var(--green);color:#000;font-size:9px;padding:1px 6px;border-radius:8px;letter-spacing:.3px;text-transform:uppercase;font-weight:600;">целиком</span>' : '');
+          const label = `${it.name || '(без названия)'}${+it.qty>1 || +it.price>0 ? ' · '+(+it.qty)+'×'+fmt(+it.price) : ''}${badges}`;
           return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:4px 12px;background:var(--surface);border-radius:4px;">
             <span>${label}</span>
             <span style="color:${color};font-weight:600;">${sign}${fmt(+it.amount)} ${_currency}</span>
@@ -73,7 +81,7 @@ async function renderBanquets() {
         <div>
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
           <div style="color:var(--text3);font-size:13px;margin-top:4px;">
-            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(b.total)} = ${fmt(percentBonus)}</b>${hasInBonusItems ? (inBonusIncome ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(inBonusIncome)+'</b>' : '') + (inBonusExpense ? ' &nbsp;− <b style="color:var(--red)">'+fmt(inBonusExpense)+'</b>' : '') + ' &nbsp;= <b style="color:var(--green)">'+fmt(bonus)+'</b>' : ''}
+            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(base)} = ${fmt(percentBonus)}</b>${baseDiffers ? ' <span style="color:var(--text3);font-size:11px;">(база = ' + fmt(b.total) + (baseIncome ? ' + '+fmt(baseIncome) : '') + (baseExpense ? ' − '+fmt(baseExpense) : '') + ')</span>' : ''}${hasExtra ? (extraIncome ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(extraIncome)+'</b>' : '') + (extraExpense ? ' &nbsp;− <b style="color:var(--red)">'+fmt(extraExpense)+'</b>' : '') + ' &nbsp;= <b style="color:var(--green)">'+fmt(bonus)+'</b>' : ''}
           </div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -105,6 +113,7 @@ function openBanquetModal(b) {
         id: x.id, type: x.type, name: x.name,
         qty: +x.qty || 1, price: +x.price || 0,
         inBonus: x.in_bonus === 1 || x.in_bonus === true || x.inBonus === true,
+        bonusFull: x.bonus_full === 1 || x.bonus_full === true || x.bonusFull === true,
       }))
     : [];
   renderBanquetItems();
@@ -126,7 +135,7 @@ function renderBanquetItems() {
   }
   const suggestions = getBanquetItemNameSuggestions();
   const datalist = `<datalist id="banquetItemNames">${suggestions.map(n => `<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('')}</datalist>`;
-  const gridCols = '24px minmax(0,1.6fr) 60px 80px 80px 32px 32px';
+  const gridCols = '24px minmax(0,1.6fr) 60px 80px 80px 32px 32px 32px';
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 6px 4px;">
     <span></span>
     <span>${t('banquet.title')}</span>
@@ -134,6 +143,7 @@ function renderBanquetItems() {
     <span style="text-align:center">${t('banquet.price')}</span>
     <span style="text-align:right">${t('banquet.itemTotal')}</span>
     <span style="text-align:center" title="${t('banquet.inBonusHint')}">${t('banquet.inBonus')}</span>
+    <span style="text-align:center" title="${t('banquet.bonusFullHint')}">${t('banquet.bonusFull')}</span>
     <span></span>
   </div>`;
   list.innerHTML = datalist + header + _banquetItems.map((it, i) => {
@@ -154,6 +164,10 @@ function renderBanquetItems() {
         <input type="checkbox" ${it.inBonus ? 'checked' : ''} onchange="onBanquetItemBonusToggle(${i}, this.checked)">
         <span class="perm-cb-box"></span>
       </label>
+      <label class="perm-cb" style="justify-self:center" title="${t('banquet.bonusFullHint')}">
+        <input type="checkbox" ${it.bonusFull ? 'checked' : ''} onchange="onBanquetItemBonusFullToggle(${i}, this.checked)">
+        <span class="perm-cb-box"></span>
+      </label>
       <button type="button" onclick="removeBanquetItem(${i})" class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:12px;">✕</button>
     </div>`;
   }).join('');
@@ -164,27 +178,36 @@ function updateBanquetSummary() {
   const total = parseFloat(document.getElementById('banquetTotal').value) || 0;
   const percent = parseFloat(document.getElementById('banquetPercent').value) || 0;
   let income = 0, expense = 0;
-  // Бонус = total × % + статьи «В бонус» полностью (income +, expense −)
-  let inBonusIncome = 0, inBonusExpense = 0;
+  // «В бонус»  — добавляется в БАЗУ для %
+  // «Целиком»  — прибавляется к бонусу ПОЛНОСТЬЮ (поверх процента)
+  let baseIncome = 0, baseExpense = 0;     // for in_bonus
+  let extraIncome = 0, extraExpense = 0;   // for bonus_full
   _banquetItems.forEach(it => {
     const sum = (+it.qty || 0) * (+it.price || 0);
     if (it.type === 'income') income += sum; else expense += sum;
     if (it.inBonus) {
-      if (it.type === 'income') inBonusIncome += sum;
-      else inBonusExpense += sum;
+      if (it.type === 'income') baseIncome += sum; else baseExpense += sum;
+    }
+    if (it.bonusFull) {
+      if (it.type === 'income') extraIncome += sum; else extraExpense += sum;
     }
   });
   const net = total + income - expense;
-  const percentBonus = total * percent / 100;
-  const bonus = Math.max(0, percentBonus + inBonusIncome - inBonusExpense);
+  const base = total + baseIncome - baseExpense;
+  const percentBonus = base * percent / 100;
+  const extra = extraIncome - extraExpense;
+  const bonus = Math.max(0, percentBonus + extra);
   const el = document.getElementById('banquetSummary');
   if (el) {
-    const hasInBonusItems = inBonusIncome > 0 || inBonusExpense > 0;
-    let bonusLine = `${t('banquet.summary.bonus')}: <b style="color:var(--green)">${percent}% ${t('banquet.summary.from')} ${fmt(total)} = ${fmt(percentBonus)}</b>`;
-    if (hasInBonusItems) {
-      if (inBonusIncome) bonusLine += ` &nbsp;+ <b style="color:var(--green)">${fmt(inBonusIncome)}</b>`;
-      if (inBonusExpense) bonusLine += ` &nbsp;− <b style="color:var(--red)">${fmt(inBonusExpense)}</b>`;
-      bonusLine += ` &nbsp;= <b style="color:var(--green)">${fmt(bonus)}</b> <span style="color:var(--text3);font-size:11px;">(в фонд сотрудников)</span>`;
+    const baseChanged = Math.abs(base - total) > 0.001;
+    let bonusLine = `${t('banquet.summary.bonus')}: <b style="color:var(--green)">${percent}% ${t('banquet.summary.from')} ${fmt(base)} = ${fmt(percentBonus)}</b>`;
+    if (baseChanged) {
+      bonusLine += ` <span style="color:var(--text3);font-size:11px;">(база = ${fmt(total)}${baseIncome ? ' + '+fmt(baseIncome) : ''}${baseExpense ? ' − '+fmt(baseExpense) : ''})</span>`;
+    }
+    if (Math.abs(extra) > 0.001) {
+      if (extraIncome) bonusLine += ` &nbsp;+ <b style="color:var(--green)">${fmt(extraIncome)}</b>`;
+      if (extraExpense) bonusLine += ` &nbsp;− <b style="color:var(--red)">${fmt(extraExpense)}</b>`;
+      bonusLine += ` &nbsp;= <b style="color:var(--green)">${fmt(bonus)}</b>`;
     }
     el.innerHTML = `${t('banquet.summary.main')}: <b style="color:var(--text)">${fmt(total)}</b>`
       + (income ? ` &nbsp;·&nbsp; ${t('banquet.summary.incomes')}: <b style="color:var(--green)">+${fmt(income)}</b>` : '')
@@ -197,6 +220,12 @@ function updateBanquetSummary() {
 function onBanquetItemBonusToggle(index, checked) {
   if (!_banquetItems[index]) return;
   _banquetItems[index].inBonus = !!checked;
+  updateBanquetSummary();
+}
+
+function onBanquetItemBonusFullToggle(index, checked) {
+  if (!_banquetItems[index]) return;
+  _banquetItems[index].bonusFull = !!checked;
   updateBanquetSummary();
 }
 
@@ -213,7 +242,7 @@ function onBanquetItemChange(index, field, value) {
 }
 
 function addBanquetItem(type) {
-  _banquetItems.push({ id: uid(), type, name: '', qty: 1, price: 0, inBonus: false });
+  _banquetItems.push({ id: uid(), type, name: '', qty: 1, price: 0, inBonus: false, bonusFull: false });
   renderBanquetItems();
 }
 
@@ -234,6 +263,7 @@ async function saveBanquet() {
     qty: +it.qty || 0, price: +it.price || 0,
     amount: (+it.qty || 0) * (+it.price || 0),
     inBonus: !!it.inBonus,
+    bonusFull: !!it.bonusFull,
   }));
   const res = id
     ? await API.put('/banquets/' + id, { date, total, percent, note, items, recalc: true })
