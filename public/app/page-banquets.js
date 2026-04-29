@@ -18,11 +18,16 @@ async function renderBanquets() {
 
   container.innerHTML = _banquets.map(b => {
     const items = Array.isArray(b.items) ? b.items : [];
+    const isInBonus = (it) => it.in_bonus === 1 || it.in_bonus === true || it.inBonus === true;
     const incomeSum = items.filter(x => x.type === 'income').reduce((s,x) => s + +x.amount, 0);
     const expenseSum = items.filter(x => x.type === 'expense').reduce((s,x) => s + +x.amount, 0);
     const netTotal = +b.total + incomeSum - expenseSum;
-    // Бонус считается только от первоначальной суммы банкета
-    const bonus = Math.max(0, (+b.total) * (+b.percent / 100));
+    // База для бонуса = сумма банкета + только статьи, помеченные «В бонус»
+    const inBonusIncome  = items.filter(x => x.type === 'income'  && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
+    const inBonusExpense = items.filter(x => x.type === 'expense' && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
+    const bonusBase = +b.total + inBonusIncome - inBonusExpense;
+    const bonus = Math.max(0, bonusBase * (+b.percent / 100));
+    const baseDiffers = Math.abs(bonusBase - +b.total) > 0.001;
     const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
     const diff = bonus - distributed;
     const itemsHtml = items.length
@@ -30,8 +35,12 @@ async function renderBanquets() {
         + items.map(it => {
           const color = it.type === 'income' ? 'var(--green)' : 'var(--red)';
           const sign = it.type === 'income' ? '+' : '−';
-          const label = `${it.name || '(без названия)'}${+it.qty>1 || +it.price>0 ? ' · '+(+it.qty)+'×'+fmt(+it.price) : ''}`;
-          return `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 12px;background:var(--surface);border-radius:4px;">
+          const inB = isInBonus(it);
+          const bonusBadge = inB
+            ? ' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;letter-spacing:.3px;text-transform:uppercase;font-weight:600;">в бонус</span>'
+            : '';
+          const label = `${it.name || '(без названия)'}${+it.qty>1 || +it.price>0 ? ' · '+(+it.qty)+'×'+fmt(+it.price) : ''}${bonusBadge}`;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:4px 12px;background:var(--surface);border-radius:4px;">
             <span>${label}</span>
             <span style="color:${color};font-weight:600;">${sign}${fmt(+it.amount)} ${_currency}</span>
           </div>`;
@@ -64,7 +73,7 @@ async function renderBanquets() {
         <div>
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
           <div style="color:var(--text3);font-size:13px;margin-top:4px;">
-            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(b.total)} = ${fmt(bonus)}</b>
+            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(bonusBase)} = ${fmt(bonus)}</b>${baseDiffers ? ' <span style="color:var(--text3);font-size:11px;">(база = ' + fmt(b.total) + (inBonusIncome ? ' + '+fmt(inBonusIncome) : '') + (inBonusExpense ? ' − '+fmt(inBonusExpense) : '') + ')</span>' : ''}
           </div>
         </div>
         <div style="display:flex;gap:8px;">
