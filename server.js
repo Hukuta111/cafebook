@@ -908,19 +908,20 @@ function recalcShares(banquetId, total, percent) {
   );
   const empIds = schedRows[0] ? schedRows[0].values.map(v => v[0]) : [];
   if (!empIds.length) return [];
-  // База для бонуса: сумма банкета + только те доп. статьи, у которых in_bonus=1
-  let base = +total;
+  // Бонус = (сумма банкета × %) + статьи «В бонус» полностью (income +, expense −)
+  // Например: банкет 21 000, 10% → 2100; + чаевые 1 000 «в бонус» → итог 3 100.
+  let bonus = +total * (percent / 100);
   const itemsRows = db.exec(
     'SELECT type, amount, in_bonus FROM banquet_items WHERE banquet_id = ? AND in_bonus = 1',
     [banquetId]
   );
   if (itemsRows[0]) {
     itemsRows[0].values.forEach(([type, amount]) => {
-      if (type === 'income') base += +amount;
-      else base -= +amount;
+      if (type === 'income') bonus += +amount;
+      else bonus -= +amount;
     });
   }
-  const bonus = Math.max(0, base * (percent / 100));
+  bonus = Math.max(0, bonus);
   const share = bonus / empIds.length;
   const shares = [];
   empIds.forEach(empId => {

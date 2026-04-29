@@ -22,12 +22,12 @@ async function renderBanquets() {
     const incomeSum = items.filter(x => x.type === 'income').reduce((s,x) => s + +x.amount, 0);
     const expenseSum = items.filter(x => x.type === 'expense').reduce((s,x) => s + +x.amount, 0);
     const netTotal = +b.total + incomeSum - expenseSum;
-    // База для бонуса = сумма банкета + только статьи, помеченные «В бонус»
+    // Бонус = (total × %) + статьи «В бонус» полностью (income +, expense −)
     const inBonusIncome  = items.filter(x => x.type === 'income'  && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
     const inBonusExpense = items.filter(x => x.type === 'expense' && isInBonus(x)).reduce((s,x) => s + +x.amount, 0);
-    const bonusBase = +b.total + inBonusIncome - inBonusExpense;
-    const bonus = Math.max(0, bonusBase * (+b.percent / 100));
-    const baseDiffers = Math.abs(bonusBase - +b.total) > 0.001;
+    const percentBonus = +b.total * (+b.percent / 100);
+    const bonus = Math.max(0, percentBonus + inBonusIncome - inBonusExpense);
+    const hasInBonusItems = inBonusIncome > 0 || inBonusExpense > 0;
     const distributed = (b.shares || []).reduce((s, x) => s + +x.amount, 0);
     const diff = bonus - distributed;
     const itemsHtml = items.length
@@ -73,7 +73,7 @@ async function renderBanquets() {
         <div>
           <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);">${dateLabel(b.date)}${b.note ? ' · <span style="font-family:inherit;font-size:14px;color:var(--text2)">'+b.note+'</span>' : ''}</div>
           <div style="color:var(--text3);font-size:13px;margin-top:4px;">
-            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(bonusBase)} = ${fmt(bonus)}</b>${baseDiffers ? ' <span style="color:var(--text3);font-size:11px;">(база = ' + fmt(b.total) + (inBonusIncome ? ' + '+fmt(inBonusIncome) : '') + (inBonusExpense ? ' − '+fmt(inBonusExpense) : '') + ')</span>' : ''}
+            Банкет: <b style="color:var(--text)">${fmt(b.total)} ${_currency}</b>${incomeSum ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(incomeSum)+'</b>' : ''}${expenseSum ? ' &nbsp;− <b style="color:var(--red)">'+fmt(expenseSum)+'</b>' : ''}${(incomeSum||expenseSum) ? ' = факт <b style="color:var(--text)">'+fmt(netTotal)+'</b>' : ''} &nbsp;·&nbsp; бонус сотрудникам <b style="color:var(--green)">${b.percent}% от ${fmt(b.total)} = ${fmt(percentBonus)}</b>${hasInBonusItems ? (inBonusIncome ? ' &nbsp;+ <b style="color:var(--green)">'+fmt(inBonusIncome)+'</b>' : '') + (inBonusExpense ? ' &nbsp;− <b style="color:var(--red)">'+fmt(inBonusExpense)+'</b>' : '') + ' &nbsp;= <b style="color:var(--green)">'+fmt(bonus)+'</b>' : ''}
           </div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -164,22 +164,28 @@ function updateBanquetSummary() {
   const total = parseFloat(document.getElementById('banquetTotal').value) || 0;
   const percent = parseFloat(document.getElementById('banquetPercent').value) || 0;
   let income = 0, expense = 0;
-  let bonusBase = total; // база для расчёта бонуса = total + только статьи отмеченные ✓
+  // Бонус = total × % + статьи «В бонус» полностью (income +, expense −)
+  let inBonusIncome = 0, inBonusExpense = 0;
   _banquetItems.forEach(it => {
     const sum = (+it.qty || 0) * (+it.price || 0);
     if (it.type === 'income') income += sum; else expense += sum;
     if (it.inBonus) {
-      if (it.type === 'income') bonusBase += sum;
-      else bonusBase -= sum;
+      if (it.type === 'income') inBonusIncome += sum;
+      else inBonusExpense += sum;
     }
   });
   const net = total + income - expense;
-  const bonus = Math.max(0, bonusBase * percent / 100);
+  const percentBonus = total * percent / 100;
+  const bonus = Math.max(0, percentBonus + inBonusIncome - inBonusExpense);
   const el = document.getElementById('banquetSummary');
   if (el) {
-    const baseChanged = Math.abs(bonusBase - total) > 0.001;
-    const baseSum = baseChanged ? bonusBase : total;
-    const bonusLine = `${t('banquet.summary.bonus')}: <b style="color:var(--green)">${percent}% ${t('banquet.summary.from')} ${fmt(baseSum)} = ${fmt(bonus)}</b>`;
+    const hasInBonusItems = inBonusIncome > 0 || inBonusExpense > 0;
+    let bonusLine = `${t('banquet.summary.bonus')}: <b style="color:var(--green)">${percent}% ${t('banquet.summary.from')} ${fmt(total)} = ${fmt(percentBonus)}</b>`;
+    if (hasInBonusItems) {
+      if (inBonusIncome) bonusLine += ` &nbsp;+ <b style="color:var(--green)">${fmt(inBonusIncome)}</b>`;
+      if (inBonusExpense) bonusLine += ` &nbsp;− <b style="color:var(--red)">${fmt(inBonusExpense)}</b>`;
+      bonusLine += ` &nbsp;= <b style="color:var(--green)">${fmt(bonus)}</b> <span style="color:var(--text3);font-size:11px;">(в фонд сотрудников)</span>`;
+    }
     el.innerHTML = `${t('banquet.summary.main')}: <b style="color:var(--text)">${fmt(total)}</b>`
       + (income ? ` &nbsp;·&nbsp; ${t('banquet.summary.incomes')}: <b style="color:var(--green)">+${fmt(income)}</b>` : '')
       + (expense ? ` &nbsp;·&nbsp; ${t('banquet.summary.expenses')}: <b style="color:var(--red)">−${fmt(expense)}</b>` : '')
