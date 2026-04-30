@@ -467,6 +467,9 @@
   @page { margin:10mm; }
   @page schedule-landscape { size:A4 landscape; margin:5mm; }
 
+  /* Поля подписей — скрыты на экране, появляются только при печати в нужном режиме */
+  .employee-signature, .print-signatures-footer { display:none; }
+
   /* Days-of-work table in salary report */
   .work-days-list { margin:12px 0; background:var(--surface2); border-radius:var(--radius-sm); padding:10px 14px; }
   .work-days-list h4 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:8px; font-weight:500; }
@@ -493,6 +496,33 @@
     body.print-payslips-mode.print-payslips-separate .salary-card.print-selected:last-child { page-break-after:auto; break-after:auto; }
     /* непрерывный режим: подряд, без принудительных разрывов */
     body.print-payslips-mode:not(.print-payslips-separate) .salary-card.print-selected { margin-bottom:12px; }
+
+    /* Поле подписи на каждом листе — только в режиме «отдельный лист» */
+    body.print-payslips-mode.print-payslips-separate .salary-card.print-selected {
+      display:flex !important; flex-direction:column !important; min-height:248mm;
+    }
+    body.print-payslips-mode.print-payslips-separate .salary-card.print-selected .employee-signature {
+      display:flex !important; flex-direction:column; gap:6mm;
+      margin-top:auto !important; padding-top:18mm; font-size:11px; color:#000;
+    }
+    .employee-signature .sig-line, .employee-signature .sig-date {
+      display:flex; align-items:flex-end; gap:6px;
+    }
+    .employee-signature .sig-label { white-space:nowrap; color:#333; }
+    .employee-signature .sig-rule {
+      flex:1; min-width:120px; border-bottom:1px solid #555; height:14px;
+    }
+    .employee-signature .sig-rule-short { flex:0 0 70mm; }
+
+    /* Подписи Администратора/Бухгалтера — только в компактном режиме, только на последней странице */
+    body.print-payslips-mode.print-payslips-compact .print-signatures-footer {
+      display:flex !important; justify-content:space-between; gap:24mm;
+      margin-top:14mm; padding:0 6mm; font-size:11px; color:#000;
+      page-break-inside:avoid; break-inside:avoid;
+    }
+    .print-signatures-footer .sig-block { flex:1; display:flex; flex-direction:column; align-items:stretch; }
+    .print-signatures-footer .sig-rule { display:block; border-bottom:1px solid #555; height:18mm; }
+    .print-signatures-footer .sig-caption { text-align:center; margin-top:3px; color:#333; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
     /* компактный режим: уплотнённый макет, чтобы вмещалось на 1–2 листа */
     body.print-payslips-mode.print-payslips-compact .salary-card.print-selected {
       padding:8px 12px !important;

@@ -448,8 +448,25 @@ async function renderSalaryReport() {
         <div class="salary-item"><div class="salary-item-label">${t('srep.bonuses')}</div><div class="salary-item-value" style="color:var(--purple)">+${fmt(sum.bonus)}</div></div>
         <div class="salary-item"><div class="salary-item-label">${t('srep.fines')}</div><div class="salary-item-value" style="color:var(--red)">-${fmt(sum.fine)}</div></div>
       </div>
+      <div class="employee-signature">
+        <div class="sig-line"><span class="sig-label">${t('srep.sigEmployee') || 'Подпись сотрудника'}:</span> <span class="sig-rule"></span></div>
+        <div class="sig-date"><span class="sig-label">${t('srep.sigDate') || 'Дата'}:</span> <span class="sig-rule sig-rule-short"></span></div>
+      </div>
     </div>`;
   });
+
+  // Подписи Администратора и Бухгалтера — для компактного режима печати,
+  // выводим в самом конце (после всех карточек)
+  html += `<div class="print-signatures-footer">
+    <div class="sig-block">
+      <span class="sig-rule"></span>
+      <div class="sig-caption">${t('srep.sigAdmin') || 'Администратор'}</div>
+    </div>
+    <div class="sig-block">
+      <span class="sig-rule"></span>
+      <div class="sig-caption">${t('srep.sigAccountant') || 'Бухгалтер'}</div>
+    </div>
+  </div>`;
 
   container.innerHTML = html;
 }
