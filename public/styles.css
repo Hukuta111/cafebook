@@ -493,6 +493,30 @@
     body.print-payslips-mode.print-payslips-separate .salary-card.print-selected:last-child { page-break-after:auto; break-after:auto; }
     /* непрерывный режим: подряд, без принудительных разрывов */
     body.print-payslips-mode:not(.print-payslips-separate) .salary-card.print-selected { margin-bottom:12px; }
+    /* компактный режим: уплотнённый макет, чтобы вмещалось на 1–2 листа */
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected {
+      padding:8px 12px !important;
+      margin-bottom:6px !important;
+      font-size:10px !important;
+    }
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected .salary-card-header {
+      margin-bottom:4px !important;
+    }
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected .salary-card-name {
+      font-size:13px !important;
+    }
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected .salary-card-role {
+      font-size:10px !important; margin-top:1px !important;
+    }
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected .salary-card-header > div:last-child {
+      font-size:14px !important;
+    }
+    /* в компакте скрываем большой блок 4-х плашек: те же цифры есть в строке должностей */
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected .salary-breakdown { display:none !important; }
+    /* подстрочки по должностям делаем плотнее */
+    body.print-payslips-mode.print-payslips-compact .salary-card.print-selected [style*="background:var(--surface2)"] {
+      padding:4px 8px !important;
+    }
     #salaryReportCards > .cards-row{page-break-inside:avoid;break-inside:avoid}
     .work-days-list{background:#f8f8f8!important;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .work-days-grid .wd-row{background:#fff!important;border:1px solid #ddd}

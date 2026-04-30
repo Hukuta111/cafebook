@@ -587,12 +587,20 @@
   <div class="modal" style="width:560px;max-width:95vw;">
     <div class="modal-title" data-i18n="srp.title">Печать отчёта по зарплате</div>
     <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="srp.hint">Выберите чьи расчётные листы печатать.</div>
-    <label class="toggle-row" style="cursor:pointer;margin-bottom:10px;">
+    <label class="toggle-row" style="cursor:pointer;margin-bottom:8px;">
       <div class="toggle-text">
         <span class="toggle-label" data-i18n="srp.separatePages">Каждый сотрудник — на отдельном листе А4</span>
         <span class="toggle-hint" data-i18n="srp.separatePagesHint" style="color:var(--text3);font-size:11px;">Выключите, чтобы печатать всех подряд без разрывов страниц</span>
       </div>
-      <input type="checkbox" id="srpSeparatePages" checked onchange="srpUpdateSummary()">
+      <input type="checkbox" id="srpSeparatePages" checked onchange="srpOnSeparateChange()">
+      <span class="toggle-sw"></span>
+    </label>
+    <label class="toggle-row" id="srpCompactRow" style="cursor:pointer;margin-bottom:10px;display:none;">
+      <div class="toggle-text">
+        <span class="toggle-label" data-i18n="srp.compact">Компактный макет</span>
+        <span class="toggle-hint" data-i18n="srp.compactHint" style="color:var(--text3);font-size:11px;">Уплотнённые карточки без больших плашек — чтобы все вместились на 1–2 листа</span>
+      </div>
+      <input type="checkbox" id="srpCompact" onchange="srpUpdateSummary()">
       <span class="toggle-sw"></span>
     </label>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
