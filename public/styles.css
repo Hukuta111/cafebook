@@ -262,12 +262,19 @@
   .toggle-mini input:checked ~ .toggle-sw { background:var(--accent); }
   .toggle-mini input:checked ~ .toggle-sw::after { transform:translateX(13px); background:#1a1714; }
 
-  /* Кастомный тонкий скроллбар для блока прав доступа */
-  .perms-scroll { scrollbar-width:thin; scrollbar-color:var(--accent) transparent; }
+  /* Кастомный тонкий скроллбар — общая утилита */
+  .scroll-thin,
+  .perms-scroll { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .scroll-thin::-webkit-scrollbar,
   .perms-scroll::-webkit-scrollbar { width:6px; height:6px; }
+  .scroll-thin::-webkit-scrollbar-track,
   .perms-scroll::-webkit-scrollbar-track { background:transparent; margin:4px 0; }
+  .scroll-thin::-webkit-scrollbar-thumb,
   .perms-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; transition:background .15s; }
+  .scroll-thin::-webkit-scrollbar-thumb:hover,
   .perms-scroll::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+  .scroll-thin::-webkit-scrollbar-corner,
+  .perms-scroll::-webkit-scrollbar-corner { background:transparent; }
 
   /* PERM CHECKBOX (для прав доступа в модалке пользователя) */
   .perm-cb { display:inline-flex; cursor:pointer; user-select:none; }
