@@ -19,7 +19,106 @@ function openEmpModal(emp) {
   document.getElementById('empPaySchedule').value = emp ? (emp.pay_schedule === 'once' ? 'once' : 'twice') : 'twice';
   document.getElementById('empHiddenInSchedule').checked = !!(emp && emp.hidden_in_schedule);
   document.getElementById('empHiddenInMonthly').checked = !!(emp && emp.hidden_in_monthly);
+  populateEmpAutocompleteLists(emp ? emp.id : null);
+  hideEmpMatchHint();
   openModal('empModal');
+}
+
+// Заполнение datalist'ов уникальными именами/табельными номерами
+// для автоподсказок при вводе нового сотрудника (или редактировании).
+// При совпадении ввода с существующим сотрудником — автозаполняем
+// общие поля (имя/табельный/телефон/дата начала/статус/график выплат).
+function populateEmpAutocompleteLists(skipId) {
+  const list = (_employees || []).filter(e => e.id !== skipId);
+  // имена: уникальные, отсортированные
+  const names = [...new Set(list.map(e => (e.name || '').trim()).filter(Boolean))].sort();
+  // табельные номера: уникальные, отсортированные
+  const tabs = [...new Set(list.map(e => (e.tab_number || '').trim()).filter(Boolean))].sort();
+  const escAttr = (s) => String(s).replace(/"/g, '&quot;');
+  const empNames = document.getElementById('empNamesList');
+  const empTabs = document.getElementById('empTabsList');
+  if (empNames) empNames.innerHTML = names.map(n => `<option value="${escAttr(n)}"></option>`).join('');
+  if (empTabs)  empTabs.innerHTML  = tabs.map(t  => `<option value="${escAttr(t)}"></option>`).join('');
+}
+
+// Поля, которые относятся к ЧЕЛОВЕКУ, а не к должности — копируются при автодополнении
+const EMP_PERSONAL_FIELDS = ['phone', 'start_date', 'status', 'pay_schedule'];
+
+function findEmpByName(name) {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return null;
+  const editingId = document.getElementById('empEditId').value || null;
+  return (_employees || []).find(e =>
+    e.id !== editingId && (e.name || '').trim().toLowerCase() === n
+  ) || null;
+}
+function findEmpByTab(tab) {
+  const t = String(tab || '').trim();
+  if (!t) return null;
+  const editingId = document.getElementById('empEditId').value || null;
+  return (_employees || []).find(e =>
+    e.id !== editingId && String(e.tab_number || '').trim() === t
+  ) || null;
+}
+
+function hideEmpMatchHint() {
+  const el = document.getElementById('empMatchHint');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+function showEmpMatchHint(matched, sourceField) {
+  const el = document.getElementById('empMatchHint');
+  if (!el || !matched) return;
+  const tab = matched.tab_number ? ' №' + matched.tab_number : '';
+  const role = matched.role ? ' (' + matched.role + ')' : '';
+  el.innerHTML = `✓ Найден сотрудник <b>${matched.name}</b>${tab}${role} — общие поля заполнены автоматически. Можно изменить должность/оклад/ставку для новой позиции.`;
+  el.style.display = 'block';
+}
+
+// Аккуратно копируем «личные» поля сотрудника в форму, не трогая текущий ввод
+// (имя/табельный — то поле, которое НЕ источник)
+function applyEmpPersonalFields(matched, sourceField) {
+  if (!matched) return;
+  // имя (если ввод по табельному)
+  if (sourceField !== 'name') {
+    document.getElementById('empName').value = matched.name || '';
+  }
+  // табельный (если ввод по имени)
+  if (sourceField !== 'tab') {
+    document.getElementById('empTabNumber').value = matched.tab_number || '';
+  }
+  // личные поля
+  if (matched.phone)      document.getElementById('empPhone').value = matched.phone;
+  if (matched.start_date) document.getElementById('empStart').value = matched.start_date;
+  if (matched.status)     document.getElementById('empStatus').value = matched.status;
+  document.getElementById('empPaySchedule').value =
+    matched.pay_schedule === 'once' ? 'once' : 'twice';
+}
+
+function onEmpNameInput() {
+  // действует только для новых сотрудников (при редактировании имя меняется штатно)
+  const isEdit = !!document.getElementById('empEditId').value;
+  if (isEdit) return;
+  const value = document.getElementById('empName').value;
+  const matched = findEmpByName(value);
+  if (matched) {
+    applyEmpPersonalFields(matched, 'name');
+    showEmpMatchHint(matched, 'name');
+  } else {
+    hideEmpMatchHint();
+  }
+}
+
+function onEmpTabInput() {
+  const isEdit = !!document.getElementById('empEditId').value;
+  if (isEdit) return;
+  const value = document.getElementById('empTabNumber').value;
+  const matched = findEmpByTab(value);
+  if (matched) {
+    applyEmpPersonalFields(matched, 'tab');
+    showEmpMatchHint(matched, 'tab');
+  } else {
+    hideEmpMatchHint();
+  }
 }
 
 async function saveEmployee() {
