@@ -555,6 +555,29 @@
     .page.print-target,.page.active{display:block!important}
 
     /* Schedule print — общие правила (работают и на десктопе, и на мобиле) */
+    /* Скрываем все служебные элементы графика, которые не должны попасть на лист
+       (переключатель режимов, сравнение, вторая черновая таблица).
+       Дублируем display:none с !important — чтобы JS-инлайны (style.display='flex')
+       и inline-style на разметке не пересиливали никогда. */
+    body.print-schedule-mode #scheduleModeBar,
+    body.print-schedule-mode #schedCompareBar,
+    body.print-schedule-mode #scheduleCompareWrap,
+    body.print-schedule-mode .sched-mode-btn,
+    body.print-schedule-mode #schedPersonalOwner,
+    body.print-schedule-mode #schedPersonalHint,
+    body.print-schedule-mode #schedCompareUser,
+    body.print-schedule-mode .drag-handle { display:none !important; }
+    /* Шапку делаем простой строкой, без двухколоночного флекса —
+       в print остаётся только заголовок и месяц-пикер */
+    body.print-schedule-mode .page-header {
+      display:flex !important; flex-direction:row !important;
+      justify-content:space-between !important; align-items:center !important;
+      gap:8px !important;
+      margin:0 0 6px 0 !important; padding:0 !important;
+      page-break-after:avoid !important; break-after:avoid !important;
+    }
+    body.print-schedule-mode .page-header > div { margin:0 !important; padding:0 !important; }
+
     html.print-schedule-mode, html.print-schedule-mode body.print-schedule-mode {
       width:100% !important; max-width:none !important;
       height:auto !important; min-height:0 !important;
