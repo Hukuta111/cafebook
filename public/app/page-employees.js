@@ -24,6 +24,7 @@ function openEmpModal(emp) {
   document.getElementById('empHiddenInMonthly').checked = !!(emp && emp.hidden_in_monthly);
   populateEmpAutocompleteLists(emp ? emp.id : null);
   hideEmpMatchHint();
+  _empPreAutofillSnap = null;
   openModal('empModal');
 }
 
@@ -68,6 +69,31 @@ function populateEmpAutocompleteLists(skipId) {
 
 // Поля, которые относятся к ЧЕЛОВЕКУ, а не к должности — копируются при автодополнении
 const EMP_PERSONAL_FIELDS = ['phone', 'start_date', 'status', 'pay_schedule'];
+
+// Снэпшот формы, сделанный ПЕРЕД авто-заполнением совпавшим сотрудником.
+// Если пользователь сотрёт имя/табельный и совпадение перестанет быть актуальным —
+// возвращаем форму к этому снэпшоту, чтобы не остался чужой табельный/телефон.
+let _empPreAutofillSnap = null;
+
+function _empSnapshotForm() {
+  return {
+    name: document.getElementById('empName').value,
+    tab:  document.getElementById('empTabNumber').value,
+    phone: document.getElementById('empPhone').value,
+    start: document.getElementById('empStart').value,
+    status: document.getElementById('empStatus').value,
+    pay_schedule: document.getElementById('empPaySchedule').value,
+  };
+}
+function _empRestoreSnapshot(snap, exceptField) {
+  if (!snap) return;
+  if (exceptField !== 'name') document.getElementById('empName').value = snap.name;
+  if (exceptField !== 'tab')  document.getElementById('empTabNumber').value = snap.tab;
+  document.getElementById('empPhone').value = snap.phone;
+  document.getElementById('empStart').value = snap.start;
+  document.getElementById('empStatus').value = snap.status;
+  document.getElementById('empPaySchedule').value = snap.pay_schedule;
+}
 
 function findEmpByName(name) {
   const n = String(name || '').trim().toLowerCase();
@@ -126,9 +152,18 @@ function onEmpNameInput() {
   const value = document.getElementById('empName').value;
   const matched = findEmpByName(value);
   if (matched) {
+    // первый случай совпадения — запоминаем «исходное» состояние формы
+    if (!_empPreAutofillSnap) _empPreAutofillSnap = _empSnapshotForm();
     applyEmpPersonalFields(matched, 'name');
     showEmpMatchHint(matched, 'name');
   } else {
+    // совпадения больше нет → откатываем форму к исходному состоянию
+    // (чтобы не остался чужой табельный, телефон и пр.), не трогая поле,
+    // в которое пользователь сейчас печатает
+    if (_empPreAutofillSnap) {
+      _empRestoreSnapshot(_empPreAutofillSnap, 'name');
+      _empPreAutofillSnap = null;
+    }
     hideEmpMatchHint();
   }
 }
@@ -139,9 +174,14 @@ function onEmpTabInput() {
   const value = document.getElementById('empTabNumber').value;
   const matched = findEmpByTab(value);
   if (matched) {
+    if (!_empPreAutofillSnap) _empPreAutofillSnap = _empSnapshotForm();
     applyEmpPersonalFields(matched, 'tab');
     showEmpMatchHint(matched, 'tab');
   } else {
+    if (_empPreAutofillSnap) {
+      _empRestoreSnapshot(_empPreAutofillSnap, 'tab');
+      _empPreAutofillSnap = null;
+    }
     hideEmpMatchHint();
   }
 }
