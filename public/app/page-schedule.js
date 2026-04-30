@@ -503,7 +503,14 @@ async function generateScheduleTx() {
   const res = await API.post('/calc-schedule-tx', { month });
   if (res && res.ok) {
     if (res.created > 0) {
-      showToast(`Создано ${res.created} транзакция(й) за ${monthLabel(month)} ✓`);
+      const adv = res.advances || 0;
+      const sal = res.salaries || 0;
+      const parts = [];
+      if (adv) parts.push(`аванс — ${adv}`);
+      if (sal) parts.push(`зарплата — ${sal}`);
+      showToast(`${monthLabel(month)}: ${parts.join(', ')} ✓`);
+      // обновить график (ставки могли быть «заморожены» в сменах)
+      renderSchedule();
     } else {
       showToast(res.message || 'Нет данных для формирования');
     }

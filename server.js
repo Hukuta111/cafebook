@@ -1094,6 +1094,11 @@ app.post('/api/calc-monthly-salary', authMiddleware, checkPermission('salary-rep
 });
 
 // ─── SCHEDULE → TRANSACTIONS ──────────────────────────────
+// 1–15 → Аванс (type=advance, cat='Аванс по графику', дата=15-е)
+// 16–конец → Зарплата (type=salary, cat='Зарплата по графику', дата=последний день)
+// Чтобы повторное начисление не пересчитывало уже выплаченную половину при
+// смене ставки сотрудника, при первом расчёте смены без явной ставки
+// «замораживаются» текущей ставкой сотрудника (записывается в schedule.hourly_rate).
 app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'edit'), (req, res) => {
   const { month } = req.body;
   if (!month) return res.status(400).json({ error: 'Укажите месяц' });
@@ -1117,40 +1122,64 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
   const empMap = {};
   employees.forEach(e => { empMap[e.id] = e; });
 
-  // удалить старые авто-транзакции за месяц
+  // удалить старые авто-транзакции за месяц (и старые из прежней реализации, и новые)
   db.run(
-    `DELETE FROM transactions WHERE type='salary' AND cat='График работы' AND strftime('%Y-%m', date)=?`,
+    `DELETE FROM transactions WHERE strftime('%Y-%m', date)=? AND (
+      (type='salary'  AND cat IN ('График работы','Зарплата по графику')) OR
+      (type='advance' AND cat='Аванс по графику')
+    )`,
     [month]
   );
 
-  // сгруппировать по сотрудникам и посчитать
-  const byEmp = {};
+  // сгруппировать по половинам месяца + «заморозить» ставку, если её не было
+  const advByEmp = {};   // 1–15
+  const salByEmp = {};   // 16–конец
   entries.forEach(s => {
-    if (!byEmp[s.emp_id]) byEmp[s.emp_id] = { hours: 0, total: 0 };
     const emp = empMap[s.emp_id];
-    const rate = s.hourly_rate != null ? s.hourly_rate : (emp ? emp.hourly_rate || 0 : 0);
-    byEmp[s.emp_id].hours += s.hours;
-    byEmp[s.emp_id].total += s.hours * rate;
+    let rate = s.hourly_rate != null ? +s.hourly_rate : null;
+    if (rate == null) {
+      // «снэпшот»: запоминаем текущую ставку сотрудника прямо в смене
+      rate = emp ? +emp.hourly_rate || 0 : 0;
+      db.run('UPDATE schedule SET hourly_rate=? WHERE id=?', [rate, s.id]);
+    }
+    const day = +String(s.work_date).slice(8, 10);
+    const bucket = day <= 15 ? advByEmp : salByEmp;
+    if (!bucket[s.emp_id]) bucket[s.emp_id] = { hours: 0, total: 0 };
+    bucket[s.emp_id].hours += +s.hours;
+    bucket[s.emp_id].total += +s.hours * rate;
   });
 
-  // создать транзакции
+  // даты для итоговых транзакций
+  const advDate = month + '-15';
+  const lastDayNum = new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate();
+  const salDate = month + '-' + String(lastDayNum).padStart(2, '0');
+
   let created = 0;
-  const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
-  Object.entries(byEmp).forEach(([empId, data]) => {
-    if (data.total <= 0) return;
+  function insertTx(type, cat, date, empId, hours, total) {
+    if (total <= 0) return;
     const emp = empMap[empId];
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const amount = Math.round(total * 100) / 100;
     db.run(
       'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
-      [id, lastDay, 'salary', 'График работы', empId, Math.round(data.total * 100) / 100,
-       `${emp?emp.name:empId}: ${data.hours}ч × ставка = ${Math.round(data.total * 100) / 100}`]
+      [id, date, type, cat, empId, amount,
+       `${emp ? emp.name : empId}: ${Math.round(hours * 100) / 100}ч × ставка = ${amount}`]
     );
     created++;
-  });
+  }
+
+  Object.entries(advByEmp).forEach(([empId, d]) => insertTx('advance', 'Аванс по графику',  advDate, empId, d.hours, d.total));
+  Object.entries(salByEmp).forEach(([empId, d]) => insertTx('salary',  'Зарплата по графику', salDate, empId, d.hours, d.total));
 
   saveDb();
   dataChanged('transactions');
-  res.json({ ok: true, created });
+  dataChanged('schedule'); // ставки в сменах могли быть снэпшотнуты
+  res.json({
+    ok: true,
+    created,
+    advances: Object.keys(advByEmp).length,
+    salaries: Object.keys(salByEmp).length,
+  });
 });
 
 // ─── REPORTS ───────────────────────────────────────────────
