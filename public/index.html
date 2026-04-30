@@ -573,7 +573,15 @@
 <div class="modal-overlay" id="salReportPrintModal">
   <div class="modal" style="width:560px;max-width:95vw;">
     <div class="modal-title" data-i18n="srp.title">Печать отчёта по зарплате</div>
-    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="srp.hint">Выберите чьи расчётные листы печатать. Каждый сотрудник — на отдельном листе А4.</div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:10px;" data-i18n="srp.hint">Выберите чьи расчётные листы печатать.</div>
+    <label class="toggle-row" style="cursor:pointer;margin-bottom:10px;">
+      <div class="toggle-text">
+        <span class="toggle-label" data-i18n="srp.separatePages">Каждый сотрудник — на отдельном листе А4</span>
+        <span class="toggle-hint" data-i18n="srp.separatePagesHint" style="color:var(--text3);font-size:11px;">Выключите, чтобы печатать всех подряд без разрывов страниц</span>
+      </div>
+      <input type="checkbox" id="srpSeparatePages" checked onchange="srpUpdateSummary()">
+      <span class="toggle-sw"></span>
+    </label>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="btn btn-sm" onclick="srpToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
       <button type="button" class="btn btn-sm" onclick="srpToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>

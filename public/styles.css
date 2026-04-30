@@ -472,11 +472,14 @@
     .table-wrap { overflow:visible !important; border:none !important; padding:0 !important; margin:0 !important; background:transparent !important; width:100% !important; max-width:100% !important; }
     body{background:#fff;color:#000;font-size:10px}
     .salary-card{border:1px solid #ccc;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
-    /* режим печати выбранных расчётных листов: скрыть невыбранные, каждый на отдельный лист */
+    /* режим печати выбранных расчётных листов: скрыть невыбранные */
     body.print-payslips-mode #salaryReportCards > .cards-row { display:none !important; }
     body.print-payslips-mode .salary-card:not(.print-selected) { display:none !important; }
-    body.print-payslips-mode .salary-card.print-selected { page-break-after:always; break-after:page; margin-bottom:0; }
-    body.print-payslips-mode .salary-card.print-selected:last-child { page-break-after:auto; break-after:auto; }
+    /* раздельный режим: каждый сотрудник на новой странице */
+    body.print-payslips-mode.print-payslips-separate .salary-card.print-selected { page-break-after:always; break-after:page; margin-bottom:0; }
+    body.print-payslips-mode.print-payslips-separate .salary-card.print-selected:last-child { page-break-after:auto; break-after:auto; }
+    /* непрерывный режим: подряд, без принудительных разрывов */
+    body.print-payslips-mode:not(.print-payslips-separate) .salary-card.print-selected { margin-bottom:12px; }
     #salaryReportCards > .cards-row{page-break-inside:avoid;break-inside:avoid}
     .work-days-list{background:#f8f8f8!important;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .work-days-grid .wd-row{background:#fff!important;border:1px solid #ddd}

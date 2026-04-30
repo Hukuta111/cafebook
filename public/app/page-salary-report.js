@@ -36,8 +36,13 @@ function renderSalReportPrintList() {
 
 function srpUpdateSummary() {
   const sel = _salReportPrintList.filter(c => c.selected);
+  const separate = document.getElementById('srpSeparatePages')?.checked !== false;
   const el = document.getElementById('srpSummary');
-  if (el) el.textContent = `Будет напечатано ${sel.length} листов (по одному на сотрудника)`;
+  if (el) {
+    el.textContent = separate
+      ? `Будет напечатано ${sel.length} листов (по одному на сотрудника)`
+      : `Выбрано ${sel.length} сотрудник(ов) — будут напечатаны подряд без разрывов страниц`;
+  }
 }
 
 function srpToggleAll(value) {
@@ -48,6 +53,7 @@ function srpToggleAll(value) {
 function doPrintSalReport() {
   const selected = new Set(_salReportPrintList.filter(c => c.selected).map(c => c.key));
   if (!selected.size) { showToast('Никто не выбран', true); return; }
+  const separate = document.getElementById('srpSeparatePages')?.checked !== false;
 
   // пометить карточки
   document.querySelectorAll('#salaryReportCards .salary-card').forEach(card => {
@@ -55,6 +61,8 @@ function doPrintSalReport() {
     else card.classList.remove('print-selected');
   });
   document.body.classList.add('print-payslips-mode');
+  if (separate) document.body.classList.add('print-payslips-separate');
+  else document.body.classList.remove('print-payslips-separate');
   closeModal('salReportPrintModal');
 
   // дать браузеру время на перерисовку
@@ -63,6 +71,7 @@ function doPrintSalReport() {
     // очистка после печати
     setTimeout(() => {
       document.body.classList.remove('print-payslips-mode');
+      document.body.classList.remove('print-payslips-separate');
       document.querySelectorAll('#salaryReportCards .salary-card.print-selected').forEach(c => c.classList.remove('print-selected'));
     }, 500);
   }, 100);
