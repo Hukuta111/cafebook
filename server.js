@@ -103,6 +103,7 @@ async function initDb() {
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE positions ADD COLUMN hidden_in_schedule INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE employees ADD COLUMN hidden_in_monthly INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN pay_schedule TEXT DEFAULT 'twice'"); } catch(e) {}
   try { db.run('ALTER TABLE banquet_items ADD COLUMN in_bonus INTEGER DEFAULT 0'); } catch(e) {}
   try { db.run('ALTER TABLE banquet_items ADD COLUMN bonus_full INTEGER DEFAULT 0'); } catch(e) {}
 
@@ -563,21 +564,23 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.post('/api/employees', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
-  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
+  const { id, name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly, pay_schedule } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя обязательно' });
+  const ps = pay_schedule === 'once' ? 'once' : 'twice';
   db.run(
-    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number,hidden_in_schedule,hidden_in_monthly) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0]
+    `INSERT INTO employees (id,name,role,type,salary,hourly_rate,percent,phone,start_date,status,tab_number,hidden_in_schedule,hidden_in_monthly,pay_schedule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0, ps]
   );
   saveDb();
   dataChanged('employees');
   res.json({ ok: true });
 });
 app.put('/api/employees/:id', authMiddleware, checkPermission('employees', 'edit'), (req, res) => {
-  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly } = req.body;
+  const { name, role, type, salary, hourly_rate, percent, phone, start_date, status, tab_number, hidden_in_schedule, hidden_in_monthly, pay_schedule } = req.body;
+  const ps = pay_schedule === 'once' ? 'once' : 'twice';
   db.run(
-    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=?,hidden_in_monthly=? WHERE id=?`,
-    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0, req.params.id]
+    `UPDATE employees SET name=?,role=?,type=?,salary=?,hourly_rate=?,percent=?,phone=?,start_date=?,status=?,tab_number=?,hidden_in_schedule=?,hidden_in_monthly=?,pay_schedule=? WHERE id=?`,
+    [name, role||'', type||'staff', salary||0, hourly_rate||0, percent||0, phone||'', start_date||'', status||'active', tab_number||null, hidden_in_schedule ? 1 : 0, hidden_in_monthly ? 1 : 0, ps, req.params.id]
   );
   saveDb();
   dataChanged('employees');
@@ -1131,11 +1134,15 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
     [month]
   );
 
-  // сгруппировать по половинам месяца + «заморозить» ставку, если её не было
-  const advByEmp = {};   // 1–15
-  const salByEmp = {};   // 16–конец
+  // Сгруппировать по половинам месяца + «заморозить» ставку, если её не было.
+  // Сотрудников с pay_schedule='once' собираем в общую корзину «зарплата за весь месяц»
+  // (без аванса) — попадает на 16+ половину как одна salary-транзакция за весь объём.
+  const advByEmp = {};      // pay_schedule='twice', дни 1–15
+  const sal2ByEmp = {};     // pay_schedule='twice', дни 16–конец
+  const sal1ByEmp = {};     // pay_schedule='once', все дни месяца — одной зарплатой
   entries.forEach(s => {
     const emp = empMap[s.emp_id];
+    const payOnce = emp && emp.pay_schedule === 'once';
     let rate = s.hourly_rate != null ? +s.hourly_rate : null;
     if (rate == null) {
       // «снэпшот»: запоминаем текущую ставку сотрудника прямо в смене
@@ -1143,7 +1150,10 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
       db.run('UPDATE schedule SET hourly_rate=? WHERE id=?', [rate, s.id]);
     }
     const day = +String(s.work_date).slice(8, 10);
-    const bucket = day <= 15 ? advByEmp : salByEmp;
+    let bucket;
+    if (payOnce)        bucket = sal1ByEmp;
+    else if (day <= 15) bucket = advByEmp;
+    else                bucket = sal2ByEmp;
     if (!bucket[s.emp_id]) bucket[s.emp_id] = { hours: 0, total: 0 };
     bucket[s.emp_id].hours += +s.hours;
     bucket[s.emp_id].total += +s.hours * rate;
@@ -1168,8 +1178,9 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
     created++;
   }
 
-  Object.entries(advByEmp).forEach(([empId, d]) => insertTx('advance', 'Аванс по графику',  advDate, empId, d.hours, d.total));
-  Object.entries(salByEmp).forEach(([empId, d]) => insertTx('salary',  'Зарплата по графику', salDate, empId, d.hours, d.total));
+  Object.entries(advByEmp).forEach(([empId, d]) => insertTx('advance', 'Аванс по графику',     advDate, empId, d.hours, d.total));
+  Object.entries(sal2ByEmp).forEach(([empId, d]) => insertTx('salary',  'Зарплата по графику',  salDate, empId, d.hours, d.total));
+  Object.entries(sal1ByEmp).forEach(([empId, d]) => insertTx('salary',  'Зарплата по графику',  salDate, empId, d.hours, d.total));
 
   saveDb();
   dataChanged('transactions');
@@ -1178,7 +1189,7 @@ app.post('/api/calc-schedule-tx', authMiddleware, checkPermission('schedule', 'e
     ok: true,
     created,
     advances: Object.keys(advByEmp).length,
-    salaries: Object.keys(salByEmp).length,
+    salaries: Object.keys(sal2ByEmp).length + Object.keys(sal1ByEmp).length,
   });
 });
 

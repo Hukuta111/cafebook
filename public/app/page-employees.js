@@ -16,6 +16,7 @@ function openEmpModal(emp) {
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
   document.getElementById('empStatus').value = emp ? emp.status||'active' : 'active';
+  document.getElementById('empPaySchedule').value = emp ? (emp.pay_schedule === 'once' ? 'once' : 'twice') : 'twice';
   document.getElementById('empHiddenInSchedule').checked = !!(emp && emp.hidden_in_schedule);
   document.getElementById('empHiddenInMonthly').checked = !!(emp && emp.hidden_in_monthly);
   openModal('empModal');
@@ -34,6 +35,7 @@ async function saveEmployee() {
     phone: document.getElementById('empPhone').value,
     start_date: document.getElementById('empStart').value,
     status: document.getElementById('empStatus').value,
+    pay_schedule: document.getElementById('empPaySchedule').value === 'once' ? 'once' : 'twice',
     hidden_in_schedule: document.getElementById('empHiddenInSchedule').checked ? 1 : 0,
     hidden_in_monthly: document.getElementById('empHiddenInMonthly').checked ? 1 : 0,
   };

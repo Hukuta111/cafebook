@@ -516,8 +516,16 @@
       <div class="form-row"><label data-i18n="emp.phone">Телефон</label><input type="text" id="empPhone"></div>
       <div class="form-row"><label data-i18n="emp.startDate">Дата начала</label><input type="date" id="empStart"></div>
     </div>
-    <div class="form-row"><label data-i18n="emp.status">Статус</label>
-      <select id="empStatus"><option value="active" data-i18n="status.active">Активный</option><option value="inactive" data-i18n="status.inactive">Уволен</option></select>
+    <div class="form-2col">
+      <div class="form-row"><label data-i18n="emp.status">Статус</label>
+        <select id="empStatus"><option value="active" data-i18n="status.active">Активный</option><option value="inactive" data-i18n="status.inactive">Уволен</option></select>
+      </div>
+      <div class="form-row"><label data-i18n="emp.paySchedule">График выплат</label>
+        <select id="empPaySchedule">
+          <option value="twice" data-i18n="emp.paySchedule.twice">2 раза в месяц (аванс + зарплата)</option>
+          <option value="once"  data-i18n="emp.paySchedule.once">1 раз в месяц (только зарплата)</option>
+        </select>
+      </div>
     </div>
     <label class="toggle-row">
       <div class="toggle-text">
