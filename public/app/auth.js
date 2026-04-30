@@ -25,6 +25,18 @@ async function doLogin() {
     document.getElementById('userNameDisplay').textContent = data.displayName || data.username;
     document.getElementById('loginScreen').classList.remove('show');
     document.getElementById('mainContent').style.display = '';
+    // Предложить браузеру сохранить логин/пароль (Credential Management API).
+    // Это даёт менеджеру паролей надёжный сигнал поверх submit-события формы.
+    if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
+      try {
+        const cred = new window.PasswordCredential({
+          id: username,
+          password: password,
+          name: data.displayName || username,
+        });
+        navigator.credentials.store(cred).catch(() => {});
+      } catch {}
+    }
     applyPermissions();
     startSessionPoll();
     startWebSocket();

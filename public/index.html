@@ -15,19 +15,21 @@
   <div class="login-box">
     <div class="login-logo">CaféBook</div>
     <div class="login-sub" data-i18n="login.title">Управление кафе</div>
-    <div class="form-row">
-      <label data-i18n="login.user">Логин</label>
-      <input type="text" id="loginUser" autocomplete="username" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
-    </div>
-    <div class="form-row">
-      <label data-i18n="login.pass">Пароль</label>
-      <div class="pass-wrap">
-        <input type="password" id="loginPass" autocomplete="current-password" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" onkeydown="if(event.key==='Enter')doLogin()">
-        <button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button>
+    <form id="loginForm" action="#" method="post" onsubmit="event.preventDefault(); doLogin(); return false;">
+      <div class="form-row">
+        <label for="loginUser" data-i18n="login.user">Логин</label>
+        <input type="text" id="loginUser" name="username" autocomplete="username" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
       </div>
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()" data-i18n="login.submit">Войти →</button>
-    <div class="login-error" id="loginError"></div>
+      <div class="form-row">
+        <label for="loginPass" data-i18n="login.pass">Пароль</label>
+        <div class="pass-wrap">
+          <input type="password" id="loginPass" name="password" autocomplete="current-password" lang="en" inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr">
+          <button type="button" class="pass-toggle" onclick="togglePassVisibility(this)" tabindex="-1" aria-label="Показать пароль" title="Показать пароль">👁</button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" data-i18n="login.submit">Войти →</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
   </div>
 </div>
 
