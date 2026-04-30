@@ -262,6 +262,12 @@
   .toggle-mini input:checked ~ .toggle-sw { background:var(--accent); }
   .toggle-mini input:checked ~ .toggle-sw::after { transform:translateX(13px); background:#1a1714; }
 
+  /* Сегментированный переключатель (3 кнопки в ряд, активная подсвечена) */
+  .seg-ctrl { display:inline-flex; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px; }
+  .seg-ctrl button { background:transparent; border:none; color:var(--text2); font-size:13px; padding:7px 14px; border-radius:calc(var(--radius-sm) - 2px); cursor:pointer; transition:background .15s, color .15s; font-family:inherit; }
+  .seg-ctrl button:hover { color:var(--text); }
+  .seg-ctrl button.active { background:var(--accent); color:#1a1714; font-weight:600; }
+
   /* Кастомный тонкий скроллбар — общая утилита */
   .scroll-thin,
   .perms-scroll { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }

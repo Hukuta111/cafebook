@@ -272,6 +272,11 @@
         <button class="btn no-print" onclick="openSalReportPrintModal()" data-i18n="btn.print">🖨 Печать</button>
       </div>
     </div>
+    <div class="seg-ctrl no-print" id="salReportPeriodCtrl" style="margin-bottom:18px;">
+      <button type="button" data-period="full"    class="active" onclick="setSalReportPeriod('full')"    data-i18n="srep.period.full">Весь месяц</button>
+      <button type="button" data-period="advance"                onclick="setSalReportPeriod('advance')" data-i18n="srep.period.advance">Аванс (1–15)</button>
+      <button type="button" data-period="salary"                 onclick="setSalReportPeriod('salary')"  data-i18n="srep.period.salary">Зарплата (16–конец)</button>
+    </div>
     <div id="salaryReportCards"></div>
   </div>
 

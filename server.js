@@ -1224,7 +1224,10 @@ app.get('/api/reports/daily', authMiddleware, (req, res) => {
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);
 });
 app.get('/api/reports/salary', authMiddleware, (req, res) => {
-  const { month } = req.query;
+  const { month, period } = req.query;
+  // period: 'advance' (1–15, только pay_schedule='twice')
+  //       | 'salary'  (16–конец для twice + весь месяц для once)
+  //       | undefined / 'full' — всё за месяц
   let sql = `SELECT emp_id,
     SUM(CASE WHEN type='salary' THEN amount ELSE 0 END) as salary,
     SUM(CASE WHEN type='advance' THEN amount ELSE 0 END) as advance,
@@ -1233,6 +1236,15 @@ app.get('/api/reports/salary', authMiddleware, (req, res) => {
     FROM transactions WHERE type IN ('salary','advance','bonus','fine')`;
   const params = [];
   if (month) { sql += ` AND strftime('%Y-%m', date) = ?`; params.push(month); }
+  if (period === 'advance') {
+    sql += ` AND CAST(strftime('%d', date) AS INTEGER) <= 15`;
+    sql += ` AND emp_id IN (SELECT id FROM employees WHERE COALESCE(pay_schedule,'twice') = 'twice')`;
+  } else if (period === 'salary') {
+    sql += ` AND (
+      (CAST(strftime('%d', date) AS INTEGER) >= 16 AND emp_id IN (SELECT id FROM employees WHERE COALESCE(pay_schedule,'twice') = 'twice'))
+      OR emp_id IN (SELECT id FROM employees WHERE COALESCE(pay_schedule,'twice') = 'once')
+    )`;
+  }
   sql += ' GROUP BY emp_id';
   const rows = db.exec(sql, params);
   res.json(rows[0] ? rowsToObjects(rows[0]) : []);

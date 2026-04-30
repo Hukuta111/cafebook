@@ -2,6 +2,15 @@
 // SALARY REPORT
 // ═══════════════════════════════════════════
 let _monthlySalaryCandidates = [];
+let _salReportPeriod = 'full'; // 'full' | 'advance' | 'salary'
+
+function setSalReportPeriod(p) {
+  _salReportPeriod = (p === 'advance' || p === 'salary') ? p : 'full';
+  document.querySelectorAll('#salReportPeriodCtrl button').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === _salReportPeriod);
+  });
+  renderSalaryReport();
+}
 
 // ═══════════════════════════════════════════
 // PRINT SALARY REPORT (выбор кого печатать)
@@ -184,8 +193,22 @@ async function renderSalaryReport() {
   const cur = today().slice(0,7);
   const month = _monthPickers['salReportMonthPicker']?.value || cur;
 
-  const rows = await API.get('/reports/salary?month=' + month) || [];
+  const period = _salReportPeriod || 'full';
+  const rows = await API.get('/reports/salary?month=' + month + '&period=' + period) || [];
   const container = document.getElementById('salaryReportCards');
+
+  // фильтр по периоду применяется и к деталям (смены/транзакции).
+  // Для сотрудников с pay_schedule='once' в режиме 'salary' детали остаются за весь месяц.
+  const empById = {};
+  (_employees || []).forEach(e => { empById[e.id] = e; });
+  const isPayOnce = (empId) => empById[empId] && empById[empId].pay_schedule === 'once';
+  function dateInPeriod(dateStr, empId) {
+    if (period === 'full') return true;
+    const d = +String(dateStr).slice(8, 10);
+    if (period === 'advance') return !isPayOnce(empId) && d <= 15;
+    if (period === 'salary')  return isPayOnce(empId) || d >= 16;
+    return true;
+  }
 
   // загрузить график и транзакции если включён переключатель
   const showDays = document.getElementById('salReportShowDays')?.checked || false;
@@ -197,13 +220,13 @@ async function renderSalaryReport() {
       API.get('/schedule?month=' + month),
       API.get('/transactions?month=' + month),
     ]);
-    (sched || []).forEach(s => {
+    (sched || []).filter(s => dateInPeriod(s.work_date, s.emp_id)).forEach(s => {
       if (!scheduleByEmp[s.emp_id]) scheduleByEmp[s.emp_id] = [];
       scheduleByEmp[s.emp_id].push(s);
     });
     // для showDays — все типы, для showHours — только bonus/fine
     const relevantTypes = showDays ? ['salary','advance','bonus','fine'] : ['bonus','fine'];
-    (allTx || []).filter(t => t.emp_id && relevantTypes.includes(t.type)).forEach(t => {
+    (allTx || []).filter(t => t.emp_id && relevantTypes.includes(t.type) && dateInPeriod(t.date, t.emp_id)).forEach(t => {
       if (!txByEmp[t.emp_id]) txByEmp[t.emp_id] = [];
       txByEmp[t.emp_id].push(t);
     });
