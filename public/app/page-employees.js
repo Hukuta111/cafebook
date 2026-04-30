@@ -11,7 +11,10 @@ function openEmpModal(emp) {
   document.getElementById('empType').value = emp ? emp.type||'staff' : 'staff';
   document.getElementById('empSalary').value = emp ? emp.salary||'' : '';
   document.getElementById('empHourlyRate').value = emp ? emp.hourly_rate||'' : '';
-  document.getElementById('empTabNumber').value = emp ? emp.tab_number||'' : '';
+  // При создании нового сотрудника подставляем следующий табельный номер
+  document.getElementById('empTabNumber').value = emp
+    ? (emp.tab_number || '')
+    : suggestNextTabNumber();
   document.getElementById('empPercent').value = emp ? emp.percent||'' : '';
   document.getElementById('empPhone').value = emp ? emp.phone||'' : '';
   document.getElementById('empStart').value = emp ? emp.start_date||'' : '';
@@ -22,6 +25,28 @@ function openEmpModal(emp) {
   populateEmpAutocompleteLists(emp ? emp.id : null);
   hideEmpMatchHint();
   openModal('empModal');
+}
+
+// Подсказка следующего табельного номера: max(числовые) + 1, с сохранением
+// ширины (ведущие нули). Если в системе уже есть «014» — следующий будет «015».
+// Если табельных нет — возвращаем «001».
+function suggestNextTabNumber() {
+  const tabs = (_employees || [])
+    .map(e => String(e.tab_number || '').trim())
+    .filter(Boolean);
+  if (!tabs.length) return '001';
+  // оставляем только полностью числовые табельные
+  const numeric = tabs.filter(s => /^\d+$/.test(s));
+  if (!numeric.length) return ''; // в системе только нечисловые — не угадываем
+  const max = numeric.reduce((m, s) => Math.max(m, parseInt(s, 10)), 0);
+  const next = max + 1;
+  // ширина = максимальная ширина существующего числового табельного,
+  // но не меньше длины самого нового номера
+  const width = Math.max(
+    numeric.reduce((w, s) => Math.max(w, s.length), 0),
+    String(next).length
+  );
+  return String(next).padStart(width, '0');
 }
 
 // Заполнение datalist'ов уникальными именами/табельными номерами
