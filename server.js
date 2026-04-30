@@ -1275,8 +1275,20 @@ app.post('/api/import', authMiddleware, adminOnly, (req, res) => {
 });
 
 // ─── STATIC ────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
+// no-cache для HTML/JS/CSS — чтобы пользователи всегда получали свежий фронт после деплоя
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|js|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  },
+}));
 app.get('/{*splat}', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
