@@ -622,7 +622,7 @@ function renderSblnkList() {
         <span class="toggle-sw"></span>
       </label>`;
     }).join('');
-    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);flex-shrink:0;">
       <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);user-select:none;">
         <input type="checkbox" ${allSel ? 'checked' : ''} onchange="sblnkToggleRole('${escJs(role)}', this.checked)">
         <span style="flex:1;font-weight:600;font-size:13px;">${role}</span>
