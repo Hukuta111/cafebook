@@ -560,3 +560,195 @@ function removePrintLandscapeStyle() {
   const s = document.getElementById('printLandscapeStyle');
   if (s) s.remove();
 }
+
+// ═══════════════════════════════════════════
+// ПЕЧАТЬ ПУСТОГО ГРАФИКА (любой месяц, выбор сотрудников)
+// ═══════════════════════════════════════════
+let _sblnkList = []; // [{ id, name, tab_number, role, type, selected }]
+
+async function openBlankSchedulePrintModal() {
+  // Создаём пикер месяца с allowFuture при первом открытии
+  if (!_monthPickers['schedBlankMonthPicker']) {
+    createMonthPicker('schedBlankMonthPicker', null, { allowFuture: true });
+    // По умолчанию — следующий месяц (типичный сценарий: распечатать на наступающий)
+    const cur = today().slice(0, 7);
+    const [y, m] = cur.split('-').map(Number);
+    const nextDate = new Date(y, m, 1); // m уже след. месяц т.к. Date() 0-индексный
+    const nextMonth = nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0');
+    mpSetValue('schedBlankMonthPicker', nextMonth);
+  }
+  // Подгружаем актуальный список сотрудников и должностей
+  _employees = await API.get('/employees') || _employees || [];
+  _positions = await API.get('/positions') || _positions || [];
+  const hiddenRoles = new Set(_positions.filter(p => +p.hidden_in_schedule).map(p => p.name));
+  const active = _employees.filter(e =>
+    e.status === 'active' && !+e.hidden_in_schedule && !hiddenRoles.has(e.role || '')
+  );
+  _sblnkList = active.map(e => ({
+    id: e.id,
+    name: e.name,
+    tab_number: e.tab_number,
+    role: e.role || '',
+    type: e.type || 'staff',
+    selected: true,
+  }));
+  renderSblnkList();
+  openModal('schedBlankModal');
+}
+
+function renderSblnkList() {
+  // Группируем по должности (role); если пусто — «— не указана —»
+  const groups = {};
+  _sblnkList.forEach((item, idx) => {
+    const key = item.role || '— ' + (t('emp.notSpecified') || 'не указана') + ' —';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ item, idx });
+  });
+  const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ru'));
+  const escAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const escJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+  const html = sortedKeys.map(role => {
+    const items = groups[role];
+    const allSel = items.every(({ item }) => item.selected);
+    const selCount = items.filter(({ item }) => item.selected).length;
+    const rows = items.map(({ item, idx }) => {
+      const tab = item.tab_number ? ` <span style="color:var(--accent);font-family:monospace;font-size:11px;">№${item.tab_number}</span>` : '';
+      return `<label class="toggle-row" style="cursor:pointer;background:var(--surface);">
+        <div class="toggle-text">
+          <span class="toggle-label">${item.name}${tab}</span>
+        </div>
+        <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="_sblnkList[${idx}].selected=this.checked;renderSblnkList()">
+        <span class="toggle-sw"></span>
+      </label>`;
+    }).join('');
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">
+      <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);user-select:none;">
+        <input type="checkbox" ${allSel ? 'checked' : ''} onchange="sblnkToggleRole('${escJs(role)}', this.checked)">
+        <span style="flex:1;font-weight:600;font-size:13px;">${role}</span>
+        <span style="color:var(--text3);font-size:11px;font-family:monospace;">${selCount}/${items.length}</span>
+      </label>
+      <div style="padding:6px;display:flex;flex-direction:column;gap:4px;">${rows}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('schedBlankList').innerHTML = html;
+  sblnkUpdateSummary();
+}
+
+function sblnkToggleAll(value) {
+  _sblnkList.forEach(item => { item.selected = !!value; });
+  renderSblnkList();
+}
+
+function sblnkToggleRole(role, value) {
+  const noRoleKey = '— ' + (t('emp.notSpecified') || 'не указана') + ' —';
+  _sblnkList.forEach(item => {
+    const key = item.role || noRoleKey;
+    if (key === role) item.selected = !!value;
+  });
+  renderSblnkList();
+}
+
+function sblnkUpdateSummary() {
+  const sel = _sblnkList.filter(i => i.selected);
+  const month = _monthPickers['schedBlankMonthPicker']?.value || today().slice(0, 7);
+  const el = document.getElementById('schedBlankSummary');
+  if (el) el.textContent = `Месяц: ${monthLabel(month)} · Выбрано сотрудников: ${sel.length}`;
+}
+
+// HTML пустой таблицы графика для печати
+function buildBlankScheduleTableHTML(employees, monthValue) {
+  const [y, m] = monthValue.split('-').map(Number);
+  const numDays = new Date(y, m, 0).getDate();
+
+  let cols = '<colgroup><col style="width:120px">';
+  for (let d = 1; d <= numDays; d++) cols += '<col>';
+  cols += '<col style="width:50px"></colgroup>';
+
+  let hdr = `<thead><tr><th class="emp-name-cell" style="text-align:left">${t('col.employee')}</th>`;
+  for (let d = 1; d <= numDays; d++) {
+    const dow = dayOfWeek(monthValue, d);
+    const isWeekend = dow === 0 || dow === 6;
+    hdr += `<th style="${isWeekend ? 'color:var(--red);' : ''}">${d}<br>${t('wd.' + dow)}</th>`;
+  }
+  hdr += `<th>${t('sch.hours')}</th></tr></thead>`;
+
+  let body = '<tbody>';
+  employees.forEach(emp => {
+    const role = emp.role || EMP_TYPE_LABELS[emp.type] || '';
+    const tab = emp.tab_number ? ` <span style="color:var(--accent);font-family:monospace;font-size:10px;">№${emp.tab_number}</span>` : '';
+    const nameCell = `<div style="font-weight:600;line-height:1.1;">${emp.name}${tab}</div>${role ? '<div style="color:var(--text3);font-size:10px;margin-top:2px;">' + role + '</div>' : ''}`;
+    body += `<tr><td class="emp-name-cell">${nameCell}</td>`;
+    for (let d = 1; d <= numDays; d++) {
+      const dow = dayOfWeek(monthValue, d);
+      const isWeekend = dow === 0 || dow === 6;
+      body += `<td style="${isWeekend ? 'background:rgba(224,85,85,.05);' : ''}">&nbsp;</td>`;
+    }
+    body += '<td>&nbsp;</td></tr>';
+  });
+  // Итоговая строка — пустая, для подсчёта вручную
+  body += `<tr class="totals-row"><td class="emp-name-cell">${t('sch.totalRow')}</td>`;
+  for (let d = 0; d < numDays; d++) body += '<td>&nbsp;</td>';
+  body += '<td>&nbsp;</td></tr>';
+  body += '</tbody>';
+
+  return cols + hdr + body;
+}
+
+async function doPrintBlankSchedule() {
+  const month = _monthPickers['schedBlankMonthPicker']?.value;
+  if (!month) { showToast('Не выбран месяц', true); return; }
+  const selectedIds = new Set(_sblnkList.filter(i => i.selected).map(i => i.id));
+  if (!selectedIds.size) { showToast('Никто не выбран', true); return; }
+
+  const emps = (_employees || []).filter(e => selectedIds.has(e.id));
+  if (!emps.length) { showToast('Никто не выбран', true); return; }
+
+  closeModal('schedBlankModal');
+
+  const table = document.getElementById('scheduleTable');
+  const wrap = document.getElementById('scheduleWrap');
+  const grandEl = document.getElementById('schedGrandTotal');
+
+  // Сохраняем оригинал, чтобы вернуть после печати
+  table.innerHTML = buildBlankScheduleTableHTML(emps, month);
+  if (grandEl) grandEl.style.display = 'none';
+
+  // Заголовок над таблицей с указанием месяца (видно и на экране, и в печати)
+  let banner = document.getElementById('schedBlankBanner');
+  if (banner) banner.remove();
+  banner = document.createElement('div');
+  banner.id = 'schedBlankBanner';
+  banner.style.cssText = 'font-weight:600;font-size:14px;margin:0 0 6px 0;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);';
+  banner.textContent = `📋 ${t('sblnk.bannerPrefix') || 'Пустой график'} — ${monthLabel(month)} · ${emps.length} сотр.`;
+  wrap.before(banner);
+
+  // Включаем print-режим (как printSchedule)
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
+  document.getElementById('page-schedule').classList.add('print-target');
+  document.documentElement.classList.add('print-schedule-mode');
+  document.body.classList.add('print-schedule-mode');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 900;
+  if (isMobile) document.body.classList.add('print-schedule-mobile');
+  injectPrintLandscapeStyle();
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    document.getElementById('page-schedule').classList.remove('print-target');
+    document.documentElement.classList.remove('print-schedule-mode');
+    document.body.classList.remove('print-schedule-mode');
+    document.body.classList.remove('print-schedule-mobile');
+    removePrintLandscapeStyle();
+    if (banner) banner.remove();
+    // Перерисовываем нормальный график обратно
+    if (typeof renderSchedule === 'function') renderSchedule();
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(cleanup, 30000); // safety fallback
+
+  setTimeout(() => window.print(), 100);
+}

@@ -18,11 +18,12 @@ const MONTH_NAMES_SHORT = new Proxy([], {
 });
 const _monthPickers = {};
 
-function createMonthPicker(containerId, onChange) {
+function createMonthPicker(containerId, onChange, opts) {
   const container = document.getElementById(containerId);
   if (!container) return null;
   const cur = today().slice(0,7);
-  const picker = { value: cur, year: +cur.split('-')[0], onChange, containerId };
+  const allowFuture = !!(opts && opts.allowFuture);
+  const picker = { value: cur, year: +cur.split('-')[0], onChange, containerId, allowFuture };
 
   container.innerHTML = `
     <div class="mp-trigger" id="${containerId}_trigger">📅 <span id="${containerId}_label">${monthLabel(cur)}</span></div>
@@ -52,7 +53,7 @@ function createMonthPicker(containerId, onChange) {
 function mpChangeYear(id, delta) {
   const p = _monthPickers[id];
   const curYear = +today().slice(0,4);
-  if (delta > 0 && p.year >= curYear) return; // нельзя вперёд за текущий год
+  if (!p.allowFuture && delta > 0 && p.year >= curYear) return; // нельзя вперёд за текущий год
   p.year += delta;
   document.getElementById(id + '_year').textContent = p.year;
   mpRenderGrid(id);
@@ -65,18 +66,19 @@ function mpRenderGrid(id) {
   grid.innerHTML = MONTH_NAMES_SHORT.map((name, i) => {
     const val = p.year + '-' + String(i+1).padStart(2,'0');
     const isFuture = val > curMonth;
+    const blocked = isFuture && !p.allowFuture;
     const isActive = val === p.value ? ' active' : '';
     const isToday = val === curMonth ? ' today' : '';
-    const disabledAttr = isFuture ? ' disabled style="opacity:.35;cursor:not-allowed;"' : '';
-    const onClickAttr = isFuture ? '' : ` onclick="mpSelect('${id}','${val}')"`;
+    const disabledAttr = blocked ? ' disabled style="opacity:.35;cursor:not-allowed;"' : '';
+    const onClickAttr = blocked ? '' : ` onclick="mpSelect('${id}','${val}')"`;
     return `<button class="${isActive}${isToday}"${disabledAttr}${onClickAttr}>${name}</button>`;
   }).join('');
 }
 
 function mpSelect(id, val) {
   const p = _monthPickers[id];
-  // Защита от выбора будущего месяца (если как-то пришло)
-  if (val > today().slice(0,7)) return;
+  // Защита от выбора будущего месяца (если как-то пришло), кроме пикеров с allowFuture
+  if (!p.allowFuture && val > today().slice(0,7)) return;
   p.value = val;
   document.getElementById(id + '_label').textContent = monthLabel(val);
   document.getElementById(id + '_popup').classList.remove('open');

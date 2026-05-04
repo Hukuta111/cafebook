@@ -294,6 +294,7 @@
         <button class="btn btn-primary" data-edit-page="schedule" onclick="openSchedModal()" data-i18n="btn.addShift">+ Смена</button>
         <button class="btn" data-edit-page="schedule" onclick="generateScheduleTx()" id="schedGenTxBtn" style="display:none" data-i18n="btn.scheduleTx">💰 Сформировать выплаты</button>
         <button class="btn" onclick="printSchedule()" data-i18n="btn.print">🖨 Печать</button>
+        <button class="btn" onclick="openBlankSchedulePrintModal()" data-i18n="btn.printBlank" title="Распечатать пустой график на любой месяц">🖨 Пустой</button>
       </div>
     </div>
     <!-- Переключатель режимов: общий / личный -->
@@ -693,6 +694,28 @@
       <button class="btn btn-danger" id="schedDeleteBtn" style="display:none;margin-right:auto" onclick="deleteScheduleFromModal()" data-i18n="common.delete">Удалить</button>
       <button class="btn" onclick="closeModal('schedModal')" data-i18n="common.cancel">Отмена</button>
       <button class="btn btn-primary" onclick="saveScheduleEntry()" data-i18n="common.save">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- BLANK SCHEDULE PRINT MODAL -->
+<div class="modal-overlay" id="schedBlankModal">
+  <div class="modal" style="width:620px;max-width:95vw;">
+    <div class="modal-title" data-i18n="sblnk.title">Печать пустого графика</div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:14px;" data-i18n="sblnk.hint">Выберите месяц (можно будущий) и сотрудников. Распечатается пустая таблица для заполнения вручную.</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+      <span data-i18n="sblnk.month" style="font-size:13px;color:var(--text2);">Месяц:</span>
+      <div class="mp-wrap" id="schedBlankMonthPicker"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm" onclick="sblnkToggleAll(true)" data-i18n="srp.selAll">Выбрать всех</button>
+      <button type="button" class="btn btn-sm" onclick="sblnkToggleAll(false)" data-i18n="srp.deselAll">Снять всех</button>
+    </div>
+    <div id="schedBlankList" class="scroll-thin" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;"></div>
+    <div id="schedBlankSummary" style="margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('schedBlankModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="btn btn-primary" onclick="doPrintBlankSchedule()" data-i18n="sblnk.printIt">🖨 Напечатать</button>
     </div>
   </div>
 </div>
