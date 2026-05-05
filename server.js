@@ -1059,13 +1059,17 @@ app.post('/api/calc-monthly-salary', authMiddleware, checkPermission('salary-rep
   const employees = empRows[0] ? rowsToObjects(empRows[0]) : [];
   if (!employees.length) return res.json({ ok: true, created: 0, message: 'Нет активных сотрудников с окладом' });
 
-  // удалить старые авто-транзакции оклада за этот месяц
+  // удалить старые авто-транзакции оклада за этот месяц (и одно-, и двух-выплатные)
   db.run(
-    `DELETE FROM transactions WHERE type='salary' AND cat='Месячный оклад' AND strftime('%Y-%m', date)=?`,
+    `DELETE FROM transactions WHERE strftime('%Y-%m', date)=? AND (
+      (type='salary'  AND cat='Месячный оклад') OR
+      (type='advance' AND cat='Аванс (оклад)')
+    )`,
     [month]
   );
 
-  const lastDay = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
+  const advDate  = month + '-15';
+  const lastDay  = month + '-' + new Date(+month.split('-')[0], +month.split('-')[1], 0).getDate().toString().padStart(2, '0');
 
   // Если клиент прислал assignments — начисляем только указанным с указанными суммами
   // Иначе — всем активным с их окладами из профиля
@@ -1080,20 +1084,39 @@ app.post('/api/calc-monthly-salary', authMiddleware, checkPermission('salary-rep
     targets = employees.filter(e => +e.salary > 0).map(e => ({ emp: e, amount: +e.salary }));
   }
 
-  let created = 0;
+  let created = 0, advances = 0, salaries = 0;
   targets.forEach(({ emp, amount }) => {
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    db.run(
-      'INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
-      [id, lastDay, 'salary', 'Месячный оклад', emp.id, amount,
-       `Оклад ${emp.name}${amount !== +emp.salary ? ' (частично)' : ''}`]
-    );
-    created++;
+    const partial = amount !== +emp.salary;
+    const partialNote = partial ? ' (частично)' : '';
+    if (emp.pay_schedule === 'twice') {
+      // Делим оклад пополам: половина — аванс 15-го, половина — зарплата последнего числа.
+      // Округление до копейки: аванс — round(половины), зарплата — остаток (чтобы сумма билась в копейку).
+      const advAmt = Math.round((amount / 2) * 100) / 100;
+      const salAmt = Math.round((amount - advAmt) * 100) / 100;
+      if (advAmt > 0) {
+        db.run('INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+          [Date.now().toString(36) + Math.random().toString(36).slice(2), advDate, 'advance', 'Аванс (оклад)', emp.id, advAmt,
+           `Аванс ${emp.name}${partialNote}`]);
+        created++; advances++;
+      }
+      if (salAmt > 0) {
+        db.run('INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+          [Date.now().toString(36) + Math.random().toString(36).slice(2), lastDay, 'salary', 'Месячный оклад', emp.id, salAmt,
+           `Оклад ${emp.name}${partialNote}`]);
+        created++; salaries++;
+      }
+    } else {
+      // pay_schedule === 'once' или не указан — одна транзакция за весь месяц
+      db.run('INSERT INTO transactions (id,date,type,cat,emp_id,amount,note) VALUES (?,?,?,?,?,?,?)',
+        [Date.now().toString(36) + Math.random().toString(36).slice(2), lastDay, 'salary', 'Месячный оклад', emp.id, amount,
+         `Оклад ${emp.name}${partialNote}`]);
+      created++; salaries++;
+    }
   });
 
   saveDb();
   dataChanged('transactions');
-  res.json({ ok: true, created });
+  res.json({ ok: true, created, advances, salaries });
 });
 
 // ─── SCHEDULE → TRANSACTIONS ──────────────────────────────

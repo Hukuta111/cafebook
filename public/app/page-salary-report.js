@@ -181,7 +181,12 @@ async function confirmCalcMonthlySalary() {
   if (res && res.ok) {
     closeModal('monthlySalaryModal');
     if (res.created > 0) {
-      showToast('Начислено окладов: ' + res.created + ' ✓');
+      const adv = +res.advances || 0;
+      const sal = +res.salaries || 0;
+      const parts = [];
+      if (adv) parts.push(`аванс — ${adv}`);
+      if (sal) parts.push(`зарплата — ${sal}`);
+      showToast(`Создано: ${parts.join(', ') || res.created} ✓`);
       renderSalaryReport();
     } else {
       showToast(res.message || 'Нет сотрудников с окладом');
