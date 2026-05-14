@@ -724,11 +724,12 @@ async function doPrintBlankSchedule() {
   banner.textContent = `📋 ${t('sblnk.bannerPrefix') || 'Пустой график'} — ${monthLabel(month)} · ${emps.length} сотр.`;
   wrap.before(banner);
 
-  // Включаем print-режим (как printSchedule)
+  // Включаем print-режим (как printSchedule) + дополнительный класс для крупных клеток
   document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
   document.getElementById('page-schedule').classList.add('print-target');
   document.documentElement.classList.add('print-schedule-mode');
   document.body.classList.add('print-schedule-mode');
+  document.body.classList.add('print-schedule-blank');
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 900;
   if (isMobile) document.body.classList.add('print-schedule-mobile');
   injectPrintLandscapeStyle();
@@ -741,6 +742,7 @@ async function doPrintBlankSchedule() {
     document.documentElement.classList.remove('print-schedule-mode');
     document.body.classList.remove('print-schedule-mode');
     document.body.classList.remove('print-schedule-mobile');
+    document.body.classList.remove('print-schedule-blank');
     removePrintLandscapeStyle();
     if (banner) banner.remove();
     // Перерисовываем нормальный график обратно

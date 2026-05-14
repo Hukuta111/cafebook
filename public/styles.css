@@ -651,6 +651,16 @@
       border:1px solid #888;padding:2px 2px;overflow:hidden;text-overflow:clip;text-align:center;
       line-height:1.15;
     }
+    /* Пустой график — клетки крупнее, чтобы было удобно вписывать часы от руки */
+    body.print-schedule-blank #scheduleTable { font-size:12px; }
+    body.print-schedule-blank #scheduleTable th { padding:6px 3px; font-size:11px; }
+    body.print-schedule-blank #scheduleTable td { padding:8px 3px; height:32px !important; min-height:32px !important; }
+    body.print-schedule-blank #scheduleTable .emp-name-cell { padding:6px 8px; font-size:12px; }
+    body.print-schedule-blank #scheduleTable .totals-row td { height:28px !important; padding:6px 3px; }
+    body.print-schedule-blank #schedBlankBanner {
+      font-size:13px !important; padding:4px 8px !important; margin:0 0 4px 0 !important;
+      background:transparent !important; border:1px solid #ccc;
+    }
     #scheduleTable th {
       font-size:10px;letter-spacing:0;background:#eee;color:#333;font-weight:600;
     }
