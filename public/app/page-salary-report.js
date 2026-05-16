@@ -263,7 +263,18 @@ async function renderSalaryReport() {
   }
 
   const totals = rows.reduce((acc,r)=>({ salary:acc.salary+ +r.salary, advance:acc.advance+ +r.advance, bonus:acc.bonus+ +r.bonus, fine:acc.fine+ +r.fine }),{salary:0,advance:0,bonus:0,fine:0});
-  const totalNet = totals.salary+totals.bonus-totals.advance-totals.fine;
+  // Итог «к выплате в этом периоде» зависит от выбранного периода:
+  //  • advance (1–15): сотруднику выдаётся АВАНС (плюсом) + бонусы − штрафы
+  //  • salary  (16–конец): сотруднику выдаётся ЗАРПЛАТА + бонусы − штрафы
+  //    (аванса в этом периоде у twice не бывает, у once его и не было вовсе)
+  //  • full (весь месяц): остаток к доплате = з/п + бонусы − аванс − штрафы
+  //    (классическая формула после выплаченного аванса)
+  function computeNet(s) {
+    if (period === 'advance') return s.advance + s.bonus - s.fine;
+    if (period === 'salary')  return s.salary  + s.bonus - s.fine;
+    return s.salary + s.bonus - s.advance - s.fine;
+  }
+  const totalNet = computeNet(totals);
 
   let html = `<div class="cards-row" style="margin-bottom:28px;">
     <div class="stat-card yellow"><div class="stat-label">${t('srep.salaryAcc')}</div><div class="stat-value yellow">${fmt(totals.salary)} ${_currency}</div></div>
@@ -296,7 +307,7 @@ async function renderSalaryReport() {
       salary: a.salary + +r.salary, advance: a.advance + +r.advance,
       bonus: a.bonus + +r.bonus, fine: a.fine + +r.fine,
     }), {salary:0, advance:0, bonus:0, fine:0});
-    const net = sum.salary + sum.bonus - sum.advance - sum.fine;
+    const net = computeNet(sum);
     const netCol = net>=0?'var(--green)':'var(--red)';
 
     // имя: если в группе один — его имя; если несколько — имя первого + «(совмещает)»
@@ -419,7 +430,7 @@ async function renderSalaryReport() {
     if (shouldShowRoles) {
       rolesBreakdown = '<div style="margin:12px 0;display:flex;flex-direction:column;gap:10px;">'
         + g.items.map(({r, emp}) => {
-          const itemNet = +r.salary + +r.bonus - +r.advance - +r.fine;
+          const itemNet = computeNet({ salary:+r.salary, advance:+r.advance, bonus:+r.bonus, fine:+r.fine });
           const role = emp ? (emp.role || EMP_TYPE_LABELS[emp.type] || '—') : '—';
           return `<div style="padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
             <div style="display:flex;justify-content:space-between;align-items:center;">
